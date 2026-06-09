@@ -5,28 +5,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { no } from "@/lib/locale/no";
 import { api, ApiError } from "@/lib/client/api";
-import { identity } from "@/lib/client/identity";
+import { Wizard } from "./Wizard";
 
 export default function HostEntry() {
   const router = useRouter();
   const [mode, setMode] = useState<"create" | "open">("create");
-  const [title, setTitle] = useState("");
   const [hostCode, setHostCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  async function create() {
-    setBusy(true);
-    setError(null);
-    try {
-      const t = await api.createTournament({ title });
-      identity.saveHostCode(t.id, t.hostCode);
-      router.push(`/host/${t.id}`);
-    } catch {
-      setError(no.common.error);
-      setBusy(false);
-    }
-  }
 
   async function open() {
     setBusy(true);
@@ -35,7 +21,11 @@ export default function HostEntry() {
       const r = await api.openHost(hostCode);
       router.push(`/host/${r.id}`);
     } catch (e) {
-      setError(e instanceof ApiError && e.code === "not_found" ? no.player.invalidCode : no.common.error);
+      setError(
+        e instanceof ApiError && e.code === "not_found"
+          ? no.player.invalidCode
+          : no.common.error,
+      );
       setBusy(false);
     }
   }
@@ -46,7 +36,6 @@ export default function HostEntry() {
         <Link href="/" className="brandmark">
           Sunday<b>Sjakk</b>
         </Link>
-        <p className="eyebrow">Lærer</p>
 
         <div className="row" style={{ gap: 8 }}>
           <button
@@ -64,26 +53,7 @@ export default function HostEntry() {
         </div>
 
         {mode === "create" ? (
-          <>
-            <div className="field">
-              <label htmlFor="title">{no.wizard.titleStep}</label>
-              <input
-                id="title"
-                className="input"
-                placeholder={no.wizard.titlePlaceholder}
-                value={title}
-                maxLength={80}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-            <p className="muted" style={{ fontSize: 13 }}>
-              Standardoppsett: 5 ligarunder, ingen sluttspill. (Full veiviser
-              kommer.)
-            </p>
-            <button className="btn btn-primary btn-block btn-lg" disabled={busy} onClick={create}>
-              {busy ? <span className="spin" /> : no.common.create}
-            </button>
-          </>
+          <Wizard />
         ) : (
           <>
             <div className="field">
@@ -97,13 +67,16 @@ export default function HostEntry() {
                 autoCapitalize="characters"
               />
             </div>
-            <button className="btn btn-primary btn-block btn-lg" disabled={busy} onClick={open}>
+            <button
+              className="btn btn-primary btn-block btn-lg"
+              disabled={busy}
+              onClick={open}
+            >
               {busy ? <span className="spin" /> : no.host.open}
             </button>
+            {error && <div className="banner banner-error">{error}</div>}
           </>
         )}
-
-        {error && <div className="banner banner-error">{error}</div>}
       </div>
     </main>
   );
