@@ -38,6 +38,7 @@ export async function GET(
       number: r.number,
       phase: r.phase,
       status: r.status,
+      startedAt: r.started_at,
     })),
   };
   return ok(state);

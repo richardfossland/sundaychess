@@ -5,6 +5,7 @@ import type { BoardState, PublicGame } from "@/lib/dto";
 import { api } from "@/lib/client/api";
 import { identity } from "@/lib/client/identity";
 import { no } from "@/lib/locale/no";
+import { RoundTimer } from "@/lib/client/RoundTimer";
 import { OverrideModal } from "./OverrideModal";
 
 function resultLabel(g: PublicGame, name: (id: string | null) => string): string {
@@ -101,17 +102,16 @@ export function LeagueView({
         <span className="badge badge-live">
           {no.host.round} {tournament.currentRound} / {tournament.config.leagueRounds}
         </span>
+        {tournament.config.roundTimerSec && currentRound && (
+          <RoundTimer
+            startedAt={currentRound.startedAt}
+            durationSec={tournament.config.roundTimerSec}
+          />
+        )}
         {tournament.title && <span className="muted">{tournament.title}</span>}
       </header>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr)",
-          gap: 28,
-          alignItems: "start",
-        }}
-      >
+      <div className="board-grid split-league">
         {/* Standings */}
         <section className="card">
           <h2 style={{ fontSize: 22, marginBottom: 12 }}>{no.host.standings}</h2>

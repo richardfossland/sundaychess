@@ -339,6 +339,25 @@ h3 {
   aspect-ratio: 1;
 }
 
+/* ---------- board grids (responsive) ---------- */
+.board-grid {
+  display: grid;
+  gap: 28px;
+  align-items: start;
+}
+.board-grid.split-lobby {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+}
+.board-grid.split-league {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+}
+@media (max-width: 820px) {
+  .board-grid.split-lobby,
+  .board-grid.split-league {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- playoff bracket ---------- */
 .bracket {
   display: flex;

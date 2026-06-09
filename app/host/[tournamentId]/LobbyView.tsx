@@ -58,14 +58,7 @@ export function LobbyView({
         )}
       </header>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0,1.4fr) minmax(0,1fr)",
-          gap: 32,
-          alignItems: "start",
-        }}
-      >
+      <div className="board-grid split-lobby">
         {/* Join panel */}
         <section className="card stack text-center" style={{ alignItems: "center" }}>
           <p className="eyebrow">{no.host.pinLabel}</p>

@@ -35,5 +35,21 @@ export function useBoardState(tournamentId: string | null) {
     refresh();
   });
 
+  // Reconnect hardening: re-sync when the tab regains focus or the network
+  // comes back (a missed broadcast is recovered here).
+  useEffect(() => {
+    const resync = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener("focus", resync);
+    window.addEventListener("online", resync);
+    document.addEventListener("visibilitychange", resync);
+    return () => {
+      window.removeEventListener("focus", resync);
+      window.removeEventListener("online", resync);
+      document.removeEventListener("visibilitychange", resync);
+    };
+  }, [refresh]);
+
   return { state, error, refresh };
 }

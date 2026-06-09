@@ -62,6 +62,20 @@ export function GameView({
     load().catch(() => setToast(no.common.error));
   }, [load]);
 
+  // Reconnect hardening: re-sync the authoritative position when the tab
+  // regains focus or the network returns (recovers any missed broadcast).
+  useEffect(() => {
+    const resync = () => {
+      if (document.visibilityState === "visible") load().catch(() => {});
+    };
+    window.addEventListener("focus", resync);
+    window.addEventListener("online", resync);
+    return () => {
+      window.removeEventListener("focus", resync);
+      window.removeEventListener("online", resync);
+    };
+  }, [load]);
+
   // Authoritative updates from the game channel.
   useChannel(channels.game(gameId), (event, payload) => {
     if (event === "position") {
@@ -218,11 +232,21 @@ export function GameView({
         </div>
 
         {!ended ? (
-          <div className={`banner ${isMyTurn ? "banner-turn" : "banner-wait"}`} style={{ width: "min(92vw,560px)" }}>
+          <div
+            className={`banner ${isMyTurn ? "banner-turn" : "banner-wait"}`}
+            style={{ width: "min(92vw,560px)" }}
+            role="status"
+            aria-live="polite"
+          >
             {isMyTurn ? no.player.yourTurn : no.player.opponentTurn}
           </div>
         ) : (
-          <div className="banner banner-turn" style={{ width: "min(92vw,560px)" }}>
+          <div
+            className="banner banner-turn"
+            style={{ width: "min(92vw,560px)" }}
+            role="status"
+            aria-live="assertive"
+          >
             {resultText}
           </div>
         )}

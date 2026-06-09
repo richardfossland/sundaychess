@@ -46,7 +46,13 @@ export interface BoardState {
   games: PublicGame[];
   standings: StandingRow[];
   /** Rounds with their numbers/phase/status for the board. */
-  rounds: { id: string; number: number; phase: string; status: string }[];
+  rounds: {
+    id: string;
+    number: number;
+    phase: string;
+    status: string;
+    startedAt: string | null;
+  }[];
 }
 
 export function toPublicPlayer(p: Player): PublicPlayer {
