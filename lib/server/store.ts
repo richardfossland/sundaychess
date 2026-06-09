@@ -1,0 +1,198 @@
+import "server-only";
+
+import { createServiceClient } from "@/lib/supabase/service";
+import {
+  generateHostCode,
+  generatePin,
+  generateResumeCode,
+  generateUnique,
+} from "@/lib/codes";
+import type {
+  Game,
+  Player,
+  Round,
+  Tournament,
+  TournamentConfig,
+} from "@/lib/types";
+
+const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+export const DEFAULT_CONFIG: TournamentConfig = {
+  leagueRounds: 5,
+  playoff: false,
+  playoffSize: 0,
+  roundTimerSec: null,
+};
+
+// ---------------- tournaments ----------------
+
+export async function createTournament(
+  title: string | null,
+  config: TournamentConfig,
+  hostUserId: string | null = null,
+): Promise<Tournament> {
+  const db = createServiceClient();
+
+  // PIN must be globally unique (DB constraint backstops races).
+  const { data: existing } = await db.from("tournaments").select("join_pin");
+  const takenPins = new Set((existing ?? []).map((r) => r.join_pin as string));
+  const join_pin = generateUnique(generatePin, takenPins);
+  const host_code = generateHostCode();
+
+  const { data, error } = await db
+    .from("tournaments")
+    .insert({
+      join_pin,
+      host_code,
+      host_user_id: hostUserId,
+      title,
+      status: "lobby",
+      config,
+      current_round: 0,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as Tournament;
+}
+
+export async function getTournament(id: string): Promise<Tournament | null> {
+  const db = createServiceClient();
+  const { data } = await db.from("tournaments").select("*").eq("id", id).maybeSingle();
+  return (data as Tournament) ?? null;
+}
+
+export async function getTournamentByPin(pin: string): Promise<Tournament | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("tournaments")
+    .select("*")
+    .eq("join_pin", pin)
+    .maybeSingle();
+  return (data as Tournament) ?? null;
+}
+
+export async function openTournamentByHostCode(
+  hostCode: string,
+): Promise<Tournament | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("tournaments")
+    .select("*")
+    .eq("host_code", hostCode)
+    .order("created_at", { ascending: false })
+    .maybeSingle();
+  return (data as Tournament) ?? null;
+}
+
+export async function updateTournament(
+  id: string,
+  patch: Partial<Pick<Tournament, "status" | "config" | "current_round" | "title">>,
+): Promise<Tournament> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("tournaments")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as Tournament;
+}
+
+// ---------------- players ----------------
+
+export async function listPlayers(tournamentId: string): Promise<Player[]> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("players")
+    .select("*")
+    .eq("tournament_id", tournamentId)
+    .order("joined_at", { ascending: true });
+  return (data as Player[]) ?? [];
+}
+
+export async function addPlayer(
+  tournamentId: string,
+  displayName: string,
+): Promise<Player> {
+  const db = createServiceClient();
+  const existing = await listPlayers(tournamentId);
+  const taken = new Set(existing.map((p) => p.resume_code));
+  const resume_code = generateUnique(generateResumeCode, taken);
+
+  const { data, error } = await db
+    .from("players")
+    .insert({
+      tournament_id: tournamentId,
+      display_name: displayName.slice(0, 40),
+      resume_code,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as Player;
+}
+
+export async function getPlayerByResume(
+  tournamentId: string,
+  resumeCode: string,
+): Promise<Player | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("players")
+    .select("*")
+    .eq("tournament_id", tournamentId)
+    .eq("resume_code", resumeCode)
+    .maybeSingle();
+  return (data as Player) ?? null;
+}
+
+export async function getPlayer(id: string): Promise<Player | null> {
+  const db = createServiceClient();
+  const { data } = await db.from("players").select("*").eq("id", id).maybeSingle();
+  return (data as Player) ?? null;
+}
+
+// ---------------- rounds / games (used from Phase 2/3) ----------------
+
+export async function getRound(id: string): Promise<Round | null> {
+  const db = createServiceClient();
+  const { data } = await db.from("rounds").select("*").eq("id", id).maybeSingle();
+  return (data as Round) ?? null;
+}
+
+export async function listGames(tournamentId: string): Promise<Game[]> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("games")
+    .select("*")
+    .eq("tournament_id", tournamentId)
+    .order("updated_at", { ascending: true });
+  return (data as Game[]) ?? [];
+}
+
+export async function getGame(id: string): Promise<Game | null> {
+  const db = createServiceClient();
+  const { data } = await db.from("games").select("*").eq("id", id).maybeSingle();
+  return (data as Game) ?? null;
+}
+
+/** The current live (or most recent) game for a player, for resume/waiting. */
+export async function currentGameForPlayer(
+  tournamentId: string,
+  playerId: string,
+): Promise<Game | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("games")
+    .select("*")
+    .eq("tournament_id", tournamentId)
+    .or(`white_player_id.eq.${playerId},black_player_id.eq.${playerId}`)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data as Game) ?? null;
+}
+
+export { START_FEN };

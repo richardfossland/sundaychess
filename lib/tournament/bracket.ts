@@ -26,11 +26,10 @@ export function effectivePlayoffSize(
   playerCount: number,
 ): 0 | 4 | 8 | 16 {
   if (requested === 0) return 0;
-  let size = Math.min(requested, playerCount);
+  const size = Math.min(requested, playerCount);
   // shrink to nearest power of two ≤ size, floor at 4 (no playoff under 4)
   const allowed: (0 | 4 | 8 | 16)[] = [16, 8, 4];
   for (const a of allowed) if (size >= a) return a;
-  void size;
   return 0;
 }
 
