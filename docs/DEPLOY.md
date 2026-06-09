@@ -1,47 +1,49 @@
-# Deploy — sjakk.sundaysuite.app
+# Deploy — chess.sundaysuite.app
 
 **Decision (see the plan):** SundaySjakk is its **own** deployment on the
-subdomain `sjakk.sundaysuite.app`. The main SundaySuite site is static HTML on
-Cloudflare Pages and cannot host a Next.js route segment, so there is no
-`/sjakk` subpath proxy — `basePath` stays root.
+subdomain `chess.sundaysuite.app` (the `sundaysuite.app` zone is already on
+Cloudflare). The main SundaySuite site is static HTML and cannot host a Next.js
+route segment, so there is no `/sjakk` subpath proxy — `basePath` stays root.
 
-## Option A — Cloudflare Pages (matches the suite)
+## Cloudflare Workers via OpenNext (verified pipeline)
 
-The app uses SSR Route Handlers, so it needs the Cloudflare adapter rather than
-a static export.
+Next 16 SSR is deployed to a **Cloudflare Worker** using `@opennextjs/cloudflare`
+(supports `next >=16.2.6`). Config lives in `open-next.config.ts` +
+`wrangler.jsonc`. The build pipeline is verified to bundle this app.
 
-1. Add the adapter:
-   ```bash
-   npm i -D @cloudflare/next-on-pages
-   ```
-2. Build for Pages:
-   ```bash
-   npx @cloudflare/next-on-pages
-   ```
-3. Create the Pages project and deploy:
-   ```bash
-   npx wrangler pages deploy .vercel/output/static \
-     --project-name sundaysjakk --compatibility-flags nodejs_compat
-   ```
-4. **Custom domain:** add `sjakk.sundaysuite.app` to the `sundaysjakk` Pages
-   project (Cloudflare → Pages → Custom domains). DNS is already on Cloudflare
-   for `sundaysuite.app`.
-5. **Environment variables** (Pages → Settings → Variables, Production):
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY` (encrypt)
-   - `NEXT_PUBLIC_BASE_URL=https://sjakk.sundaysuite.app`
-   Set `nodejs_compat` in compatibility flags.
+```bash
+# deps (already in package.json): @opennextjs/cloudflare, esbuild, wrangler
+
+# 1. Build the worker (.open-next/worker.js).
+#    NEXT_PUBLIC_* are inlined at build time → real Supabase URL/anon key must
+#    be in .env.local (or the shell) BEFORE building.
+npx opennextjs-cloudflare build
+
+# 2. Deploy the worker.
+npx opennextjs-cloudflare deploy        # = wrangler deploy under the hood
+
+# 3. Server-only runtime secret (NOT inlined):
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+
+# 4. Attach the custom domain (sundaysuite.app zone is on this account):
+#    wrangler.jsonc `routes`, or Dashboard → Workers → sundaysjakk → Domains →
+#    add chess.sundaysuite.app
+```
+
+Env summary:
+- **Build-time (inlined):** `NEXT_PUBLIC_SUPABASE_URL`,
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_BASE_URL=https://chess.sundaysuite.app`
+- **Runtime secret:** `SUPABASE_SERVICE_ROLE_KEY` (`wrangler secret put`)
 
 > Note: the in-memory rate-limiter and draw-offer store assume a single
 > instance. Cloudflare may run multiple isolates — see the hardening backlog in
 > RIG-TEST.md before relying on them at scale.
 
-## Option B — Vercel (simplest for Next SSR)
+## Fallback — Vercel
 
-`vercel` (or connect the repo). Set the same four env vars. Then point
-`sjakk.sundaysuite.app` (CNAME) at Vercel. Use this if the Cloudflare adapter
-proves fiddly; the app is otherwise platform-agnostic.
+`vercel` (or connect the repo), set the same env vars, then CNAME
+`chess.sundaysuite.app` at Vercel. The app is platform-agnostic; use this if the
+Worker runtime surfaces an incompatibility.
 
 ## Optional: teacher accounts via suite auth
 
