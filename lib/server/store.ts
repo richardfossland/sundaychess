@@ -154,6 +154,14 @@ export async function getPlayer(id: string): Promise<Player | null> {
   return (data as Player) ?? null;
 }
 
+export async function setPlayerSeed(
+  playerId: string,
+  seed: number,
+): Promise<void> {
+  const db = createServiceClient();
+  await db.from("players").update({ seed }).eq("id", playerId);
+}
+
 // ---------------- rounds / games (used from Phase 2/3) ----------------
 
 export async function getRound(id: string): Promise<Round | null> {

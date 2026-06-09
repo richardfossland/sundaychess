@@ -339,6 +339,78 @@ h3 {
   aspect-ratio: 1;
 }
 
+/* ---------- playoff bracket ---------- */
+.bracket {
+  display: flex;
+  gap: 28px;
+  overflow-x: auto;
+  padding: 8px 4px 16px;
+  align-items: stretch;
+}
+.bracket-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 18px;
+  min-width: 220px;
+}
+.bracket-col h3 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--txt-on-ink-dim);
+  text-align: center;
+  margin-bottom: 4px;
+}
+.bracket-match {
+  background: var(--ink-2);
+  border: 1px solid var(--ink-line);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.18s;
+}
+.bracket-match:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.bracket-slot {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  font-weight: 600;
+}
+.bracket-slot + .bracket-slot {
+  border-top: 1px solid var(--ink-line);
+}
+.bracket-slot .seed {
+  color: var(--txt-on-ink-dim);
+  font-size: 12px;
+  width: 18px;
+}
+.bracket-slot.win {
+  background: color-mix(in srgb, var(--gold) 16%, transparent);
+  color: var(--gold-light);
+}
+.bracket-slot.tbd {
+  color: var(--txt-on-ink-dim);
+  font-style: italic;
+}
+
+/* ---------- round timer ---------- */
+.timer {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--display);
+  font-size: 40px;
+  letter-spacing: 0.04em;
+}
+.timer.low {
+  color: var(--warn);
+}
+.timer.up {
+  color: var(--danger);
+}
+
 /* ---------- utilities ---------- */
 .text-center {
   text-align: center;

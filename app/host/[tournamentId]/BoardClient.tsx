@@ -4,6 +4,7 @@ import { useBoardState } from "@/lib/client/useBoardState";
 import { no } from "@/lib/locale/no";
 import { LobbyView } from "./LobbyView";
 import { LeagueView } from "./LeagueView";
+import { BracketView } from "./BracketView";
 import { FinishedView } from "./FinishedView";
 
 export function BoardClient({ tournamentId }: { tournamentId: string }) {
@@ -28,8 +29,7 @@ export function BoardClient({ tournamentId }: { tournamentId: string }) {
     case "league":
       return <LeagueView state={state} onChanged={refresh} />;
     case "playoff":
-      // Phase 5 swaps in the bracket; until then show league standings.
-      return <LeagueView state={state} onChanged={refresh} />;
+      return <BracketView state={state} onChanged={refresh} />;
     case "finished":
       return <FinishedView state={state} />;
     case "lobby":

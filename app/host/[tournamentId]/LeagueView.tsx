@@ -5,7 +5,7 @@ import type { BoardState, PublicGame } from "@/lib/dto";
 import { api } from "@/lib/client/api";
 import { identity } from "@/lib/client/identity";
 import { no } from "@/lib/locale/no";
-import type { GameStatus } from "@/lib/types";
+import { OverrideModal } from "./OverrideModal";
 
 function resultLabel(g: PublicGame, name: (id: string | null) => string): string {
   switch (g.status) {
@@ -84,20 +84,6 @@ export function LeagueView({
     setError(null);
     try {
       await api.forceResolve(tournament.id, hostCode ?? "");
-      onChanged();
-    } catch {
-      setError(no.common.error);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function doOverride(result: GameStatus) {
-    if (!overrideGame) return;
-    setBusy(true);
-    try {
-      await api.override(overrideGame.id, hostCode ?? "", result);
-      setOverrideGame(null);
       onChanged();
     } catch {
       setError(no.common.error);
@@ -219,46 +205,17 @@ export function LeagueView({
         </section>
       </div>
 
-      {/* Override modal */}
       {overrideGame && (
-        <div
-          onClick={() => setOverrideGame(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.55)",
-            display: "grid",
-            placeItems: "center",
-            padding: 20,
-            zIndex: 50,
+        <OverrideModal
+          gameId={overrideGame.id}
+          hostCode={hostCode ?? ""}
+          title={`${nameById(overrideGame.whitePlayerId)} ${no.player.vs} ${nameById(overrideGame.blackPlayerId)}`}
+          onClose={() => setOverrideGame(null)}
+          onDone={() => {
+            setOverrideGame(null);
+            onChanged();
           }}
-        >
-          <div
-            className="card card-narrow stack"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ fontSize: 20 }}>{no.host.overrideTitle}</h3>
-            <p className="muted">
-              {nameById(overrideGame.whitePlayerId)} {no.player.vs}{" "}
-              {nameById(overrideGame.blackPlayerId)}
-            </p>
-            <button className="btn btn-block" disabled={busy} onClick={() => doOverride("white_win")}>
-              {no.host.whiteWin}
-            </button>
-            <button className="btn btn-block" disabled={busy} onClick={() => doOverride("black_win")}>
-              {no.host.blackWin}
-            </button>
-            <button className="btn btn-block" disabled={busy} onClick={() => doOverride("draw")}>
-              {no.host.draw}
-            </button>
-            <button className="btn btn-danger btn-block" disabled={busy} onClick={() => doOverride("aborted")}>
-              {no.host.abort}
-            </button>
-            <button className="btn btn-ghost btn-block" onClick={() => setOverrideGame(null)}>
-              {no.common.cancel}
-            </button>
-          </div>
-        </div>
+        />
       )}
     </main>
   );

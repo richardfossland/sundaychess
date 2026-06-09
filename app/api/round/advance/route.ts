@@ -23,6 +23,10 @@ export async function POST(req: Request) {
     }
     return fail(409, "not_in_progress");
   } catch (err) {
+    // A drawn playoff game has no winner — the teacher must decide it first.
+    if (err instanceof Error && err.message === "needs_decision") {
+      return fail(409, "needs_decision");
+    }
     console.error("[round/advance]", err);
     return fail(500, "advance_failed");
   }
