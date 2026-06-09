@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { no } from "@/lib/locale/no";
 import { api, ApiError } from "@/lib/client/api";
 import { identity, type StoredPlayer } from "@/lib/client/identity";
@@ -165,6 +166,14 @@ export default function Play() {
             >
               {no.player.haveCode}
             </button>
+            <div className="row" style={{ gap: 12, margin: "2px 0" }}>
+              <hr className="thread grow" />
+              <span className="faint" style={{ fontSize: 12 }}>eller</span>
+              <hr className="thread grow" />
+            </div>
+            <Link href="/solo" className="btn btn-block">
+              ♟ {no.solo.cta}
+            </Link>
           </>
         )}
 
