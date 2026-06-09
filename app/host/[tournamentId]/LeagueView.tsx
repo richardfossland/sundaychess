@@ -97,7 +97,7 @@ export function LeagueView({
     <main className="wrap" style={{ padding: "28px 24px 64px" }}>
       <header className="spread" style={{ marginBottom: 24 }}>
         <span className="brandmark">
-          Sunday<b>Sjakk</b>
+          <span className="knight">♞</span> Sunday<b>Sjakk</b>
         </span>
         <span className="badge badge-live">
           {no.host.round} {tournament.currentRound} / {tournament.config.leagueRounds}
@@ -118,7 +118,7 @@ export function LeagueView({
           <table className="table">
             <thead>
               <tr>
-                <th className="num">{no.host.rank}</th>
+                <th>{no.host.rank}</th>
                 <th>{no.host.name}</th>
                 <th className="num">{no.host.score}</th>
                 <th className="num">{no.host.tiebreak}</th>
@@ -127,10 +127,14 @@ export function LeagueView({
             <tbody>
               {standings.map((s) => (
                 <tr key={s.playerId}>
-                  <td className="num">{s.rank}</td>
+                  <td>
+                    <span className={`rankpill ${s.rank <= 3 ? "r" + s.rank : ""}`}>
+                      {s.rank}
+                    </span>
+                  </td>
                   <td>{s.displayName}</td>
-                  <td className="num">{s.score}</td>
-                  <td className="num">{s.tiebreak}</td>
+                  <td className="num"><b>{s.score}</b></td>
+                  <td className="num muted">{s.tiebreak}</td>
                 </tr>
               ))}
             </tbody>

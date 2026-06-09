@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import Link from "next/link";
 import { no } from "@/lib/locale/no";
 import { api, ApiError } from "@/lib/client/api";
 import { Wizard } from "./Wizard";
@@ -32,10 +31,10 @@ export default function HostEntry() {
 
   return (
     <main className="center-screen">
-      <div className="card card-narrow stack">
-        <Link href="/" className="brandmark">
-          Sunday<b>Sjakk</b>
-        </Link>
+      <div className="card card-narrow stack scale-in">
+        <div className="brandmark" style={{ justifyContent: "center" }}>
+          <span className="knight">♞</span> Sunday<b>Sjakk</b>
+        </div>
 
         <div className="row" style={{ gap: 8 }}>
           <button

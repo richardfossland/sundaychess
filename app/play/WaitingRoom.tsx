@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { BoardState, PublicGame } from "@/lib/dto";
 import { useBoardState } from "@/lib/client/useBoardState";
 import { identity, type StoredPlayer } from "@/lib/client/identity";
+import { initials } from "@/lib/client/Confetti";
 import { no } from "@/lib/locale/no";
 import { GameView } from "./GameView";
 
@@ -61,11 +62,16 @@ export function WaitingRoom({
 
   return (
     <main className="center-screen">
-      <div className="card card-narrow stack text-center">
-        <p className="eyebrow">SundaySjakk</p>
-        <h2 style={{ fontSize: 28 }}>{me.displayName}</h2>
+      <div className="card card-narrow stack text-center scale-in" style={{ alignItems: "center" }}>
+        <div className="brandmark" style={{ justifyContent: "center" }}>
+          <span className="knight">♞</span> Sunday<b>Sjakk</b>
+        </div>
+        <div className="avatar-lg float" style={{ width: 64, height: 64, fontSize: 22, marginTop: 4 }}>
+          {initials(me.displayName)}
+        </div>
+        <h2 style={{ fontSize: 26 }}>{me.displayName}</h2>
 
-        <div className="banner banner-wait" style={{ marginTop: 4 }}>
+        <div className="banner banner-wait" style={{ marginTop: 2, width: "100%" }}>
           <span
             className="spin"
             style={{ display: "inline-block", verticalAlign: "middle", marginRight: 10 }}

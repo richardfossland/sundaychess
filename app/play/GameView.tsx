@@ -10,6 +10,7 @@ import { applyMove, legalDestinations } from "@/lib/chess/validateMove";
 import { channels } from "@/lib/realtime";
 import { useChannel } from "@/lib/client/useChannel";
 import type { StoredPlayer } from "@/lib/client/identity";
+import { Confetti, initials } from "@/lib/client/Confetti";
 import { no } from "@/lib/locale/no";
 
 // DnD board: render client-only to avoid SSR/window issues.
@@ -207,68 +208,80 @@ export function GameView({
   const opponent = myColor === "white" ? detail.black : detail.white;
   const ended = status !== "live";
 
+  const iWon =
+    ended &&
+    ((status === "white_win" && myColor === "white") ||
+      (status === "black_win" && myColor === "black"));
   let resultText = "";
   if (ended) {
     if (status === "draw") resultText = no.player.gameDraw;
-    else {
-      const iWon =
-        (status === "white_win" && myColor === "white") ||
-        (status === "black_win" && myColor === "black");
-      resultText = iWon ? no.player.youWon : no.player.youLost;
-    }
+    else resultText = iWon ? no.player.youWon : no.player.youLost;
   }
+
+  const oppAvatar: React.CSSProperties = {
+    background: "linear-gradient(180deg, var(--ink-soft), #1c212b)",
+    color: "var(--txt)",
+    border: "1px solid var(--ink-line-strong)",
+  };
 
   return (
     <main className="center-screen">
-      <div className="stack" style={{ alignItems: "center", width: "100%", maxWidth: 600 }}>
+      {iWon && <Confetti count={120} />}
+      <div className="stack" style={{ alignItems: "center", width: "100%", maxWidth: 600, gap: 16 }}>
+        {/* player vs player */}
         <div className="spread" style={{ width: "min(92vw,560px)" }}>
-          <span className="badge">
-            {no.player.youAre}{" "}
-            <b>{myColor === "white" ? no.player.white : no.player.black}</b>
-          </span>
-          <span className="muted">
-            {no.player.vs} {opponent?.name ?? "?"}
-          </span>
+          <div className="row" style={{ gap: 10 }}>
+            <span className="avatar-lg">{initials(me.displayName)}</span>
+            <div style={{ lineHeight: 1.25 }}>
+              <b>{me.displayName}</b>
+              <div className="faint" style={{ fontSize: 12 }}>
+                {no.player.youAre} {myColor === "white" ? no.player.white : no.player.black}
+              </div>
+            </div>
+          </div>
+          <span className="faint" style={{ fontStyle: "italic" }}>{no.player.vs}</span>
+          <div className="row" style={{ gap: 10 }}>
+            <div style={{ lineHeight: 1.25, textAlign: "right" }}>
+              <b>{opponent?.name ?? "?"}</b>
+              <div className="faint" style={{ fontSize: 12 }}>
+                {myColor === "white" ? no.player.black : no.player.white}
+              </div>
+            </div>
+            <span className="avatar-lg" style={oppAvatar}>{initials(opponent?.name ?? "?")}</span>
+          </div>
         </div>
 
-        {!ended ? (
+        {!ended && (
           <div
             className={`banner ${isMyTurn ? "banner-turn" : "banner-wait"}`}
             style={{ width: "min(92vw,560px)" }}
             role="status"
             aria-live="polite"
           >
-            {isMyTurn ? no.player.yourTurn : no.player.opponentTurn}
-          </div>
-        ) : (
-          <div
-            className="banner banner-turn"
-            style={{ width: "min(92vw,560px)" }}
-            role="status"
-            aria-live="assertive"
-          >
-            {resultText}
+            {isMyTurn ? `♟ ${no.player.yourTurn}` : no.player.opponentTurn}
           </div>
         )}
 
-        <div className="board-shell">
-          <Chessboard
-            options={{
-              position: fen || undefined,
-              boardOrientation: myColor,
-              allowDragging: isMyTurn,
-              onPieceDrop: onDrop,
-              onSquareClick,
-              squareStyles,
-              darkSquareStyle: { backgroundColor: "var(--board-dark)" },
-              lightSquareStyle: { backgroundColor: "var(--board-light)" },
-              animationDurationInMs: 180,
-              id: "play-board",
-            }}
-          />
+        <div className="board-frame">
+          <div className="board-shell">
+            <Chessboard
+              options={{
+                position: fen || undefined,
+                boardOrientation: myColor,
+                allowDragging: isMyTurn,
+                onPieceDrop: onDrop,
+                onSquareClick,
+                squareStyles,
+                darkSquareStyle: { backgroundColor: "var(--board-dark)" },
+                lightSquareStyle: { backgroundColor: "var(--board-light)" },
+                animationDurationInMs: 180,
+                id: "play-board",
+              }}
+            />
+          </div>
         </div>
 
-        {!ended ? (
+        {!ended && (
           <div className="row">
             <button
               className="btn btn-ghost"
@@ -279,7 +292,7 @@ export function GameView({
                 ).catch(() => flash(no.common.error))
               }
             >
-              {no.player.offerDraw}
+              ½ {no.player.offerDraw}
             </button>
             <button
               className="btn btn-danger"
@@ -294,10 +307,6 @@ export function GameView({
               {no.player.resign}
             </button>
           </div>
-        ) : (
-          <button className="btn btn-primary btn-lg" onClick={onFinished}>
-            {no.common.next}
-          </button>
         )}
 
         {incomingDraw && !ended && (
@@ -332,6 +341,27 @@ export function GameView({
 
         {toast && <div className="banner banner-error">{toast}</div>}
       </div>
+
+      {ended && (
+        <div className="result-overlay">
+          <div className="result-card stack" style={{ alignItems: "center", gap: 12 }}>
+            <div className="result-emoji">
+              {status === "draw" ? "🤝" : iWon ? "🎉" : "😔"}
+            </div>
+            <h1 style={{ fontSize: "clamp(36px,9vw,64px)" }}>{resultText}</h1>
+            <p className="muted">
+              {status === "draw"
+                ? "Godt spilt av begge."
+                : iWon
+                  ? "Sterkt spilt!"
+                  : "Bedre lykke neste runde."}
+            </p>
+            <button className="btn btn-primary btn-lg" style={{ marginTop: 6 }} onClick={onFinished}>
+              {no.common.next} →
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

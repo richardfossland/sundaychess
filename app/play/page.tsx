@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { no } from "@/lib/locale/no";
 import { api, ApiError } from "@/lib/client/api";
 import { identity, type StoredPlayer } from "@/lib/client/identity";
@@ -130,28 +129,32 @@ export default function Play() {
   return (
     <main className="center-screen">
       <div className="card card-narrow stack">
-        <Link href="/" className="brandmark">
-          Sunday<b>Sjakk</b>
-        </Link>
+        <div className="brandmark" style={{ justifyContent: "center", marginBottom: 2 }}>
+          <span className="knight">♞</span> Sunday<b>Sjakk</b>
+        </div>
 
+        <div key={screen} className="stack scale-in" style={{ gap: 16 }}>
         {screen === "join" && (
           <>
-            <p className="eyebrow">{no.player.joinTitle}</p>
+            <div className="text-center stack" style={{ gap: 4 }}>
+              <p className="eyebrow">{no.player.joinTitle}</p>
+              <p className="faint" style={{ fontSize: 13 }}>Skriv inn PIN-en fra tavla</p>
+            </div>
             <div className="field">
-              <label htmlFor="pin">{no.host.pinLabel}</label>
               <input
                 id="pin"
                 className="input input-pin"
                 inputMode="numeric"
                 maxLength={6}
                 placeholder="------"
+                autoFocus
                 value={pin}
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 onKeyDown={(e) => e.key === "Enter" && goName()}
               />
             </div>
             <button className="btn btn-primary btn-block btn-lg" onClick={goName}>
-              {no.player.join}
+              {no.player.join} →
             </button>
             <button
               className="btn btn-ghost btn-block"
@@ -199,9 +202,20 @@ export default function Play() {
 
         {screen === "showCode" && me && (
           <>
-            <p className="eyebrow">{no.player.resumeTitle}</p>
-            <div className="big-code text-center" style={{ padding: "12px 0" }}>
-              {me.resumeCode}
+            <div className="text-center stack" style={{ gap: 4 }}>
+              <div style={{ fontSize: 36 }}>🔑</div>
+              <p className="eyebrow">{no.player.resumeTitle}</p>
+            </div>
+            <div
+              className="text-center"
+              style={{
+                padding: "18px 0",
+                border: "1px dashed color-mix(in srgb, var(--gold) 40%, transparent)",
+                borderRadius: 14,
+                background: "rgba(235,184,75,0.05)",
+              }}
+            >
+              <div className="big-code">{me.resumeCode}</div>
             </div>
             <div className="banner banner-wait">{no.player.resumeHint}</div>
             <button
@@ -251,6 +265,7 @@ export default function Play() {
             </button>
           </>
         )}
+        </div>
 
         {error && <div className="banner banner-error">{error}</div>}
       </div>
