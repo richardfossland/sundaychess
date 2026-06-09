@@ -66,6 +66,19 @@ export function toPublicGame(g: Game): PublicGame {
   };
 }
 
+export interface GameDetail {
+  id: string;
+  tournamentId: string;
+  roundId: string;
+  fen: string;
+  pgn: string;
+  status: GameStatus;
+  turn: Turn;
+  white: { id: string; name: string };
+  black: { id: string; name: string } | null;
+  lastMove: { from: string; to: string; san: string } | null;
+}
+
 export function toBoardTournament(t: Tournament) {
   return {
     id: t.id,

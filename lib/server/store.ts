@@ -162,6 +162,146 @@ export async function getRound(id: string): Promise<Round | null> {
   return (data as Round) ?? null;
 }
 
+export async function listRounds(tournamentId: string): Promise<Round[]> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("rounds")
+    .select("*")
+    .eq("tournament_id", tournamentId)
+    .order("number", { ascending: true });
+  return (data as Round[]) ?? [];
+}
+
+export async function createRound(
+  tournamentId: string,
+  number: number,
+  phase: Round["phase"],
+  status: Round["status"] = "live",
+): Promise<Round> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("rounds")
+    .insert({
+      tournament_id: tournamentId,
+      number,
+      phase,
+      status,
+      started_at: new Date().toISOString(),
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as Round;
+}
+
+export async function setRoundStatus(
+  roundId: string,
+  status: Round["status"],
+): Promise<void> {
+  const db = createServiceClient();
+  await db.from("rounds").update({ status }).eq("id", roundId);
+}
+
+export async function listGamesForRound(roundId: string): Promise<Game[]> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("games")
+    .select("*")
+    .eq("round_id", roundId)
+    .order("updated_at", { ascending: true });
+  return (data as Game[]) ?? [];
+}
+
+interface NewGame {
+  tournamentId: string;
+  roundId: string;
+  whitePlayerId: string;
+  blackPlayerId: string | null;
+  status?: Game["status"];
+  resultSource?: Game["result_source"];
+}
+
+/** Create a game (or a bye when blackPlayerId is null). */
+export async function createGame(g: NewGame): Promise<Game> {
+  const db = createServiceClient();
+  const isBye = g.blackPlayerId === null;
+  const { data, error } = await db
+    .from("games")
+    .insert({
+      tournament_id: g.tournamentId,
+      round_id: g.roundId,
+      white_player_id: g.whitePlayerId,
+      black_player_id: g.blackPlayerId,
+      fen: START_FEN,
+      pgn: "",
+      status: g.status ?? (isBye ? "bye" : "live"),
+      result_source: g.resultSource ?? (isBye ? "bye" : null),
+      turn: "w",
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as Game;
+}
+
+// ---------------- atomic RPCs (migration 0002) ----------------
+
+export interface ApplyMoveArgs {
+  gameId: string;
+  expectedFen: string;
+  newFen: string;
+  newPgn: string;
+  san: string;
+  newTurn: "w" | "b";
+  newStatus: Game["status"];
+  resultSource: NonNullable<Game["result_source"]>;
+  byPlayerId: string;
+}
+
+export interface RpcResult {
+  ok: boolean;
+  conflict?: string;
+  ply?: number;
+  status?: string;
+}
+
+export async function applyMoveRpc(a: ApplyMoveArgs): Promise<RpcResult> {
+  const db = createServiceClient();
+  const { data, error } = await db.rpc("apply_move", {
+    p_game_id: a.gameId,
+    p_expected_fen: a.expectedFen,
+    p_new_fen: a.newFen,
+    p_new_pgn: a.newPgn,
+    p_san: a.san,
+    p_new_turn: a.newTurn,
+    p_new_status: a.newStatus,
+    p_result_source: a.resultSource,
+    p_by_player_id: a.byPlayerId,
+  });
+  if (error) throw error;
+  return data as RpcResult;
+}
+
+export async function resolveGameRpc(
+  gameId: string,
+  status: Game["status"],
+  resultSource: NonNullable<Game["result_source"]>,
+): Promise<RpcResult> {
+  const db = createServiceClient();
+  const { data, error } = await db.rpc("resolve_game", {
+    p_game_id: gameId,
+    p_new_status: status,
+    p_result_source: resultSource,
+  });
+  if (error) throw error;
+  return data as RpcResult;
+}
+
+export async function recomputeScores(tournamentId: string): Promise<void> {
+  const db = createServiceClient();
+  await db.rpc("recompute_scores", { p_tournament_id: tournamentId });
+}
+
 export async function listGames(tournamentId: string): Promise<Game[]> {
   const db = createServiceClient();
   const { data } = await db
@@ -177,6 +317,7 @@ export async function getGame(id: string): Promise<Game | null> {
   const { data } = await db.from("games").select("*").eq("id", id).maybeSingle();
   return (data as Game) ?? null;
 }
+
 
 /** The current live (or most recent) game for a player, for resume/waiting. */
 export async function currentGameForPlayer(

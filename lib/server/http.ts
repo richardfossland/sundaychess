@@ -1,13 +1,12 @@
-import "server-only";
-
-import { NextResponse } from "next/server";
+// Web-standard responses (no next/server dependency) so Route Handlers stay
+// unit-testable in a plain Node environment.
 
 export function ok<T>(data: T, init?: ResponseInit) {
-  return NextResponse.json(data, init);
+  return Response.json(data, init);
 }
 
 export function fail(status: number, error: string, extra?: Record<string, unknown>) {
-  return NextResponse.json({ error, ...extra }, { status });
+  return Response.json({ error, ...extra }, { status });
 }
 
 /** Parse a JSON body, returning null on malformed input. */

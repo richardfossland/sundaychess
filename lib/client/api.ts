@@ -3,7 +3,8 @@
 // Thin typed fetch wrappers around the server API. All mutations go through
 // these; the browser never touches the database directly.
 
-import type { BoardState } from "@/lib/dto";
+import type { BoardState, GameDetail } from "@/lib/dto";
+import type { GameStatus, Turn } from "@/lib/types";
 
 async function post<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -64,4 +65,37 @@ export const api = {
     if (!res.ok) throw new ApiError(res.status, "board_failed", null);
     return (await res.json()) as BoardState;
   },
+
+  game: async (id: string): Promise<GameDetail> => {
+    const res = await fetch(`/api/game/${id}`, { cache: "no-store" });
+    if (!res.ok) throw new ApiError(res.status, "game_failed", null);
+    return (await res.json()) as GameDetail;
+  },
+
+  move: (args: {
+    gameId: string;
+    from: string;
+    to: string;
+    promotion?: string;
+    playerId: string;
+    resumeCode: string;
+  }) =>
+    post<{ fen: string; turn: Turn; status: GameStatus; san: string }>(
+      "/api/move",
+      args,
+    ),
+
+  resign: (gameId: string, playerId: string, resumeCode: string) =>
+    post<{ status: GameStatus }>("/api/game/resign", {
+      gameId,
+      playerId,
+      resumeCode,
+    }),
+
+  draw: (
+    gameId: string,
+    playerId: string,
+    resumeCode: string,
+    action: "offer" | "accept" | "decline",
+  ) => post<unknown>("/api/game/draw", { gameId, playerId, resumeCode, action }),
 };
