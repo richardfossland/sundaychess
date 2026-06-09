@@ -98,4 +98,21 @@ export const api = {
     resumeCode: string,
     action: "offer" | "accept" | "decline",
   ) => post<unknown>("/api/game/draw", { gameId, playerId, resumeCode, action }),
+
+  // ---- teacher actions (authenticated by host code) ----
+  startRound: (tournamentId: string, hostCode: string) =>
+    post<{ status: string }>("/api/round/start", { tournamentId, hostCode }),
+
+  advanceRound: (tournamentId: string, hostCode: string) =>
+    post<{ status: string }>("/api/round/advance", { tournamentId, hostCode }),
+
+  forceResolve: (tournamentId: string, hostCode: string) =>
+    post<{ ok: boolean }>("/api/round/force", { tournamentId, hostCode }),
+
+  override: (gameId: string, hostCode: string, result: GameStatus) =>
+    post<{ status: GameStatus }>("/api/game/override", {
+      gameId,
+      hostCode,
+      result,
+    }),
 };

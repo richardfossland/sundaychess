@@ -10,6 +10,9 @@ import type {
   TournamentStatus,
   Turn,
 } from "@/lib/types";
+import type { StandingRow } from "@/lib/tournament/score";
+
+export type { StandingRow };
 
 export interface PublicPlayer {
   id: string;
@@ -41,6 +44,9 @@ export interface BoardState {
   };
   players: PublicPlayer[];
   games: PublicGame[];
+  standings: StandingRow[];
+  /** Rounds with their numbers/phase/status for the board. */
+  rounds: { id: string; number: number; phase: string; status: string }[];
 }
 
 export function toPublicPlayer(p: Player): PublicPlayer {

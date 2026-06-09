@@ -3,6 +3,8 @@
 import { useBoardState } from "@/lib/client/useBoardState";
 import { no } from "@/lib/locale/no";
 import { LobbyView } from "./LobbyView";
+import { LeagueView } from "./LeagueView";
+import { FinishedView } from "./FinishedView";
 
 export function BoardClient({ tournamentId }: { tournamentId: string }) {
   const { state, error, refresh } = useBoardState(tournamentId);
@@ -22,9 +24,14 @@ export function BoardClient({ tournamentId }: { tournamentId: string }) {
     );
   }
 
-  // Phase 1 implements the lobby. League/playoff/finished views arrive in later
-  // phases; until then they fall back to the lobby roster.
   switch (state.tournament.status) {
+    case "league":
+      return <LeagueView state={state} onChanged={refresh} />;
+    case "playoff":
+      // Phase 5 swaps in the bracket; until then show league standings.
+      return <LeagueView state={state} onChanged={refresh} />;
+    case "finished":
+      return <FinishedView state={state} />;
     case "lobby":
     default:
       return <LobbyView state={state} onChanged={refresh} />;

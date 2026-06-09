@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { BoardState } from "@/lib/dto";
 import { QRCode } from "@/lib/client/QRCode";
 import { identity } from "@/lib/client/identity";
+import { api } from "@/lib/client/api";
 import { no } from "@/lib/locale/no";
 
 export function LobbyView({
@@ -33,12 +34,7 @@ export function LobbyView({
     setStarting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/round/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tournamentId: tournament.id }),
-      });
-      if (!res.ok) throw new Error();
+      await api.startRound(tournament.id, hostCode ?? "");
       onChanged();
     } catch {
       setError(no.common.error);

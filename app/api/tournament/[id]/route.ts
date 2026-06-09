@@ -1,4 +1,10 @@
-import { getTournament, listGames, listPlayers } from "@/lib/server/store";
+import {
+  getTournament,
+  listGames,
+  listPlayers,
+  listRounds,
+} from "@/lib/server/store";
+import { computeStandings } from "@/lib/tournament/score";
 import { fail, ok } from "@/lib/server/http";
 import {
   toBoardTournament,
@@ -16,11 +22,23 @@ export async function GET(
   const t = await getTournament(id);
   if (!t) return fail(404, "not_found");
 
-  const [players, games] = await Promise.all([listPlayers(id), listGames(id)]);
+  const [players, games, rounds] = await Promise.all([
+    listPlayers(id),
+    listGames(id),
+    listRounds(id),
+  ]);
+
   const state: BoardState = {
     tournament: toBoardTournament(t),
     players: players.map(toPublicPlayer),
     games: games.map(toPublicGame),
+    standings: computeStandings(players, games),
+    rounds: rounds.map((r) => ({
+      id: r.id,
+      number: r.number,
+      phase: r.phase,
+      status: r.status,
+    })),
   };
   return ok(state);
 }

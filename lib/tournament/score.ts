@@ -129,3 +129,21 @@ export function hadByeSet(games: Game[]): Set<string> {
   for (const g of games) if (g.status === "bye") set.add(g.white_player_id);
   return set;
 }
+
+/** White/black counts per player, for colour balancing in pairing. */
+export function colorCounts(
+  games: Game[],
+): Map<string, { white: number; black: number }> {
+  const counts = new Map<string, { white: number; black: number }>();
+  const bump = (id: string, side: "white" | "black") => {
+    const c = counts.get(id) ?? { white: 0, black: 0 };
+    c[side]++;
+    counts.set(id, c);
+  };
+  for (const g of games) {
+    if (g.status === "bye") continue; // byes have no colour
+    bump(g.white_player_id, "white");
+    if (g.black_player_id) bump(g.black_player_id, "black");
+  }
+  return counts;
+}
