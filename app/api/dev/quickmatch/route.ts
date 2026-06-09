@@ -13,6 +13,9 @@ import { fail, ok, readJson } from "@/lib/server/http";
 // get two named players into one game"). Returns both players' bearer
 // identities so two browser tabs can play the §4 flow end-to-end.
 export async function POST(req: Request) {
+  // Test seam only — available in dev, always 404 in a production build.
+  if (process.env.NODE_ENV === "production") return fail(404, "not_found");
+
   const body = await readJson<{ white?: string; black?: string }>(req);
   const whiteName = (body?.white ?? "Hvit").toString().slice(0, 40);
   const blackName = (body?.black ?? "Svart").toString().slice(0, 40);

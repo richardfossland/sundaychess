@@ -1,5 +1,22 @@
 # Completion notes
 
+## 🟢 DEPLOYED & LIVE — https://chess.sundaysuite.app
+
+- **Cloudflare Worker** `sundaysjakk` via OpenNext (Next 16), custom domain
+  `chess.sundaysuite.app` (own subdomain of the existing `sundaysuite.app` zone).
+- **Dedicated Supabase project** `sundaysjakk` (ref `fwbfhwxgkjelcutwajza`, org
+  "Sunday", EU/Stockholm). Migrations `0001_schema` + `0002_move_apply` applied.
+- **Verified live** (`scripts/smoke-live.mjs`, 9/9): quickmatch on the cloud DB,
+  illegal + out-of-turn rejection, full game to checkmate via the `apply_move`
+  RPC, reconnect read, and **cloud realtime broadcast delivery**. Real lobby
+  flow (create → join) confirmed 200; dev seam `/api/dev/quickmatch` gated to
+  404 in production.
+- **Env:** `NEXT_PUBLIC_*` inlined at build; `SUPABASE_SERVICE_ROLE_KEY` is a
+  Worker secret. Redeploy: `npx opennextjs-cloudflare build && … deploy`.
+- **Remaining real-rig item:** the actual multi-phone classroom UX (several
+  students on real devices). The transport is proven; only the in-room feel is
+  unverified.
+
 ## What was built (phases 0–7)
 
 | Phase | Deliverable | Status |
