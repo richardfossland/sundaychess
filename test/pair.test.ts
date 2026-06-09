@@ -66,6 +66,21 @@ describe("round >=2 pairing", () => {
     expect(keys).not.toContain(pairKey("p1", "p2"));
   });
 
+  it("avoids an avoidable rematch that naive greedy would force", () => {
+    // p3 & p4 already met; a top-down greedy pairs p1-p2 then strands p3-p4
+    // into a rematch. The backtracking matcher finds p1-p3 / p2-p4 instead.
+    const met = new Set([pairKey("p3", "p4")]);
+    const result = pair({
+      players: players(4, [1, 1, 1, 1]),
+      round: 2,
+      metBefore: met,
+      rng: constRng(0),
+    });
+    const keys = result.map((g) => pairKey(g.whiteId, g.blackId!));
+    expect(keys).not.toContain(pairKey("p3", "p4"));
+    expect(result.every((g) => !g.rematch)).toBe(true);
+  });
+
   it("gives the bye to the lowest scorer without one", () => {
     // p5 lowest score → should get the bye.
     const result = pair({

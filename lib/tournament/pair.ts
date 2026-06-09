@@ -109,44 +109,89 @@ export function pair(input: PairInput): Pairing[] {
   }
 
   const queue = pool.filter((p) => p.id !== byeId);
-  const used = new Set<string>();
 
-  for (let i = 0; i < queue.length; i++) {
-    const a = queue[i];
-    if (used.has(a.id)) continue;
-    used.add(a.id);
-
-    // Prefer the nearest-ranked opponent not yet met.
-    let opponent: PairablePlayer | null = null;
-    let forcedRematch = false;
-    for (let j = i + 1; j < queue.length; j++) {
-      const b = queue[j];
-      if (used.has(b.id)) continue;
-      if (!metBefore.has(pairKey(a.id, b.id))) {
-        opponent = b;
-        break;
-      }
+  if (input.round <= 1) {
+    // Round 1: no history — pair the shuffled order sequentially.
+    for (let i = 0; i + 1 < queue.length; i += 2) {
+      const { whiteId, blackId } = assignColors(queue[i].id, queue[i + 1].id, colors);
+      pairings.push({ whiteId, blackId });
     }
-    // No fresh opponent available → allow the nearest rematch.
-    if (!opponent) {
-      for (let j = i + 1; j < queue.length; j++) {
-        const b = queue[j];
-        if (used.has(b.id)) continue;
-        opponent = b;
-        forcedRematch = true;
-        break;
-      }
-    }
-
-    if (opponent) {
-      used.add(opponent.id);
-      const { whiteId, blackId } = assignColors(a.id, opponent.id, colors);
-      pairings.push(
-        forcedRematch ? { whiteId, blackId, rematch: true } : { whiteId, blackId },
-      );
+  } else {
+    // Round ≥2: find a rematch-free perfect matching that keeps similar-scored
+    // players together (queue is standings-sorted, so pairing the earliest
+    // unpaired player with its nearest legal opponent stays score-local). Fall
+    // back to a greedy matching that allows a forced rematch only when no
+    // rematch-free matching exists at all.
+    const matched =
+      findRematchFreeMatching(queue, metBefore) ?? greedyMatching(queue, metBefore);
+    for (const m of matched) {
+      const { whiteId, blackId } = assignColors(m.hi, m.lo, colors);
+      pairings.push(m.rematch ? { whiteId, blackId, rematch: true } : { whiteId, blackId });
     }
   }
 
   if (byeId !== null) pairings.push({ whiteId: byeId, blackId: null });
   return pairings;
+}
+
+interface MatchedPair {
+  hi: string; // higher-ranked (earlier in the standings-sorted queue)
+  lo: string;
+  rematch?: boolean;
+}
+
+/** Backtracking search for a perfect matching with NO repeat pairings. Pairs the
+ * first unpaired player with each candidate in standings order (nearest first),
+ * so a found matching stays score-local. Returns null if none exists. */
+function findRematchFreeMatching(
+  queue: PairablePlayer[],
+  metBefore: ReadonlySet<string>,
+): MatchedPair[] | null {
+  if (queue.length === 0) return [];
+  const [first, ...rest] = queue;
+  for (let i = 0; i < rest.length; i++) {
+    const cand = rest[i];
+    if (metBefore.has(pairKey(first.id, cand.id))) continue;
+    const remaining = rest.filter((_, j) => j !== i);
+    const sub = findRematchFreeMatching(remaining, metBefore);
+    if (sub) return [{ hi: first.id, lo: cand.id }, ...sub];
+  }
+  return null;
+}
+
+/** Greedy matching that allows a forced rematch as a last resort (only used
+ * when no rematch-free matching exists). */
+function greedyMatching(
+  queue: PairablePlayer[],
+  metBefore: ReadonlySet<string>,
+): MatchedPair[] {
+  const used = new Set<string>();
+  const out: MatchedPair[] = [];
+  for (let i = 0; i < queue.length; i++) {
+    const a = queue[i];
+    if (used.has(a.id)) continue;
+    used.add(a.id);
+    let opp: PairablePlayer | null = null;
+    let rematch = false;
+    for (let j = i + 1; j < queue.length; j++) {
+      if (used.has(queue[j].id)) continue;
+      if (!metBefore.has(pairKey(a.id, queue[j].id))) {
+        opp = queue[j];
+        break;
+      }
+    }
+    if (!opp) {
+      for (let j = i + 1; j < queue.length; j++) {
+        if (used.has(queue[j].id)) continue;
+        opp = queue[j];
+        rematch = true;
+        break;
+      }
+    }
+    if (opp) {
+      used.add(opp.id);
+      out.push({ hi: a.id, lo: opp.id, rematch });
+    }
+  }
+  return out;
 }
