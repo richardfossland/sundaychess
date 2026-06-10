@@ -51,7 +51,12 @@ function players(n: number): Player[] {
   }));
 }
 let gid = 0;
-function game(white: string, black: string, status: Game["status"]): Game {
+function game(
+  white: string,
+  black: string,
+  status: Game["status"],
+  slot?: number,
+): Game {
   return {
     id: `g${gid++}`,
     tournament_id: "t",
@@ -64,6 +69,7 @@ function game(white: string, black: string, status: Game["status"]): Game {
     result_source: null,
     turn: "w",
     draw_offered_by: null,
+    ...(slot !== undefined ? { slot } : {}),
     updated_at: "",
   };
 }
@@ -136,6 +142,71 @@ describe("advancePlayoff", () => {
     expect(status).toBe("finished");
     expect(store.updateTournament).toHaveBeenCalledWith("t", { status: "finished" });
     expect(store.createGame).not.toHaveBeenCalled();
+  });
+
+  it("pairs by SLOT order even when games resolved out of order", async () => {
+    store.listRounds.mockResolvedValue([playoffRound(1)]);
+    // fetch order = resolution order (updated_at), NOT bracket order:
+    // slot 2 finished first, then 0, 3, 1. Bracket: slot0 p1v8, slot1 p4v5,
+    // slot2 p2v7, slot3 p3v6.
+    store.listGamesForRound.mockResolvedValue([
+      game("p2", "p7", "white_win", 2),
+      game("p1", "p8", "white_win", 0),
+      game("p3", "p6", "white_win", 3),
+      game("p4", "p5", "white_win", 1),
+    ]);
+    await advancePlayoff(tournament({ current_round: 1 }));
+    expect(store.createGame).toHaveBeenCalledTimes(2);
+    // semifinal 1 = winners of slots 0+1 (p1 vs p4); semifinal 2 = slots 2+3
+    expect(store.createGame.mock.calls[0][0]).toMatchObject({
+      whitePlayerId: "p1",
+      blackPlayerId: "p4",
+      slot: 0,
+    });
+    expect(store.createGame.mock.calls[1][0]).toMatchObject({
+      whitePlayerId: "p2",
+      blackPlayerId: "p3",
+      slot: 1,
+    });
+  });
+
+  it("keeps fetch order for legacy rows without slots (all 0)", async () => {
+    store.listRounds.mockResolvedValue([playoffRound(1)]);
+    store.listGamesForRound.mockResolvedValue([
+      game("p1", "p8", "white_win"),
+      game("p4", "p5", "white_win"),
+      game("p2", "p7", "white_win"),
+      game("p3", "p6", "white_win"),
+    ]);
+    await advancePlayoff(tournament({ current_round: 1 }));
+    // stable sort on equal keys → original (fetch) order, today's behavior
+    expect(store.createGame.mock.calls[0][0]).toMatchObject({
+      whitePlayerId: "p1",
+      blackPlayerId: "p4",
+    });
+    expect(store.createGame.mock.calls[1][0]).toMatchObject({
+      whitePlayerId: "p2",
+      blackPlayerId: "p3",
+    });
+  });
+
+  it("advances a cup bye straight to the next round", async () => {
+    store.listRounds.mockResolvedValue([playoffRound(1)]);
+    store.listGamesForRound.mockResolvedValue([
+      game("p1", null as unknown as string, "bye", 0),
+      game("p4", "p5", "white_win", 1),
+      game("p2", null as unknown as string, "bye", 2),
+      game("p3", "p6", "black_win", 3),
+    ]);
+    await advancePlayoff(tournament({ current_round: 1 }));
+    expect(store.createGame.mock.calls[0][0]).toMatchObject({
+      whitePlayerId: "p1",
+      blackPlayerId: "p4",
+    });
+    expect(store.createGame.mock.calls[1][0]).toMatchObject({
+      whitePlayerId: "p2",
+      blackPlayerId: "p6",
+    });
   });
 
   it("refuses to advance past a drawn playoff game", async () => {

@@ -5,9 +5,9 @@
 //
 // Time model: each side's used time is the sum of the gaps before their own
 // moves; the side to move is also charged for the gap since the last move
-// (or since the round started). t0 = the round's started_at — note that the
-// organizer's "+1 min" pushes started_at later, which deliberately gifts both
-// clocks a minute.
+// (or since the round started). t0 = the round's started_at, which is FIXED:
+// the organizer's "+1 min" only grows rounds.extended_ms (the round
+// countdown), so extensions never touch chess-clock accounting.
 
 export interface MoveStamp {
   ply: number; // 1-based; odd = white's move

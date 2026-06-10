@@ -30,7 +30,6 @@ function audioCtx(): AudioContext | null {
     if (!AC) return null;
     ctx = new AC();
   }
-  if (ctx.state === "suspended") void ctx.resume();
   return ctx;
 }
 
@@ -115,7 +114,16 @@ export const sound = {
     if (sound.muted()) return;
     try {
       const ac = audioCtx();
-      if (ac) cues[name](ac);
+      if (!ac) return;
+      if (ac.state === "suspended") {
+        // iOS suspends the context on screen lock — play AFTER resume settles,
+        // otherwise the tone is scheduled into a dead context and lost.
+        ac.resume()
+          .then(() => cues[name](ac))
+          .catch(() => {});
+      } else {
+        cues[name](ac);
+      }
     } catch {
       // never let a sound failure disturb the game
     }

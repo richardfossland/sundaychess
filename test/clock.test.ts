@@ -88,3 +88,26 @@ describe("fmtClock", () => {
     expect(fmtClock(0)).toBe("0.0");
   });
 });
+
+describe("round extensions", () => {
+  it("clock accounting is independent of extended_ms (t0 stays started_at)", () => {
+    // identical inputs → identical clocks; an extension changes the ROUND
+    // countdown only, never these numbers (regression pin for 0007 semantics)
+    const args = {
+      clockSec: 180,
+      startedAt: T0,
+      moves: [
+        { ply: 1, createdAt: at(30) },
+        { ply: 2, createdAt: at(45) },
+      ],
+      turn: "w" as const,
+      now: at(60),
+      running: true,
+    };
+    const a = computeClocks(args);
+    const b = computeClocks({ ...args }); // nothing extension-related exists in the API
+    expect(a).toEqual(b);
+    expect(a.whiteMs).toBe(180_000 - 30_000 - 15_000);
+    expect(a.blackMs).toBe(180_000 - 15_000);
+  });
+});

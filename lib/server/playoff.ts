@@ -18,6 +18,7 @@ import {
   buildFirstRound,
   cupBracketSize,
   effectivePlayoffSize,
+  sortBySlot,
   type SeededPlayer,
 } from "@/lib/tournament/bracket";
 import { variantStartFen } from "@/lib/chess/variants";
@@ -72,6 +73,7 @@ export async function maybeStartPlayoff(
       whitePlayerId: m.topPlayerId,
       blackPlayerId: m.bottomPlayerId,
       startFen,
+      slot: m.slot, // bracket position — advance pairs slot-adjacent winners
     });
   }
 
@@ -110,6 +112,7 @@ export async function startCup(tournament: Tournament): Promise<void> {
       whitePlayerId: m.topPlayerId,
       blackPlayerId: m.bottomPlayerId, // null → bye, auto-advances
       startFen,
+      slot: m.slot,
     });
   }
 
@@ -141,7 +144,9 @@ export async function advancePlayoff(
   const cur = currentPlayoffRound(rounds, tournament.current_round);
   if (!cur) throw new Error("no_playoff_round");
 
-  const games = await listGamesForRound(cur.id);
+  // Slot order is the bracket structure — updated_at order (the fetch order)
+  // changes as games resolve and would scramble the pairing below.
+  const games = sortBySlot(await listGamesForRound(cur.id));
   const winners: string[] = [];
   for (const g of games) {
     const w = winnerOf(g);
@@ -172,6 +177,7 @@ export async function advancePlayoff(
       whitePlayerId: winners[i],
       blackPlayerId: winners[i + 1],
       startFen,
+      slot: i / 2,
     });
   }
   await updateTournament(tournament.id, { current_round: nextNumber });

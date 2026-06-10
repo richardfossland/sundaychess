@@ -77,3 +77,26 @@ describe("computeAwards", () => {
     expect(awards).toEqual([]);
   });
 });
+
+describe("award ties", () => {
+  it("shares fastest mate between equal-plies winners", () => {
+    const awards = computeAwards([
+      game({ id: "a", pgn: FOOLS_MATE, status: "black_win" }), // B mates in 4
+      game({ id: "b", pgn: FOOLS_MATE, status: "black_win", whitePlayerId: "X", blackPlayerId: "Y" }), // Y mates in 4
+    ]);
+    const fastest = awards.find((a) => a.key === "fastest_mate");
+    expect(fastest!.playerIds.sort()).toEqual(["B", "Y"]);
+  });
+
+  it("shares most-captures between players with the same count", () => {
+    // Two separate games with the SAME single-capture pattern by white.
+    const oneCapture = "1. e4 d5 2. exd5";
+    const awards = computeAwards([
+      game({ id: "a", pgn: oneCapture, status: "draw" }),
+      game({ id: "b", pgn: oneCapture, status: "draw", whitePlayerId: "X", blackPlayerId: "Y" }),
+    ]);
+    const cap = awards.find((a) => a.key === "most_captures");
+    expect(cap!.value).toBe(1);
+    expect(cap!.playerIds.sort()).toEqual(["W", "X"]);
+  });
+});

@@ -154,3 +154,38 @@ describe("full 9-player / 5-round league simulation", () => {
     expect(byes.size).toBe(5);
   });
 });
+
+describe("hard edges", () => {
+  it("forces a rematch (with the flag) when every pair has already met", () => {
+    const ps = players(4, [2, 1.5, 1, 0.5]);
+    const met = new Set<string>();
+    for (const a of ps) for (const b of ps) if (a.id < b.id) met.add(pairKey(a.id, b.id));
+    const result = pair({ players: ps, round: 4, metBefore: met, rng: constRng(0) });
+    expect(result).toHaveLength(2);
+    // pairing must still be complete and some game must carry the rematch flag
+    const ids = new Set(result.flatMap((g) => [g.whiteId, g.blackId]));
+    expect(ids.size).toBe(4);
+    expect(result.some((g) => g.rematch)).toBe(true);
+  });
+
+  it("pairs cleanly after a player leaves mid-tournament (6 → 5 pool)", () => {
+    const ps = players(6, [2, 2, 1, 1, 0, 0]).slice(0, 5); // p6 left
+    const result = pair({
+      players: ps,
+      round: 3,
+      hadBye: new Set(["p5"]), // lowest scorer already had one
+      rng: constRng(0),
+    });
+    const byes = result.filter((g) => g.blackId === null);
+    expect(byes).toHaveLength(1);
+    expect(byes[0].whiteId).not.toBe("p5"); // bye respects hadBye
+    const ids = new Set(result.flatMap((g) => (g.blackId ? [g.whiteId, g.blackId] : [g.whiteId])));
+    expect(ids.size).toBe(5);
+  });
+
+  it("survives a single remaining player (bye only)", () => {
+    const result = pair({ players: players(1), round: 2, rng: constRng(0) });
+    expect(result).toHaveLength(1);
+    expect(result[0].blackId).toBeNull();
+  });
+});

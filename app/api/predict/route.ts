@@ -5,7 +5,7 @@ import {
   type PredictedResult,
 } from "@/lib/server/store";
 import { authPlayer } from "@/lib/server/auth";
-import { fail, ok, readJson } from "@/lib/server/http";
+import { clientIp, fail, ok, rateLimit, readJson } from "@/lib/server/http";
 
 // POST /api/predict — a waiting/eliminated player tips the result of a live
 // game they are NOT playing in. One prediction per (game, player); re-tipping
@@ -20,6 +20,11 @@ export async function POST(req: Request) {
     action?: "tip" | "list";
   }>(req);
   if (!body) return fail(400, "bad_request");
+
+  // Per-player key (classroom shares one NAT IP); auth below is the real gate.
+  if (!rateLimit(`predict:${clientIp(req)}:${body.playerId ?? "anon"}`, 60, 60_000)) {
+    return fail(429, "rate_limited");
+  }
 
   const player = await authPlayer(body.playerId, body.resumeCode);
   if (!player) return fail(401, "unauthorized");

@@ -1,5 +1,5 @@
 import { authHost } from "@/lib/server/auth";
-import { listPlayers } from "@/lib/server/store";
+import { isUniqueViolation, listPlayers } from "@/lib/server/store";
 import { startLeague } from "@/lib/server/league";
 import { startCup } from "@/lib/server/playoff";
 import { fail, ok, readJson } from "@/lib/server/http";
@@ -25,6 +25,9 @@ export async function POST(req: Request) {
     await startLeague(t);
     return ok({ status: "league" });
   } catch (err) {
+    // Double-fire: the other request created round 1 first (unique constraint
+    // on rounds). The tournament IS starting — tell the client that, not 500.
+    if (isUniqueViolation(err)) return fail(409, "already_started");
     console.error("[round/start]", err);
     return fail(500, "start_failed");
   }

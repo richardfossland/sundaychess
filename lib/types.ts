@@ -76,6 +76,9 @@ export interface Round {
   phase: RoundPhase;
   status: RoundStatus;
   started_at: string | null;
+  /** Accumulated "+1 min" extensions in ms (migration 0007). Round end =
+   * started_at + timer + extended_ms; chess-clock t0 stays at started_at. */
+  extended_ms?: number;
 }
 
 export interface Game {
@@ -90,6 +93,9 @@ export interface Game {
   result_source: ResultSource | null;
   turn: Turn;
   draw_offered_by: string | null;
+  /** Bracket/pairing position within the round (migration 0007). Optional —
+   * pre-migration rows lack it; sort with (slot ?? 0). */
+  slot?: number;
   updated_at: string;
 }
 

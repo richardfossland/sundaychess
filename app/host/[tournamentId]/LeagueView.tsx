@@ -83,11 +83,14 @@ export function LeagueView({
   const timerSec = tournament.config.roundTimerSec;
   const timerEndMs =
     timerSec && currentRound?.startedAt
-      ? new Date(currentRound.startedAt).getTime() + timerSec * 1000
+      ? new Date(currentRound.startedAt).getTime() +
+        timerSec * 1000 +
+        (currentRound.extendedMs ?? 0)
       : null;
   const { expired: timeUp } = useCountdown(timerEndMs);
 
   async function addMinute() {
+    if (!hostCode) return setError(no.host.missingHostCode);
     setBusy(true);
     setError(null);
     try {
@@ -101,6 +104,7 @@ export function LeagueView({
   }
 
   async function advance() {
+    if (!hostCode) return setError(no.host.missingHostCode);
     setBusy(true);
     setError(null);
     try {
@@ -114,6 +118,7 @@ export function LeagueView({
   }
 
   async function force() {
+    if (!hostCode) return setError(no.host.missingHostCode);
     if (!confirm(no.host.forceResolveConfirm)) return;
     setBusy(true);
     setError(null);
@@ -138,14 +143,18 @@ export function LeagueView({
         </span>
         {timerSec && currentRound && (
           <div className="row" style={{ gap: 10 }}>
-            <RoundTimer startedAt={currentRound.startedAt} durationSec={timerSec} />
+            <RoundTimer
+              startedAt={currentRound.startedAt}
+              durationSec={timerSec}
+              extendedMs={currentRound.extendedMs ?? 0}
+            />
             <button
               className="btn btn-ghost"
               style={{ padding: "8px 12px" }}
               disabled={busy}
               onClick={addMinute}
             >
-              {no.host.addMinute}
+              {busy ? <span className="spin" /> : no.host.addMinute}
             </button>
           </div>
         )}
@@ -304,7 +313,7 @@ export function LeagueView({
             >
               <span>⏰ {no.host.timeUpSuggestion}</span>
               <button className="btn btn-danger" disabled={busy} onClick={force} style={{ flexShrink: 0 }}>
-                {no.host.endRound}
+                {busy ? <span className="spin" /> : no.host.endRound}
               </button>
             </div>
           )}
@@ -319,7 +328,7 @@ export function LeagueView({
             </button>
             {liveCount > 0 && (
               <button className="btn btn-danger" disabled={busy} onClick={force}>
-                {no.host.forceResolve}
+                {busy ? <span className="spin" /> : no.host.forceResolve}
               </button>
             )}
           </div>

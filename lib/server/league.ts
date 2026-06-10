@@ -57,13 +57,15 @@ async function pairLeagueRound(
   const round = await createRound(tournament.id, roundNumber, "league", "live");
 
   const startFen = variantStartFen(tournament.config.variant);
-  for (const p of pairings) {
+  for (let i = 0; i < pairings.length; i++) {
+    const p = pairings[i];
     await createGame({
       tournamentId: tournament.id,
       roundId: round.id,
       whitePlayerId: p.whiteId,
       blackPlayerId: p.blackId,
       startFen,
+      slot: i,
     });
   }
   // Byes immediately award a point.

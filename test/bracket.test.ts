@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cupBracketSize,
+  sortBySlot,
   bracketRounds,
   buildFirstRound,
   effectivePlayoffSize,
@@ -109,5 +110,32 @@ describe("buildFirstRound with byes (cup)", () => {
     expect([real[0].topPlayerId, real[0].bottomPlayerId].sort()).toEqual(["p4", "p5"]);
     // no match is ever entirely empty
     expect(matches.every((m) => m.topPlayerId !== null)).toBe(true);
+  });
+});
+
+describe("sortBySlot", () => {
+  it("orders by slot and keeps fetch order for equal slots (stable)", () => {
+    const games = [
+      { id: "c", slot: 2 },
+      { id: "a", slot: 0 },
+      { id: "x" }, // legacy, no slot
+      { id: "b", slot: 0 },
+    ];
+    expect(sortBySlot(games).map((g) => g.id)).toEqual(["a", "x", "b", "c"]);
+  });
+});
+
+describe("cup with 6 players (bracket of 8)", () => {
+  it("places byes so round 2 pairs bye-winners with game-winners", () => {
+    const seeded = [1, 2, 3, 4, 5, 6].map((s) => ({ playerId: `p${s}`, seed: s }));
+    const matches = buildFirstRound(seeded, 8);
+    // seedOrder(8): [1,8] [4,5] [2,7] [3,6] → seeds 7,8 missing
+    expect(matches.map((m) => [m.topPlayerId, m.bottomPlayerId])).toEqual([
+      ["p1", null],
+      ["p4", "p5"],
+      ["p2", null],
+      ["p3", "p6"],
+    ]);
+    // slot-adjacent pairing: p1 meets w(4,5); p2 meets w(3,6) — 1 and 2 apart
   });
 });

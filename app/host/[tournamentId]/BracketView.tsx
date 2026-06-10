@@ -7,6 +7,7 @@ import { identity } from "@/lib/client/identity";
 import { no } from "@/lib/locale/no";
 import { JoinChip } from "@/lib/client/JoinChip";
 import { RoundTimer } from "@/lib/client/RoundTimer";
+import { sortBySlot } from "@/lib/tournament/bracket";
 import { OverrideModal } from "./OverrideModal";
 import { CodesModal } from "./CodesModal";
 
@@ -46,7 +47,8 @@ export function BracketView({
       .sort((a, b) => a.number - b.number);
     return pr.map((r) => ({
       round: r,
-      games: games.filter((g) => g.roundId === r.id),
+      // slot order = bracket structure (fetch order shifts as games resolve)
+      games: sortBySlot(games.filter((g) => g.roundId === r.id)),
     }));
   }, [rounds, games]);
 
@@ -61,6 +63,7 @@ export function BracketView({
   const timerSec = tournament.config.roundTimerSec;
 
   async function addMinute() {
+    if (!hostCode) return setError(no.host.missingHostCode);
     setBusy(true);
     setError(null);
     try {
@@ -74,6 +77,7 @@ export function BracketView({
   }
 
   async function advance() {
+    if (!hostCode) return setError(no.host.missingHostCode);
     setBusy(true);
     setError(null);
     try {
@@ -111,14 +115,18 @@ export function BracketView({
         <span className="badge badge-live">{no.host.bracket}</span>
         {timerSec && currentCol?.round.startedAt && liveCount > 0 && (
           <div className="row" style={{ gap: 10 }}>
-            <RoundTimer startedAt={currentCol.round.startedAt} durationSec={timerSec} />
+            <RoundTimer
+              startedAt={currentCol.round.startedAt}
+              durationSec={timerSec}
+              extendedMs={currentCol.round.extendedMs ?? 0}
+            />
             <button
               className="btn btn-ghost"
               style={{ padding: "8px 12px" }}
               disabled={busy}
               onClick={addMinute}
             >
-              {no.host.addMinute}
+              {busy ? <span className="spin" /> : no.host.addMinute}
             </button>
           </div>
         )}

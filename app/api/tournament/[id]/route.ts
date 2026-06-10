@@ -41,6 +41,7 @@ export async function GET(
       phase: r.phase,
       status: r.status,
       startedAt: r.started_at,
+      extendedMs: r.extended_ms ?? 0,
     })),
     tipping,
   };

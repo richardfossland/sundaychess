@@ -10,7 +10,9 @@ import { normalizeResumeCode, isValidPin } from "@/lib/codes";
 // Accepts { resumeCode, pin } or { resumeCode, tournamentId }. The resume code
 // travels in the body only (it is a bearer token — spec §8).
 export async function POST(req: Request) {
-  if (!rateLimit(`resume:${clientIp(req)}`, 40, 60_000)) {
+  // Generous per-IP cap: after a wifi blip the whole class resumes at once
+  // from one school NAT IP.
+  if (!rateLimit(`resume:${clientIp(req)}`, 120, 60_000)) {
     return fail(429, "rate_limited");
   }
   const body = await readJson<{

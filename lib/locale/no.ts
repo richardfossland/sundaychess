@@ -30,6 +30,8 @@ export const no = {
     enterTitle: "Åpne turnering",
     enterPrompt: "Skriv vertskoden for å åpne tavla igjen",
     hostCodeLabel: "Vertskode",
+    missingHostCode:
+      "Vertskoden mangler på denne enheten. Gå til forsiden og åpne turneringen på nytt med vertskoden din.",
     open: "Åpne",
     pinLabel: "Bli-med-PIN",
     joinUrlLabel: "Eller gå til",

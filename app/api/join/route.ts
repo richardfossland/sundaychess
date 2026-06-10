@@ -7,7 +7,9 @@ import { isValidPin } from "@/lib/codes";
 // POST /api/join — student joins a tournament by PIN with a display name.
 // Returns the resume code (a bearer token) in the body ONLY (never a URL).
 export async function POST(req: Request) {
-  if (!rateLimit(`join:${clientIp(req)}`, 30, 60_000)) {
+  // Generous per-IP cap: an entire class joins from ONE school NAT IP,
+  // often inside the same minute (plus typo retries).
+  if (!rateLimit(`join:${clientIp(req)}`, 120, 60_000)) {
     return fail(429, "rate_limited");
   }
   const body = await readJson<{ pin?: string; displayName?: string }>(req);

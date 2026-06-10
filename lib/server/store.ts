@@ -17,6 +17,16 @@ import type {
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+/** Postgres unique-constraint violation (concurrent PIN/resume-code/round
+ * collisions surface as this and deserve a retry or a graceful response). */
+export function isUniqueViolation(e: unknown): boolean {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    (e as { code?: string }).code === "23505"
+  );
+}
+
 export const DEFAULT_CONFIG: TournamentConfig = {
   leagueRounds: 5,
   playoff: false,
@@ -33,27 +43,34 @@ export async function createTournament(
 ): Promise<Tournament> {
   const db = createServiceClient();
 
-  // PIN must be globally unique (DB constraint backstops races).
+  // PIN must be globally unique. The pre-read avoids most collisions; the DB
+  // constraint backstops races — on 23505 we regenerate and retry.
   const { data: existing } = await db.from("tournaments").select("join_pin");
   const takenPins = new Set((existing ?? []).map((r) => r.join_pin as string));
-  const join_pin = generateUnique(generatePin, takenPins);
   const host_code = generateHostCode();
 
-  const { data, error } = await db
-    .from("tournaments")
-    .insert({
-      join_pin,
-      host_code,
-      host_user_id: hostUserId,
-      title,
-      status: "lobby",
-      config,
-      current_round: 0,
-    })
-    .select("*")
-    .single();
-  if (error) throw error;
-  return data as Tournament;
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const join_pin = generateUnique(generatePin, takenPins);
+    takenPins.add(join_pin); // don't re-pick it on the next attempt
+    const { data, error } = await db
+      .from("tournaments")
+      .insert({
+        join_pin,
+        host_code,
+        host_user_id: hostUserId,
+        title,
+        status: "lobby",
+        config,
+        current_round: 0,
+      })
+      .select("*")
+      .single();
+    if (!error) return data as Tournament;
+    lastError = error;
+    if (!isUniqueViolation(error)) break; // only PIN races are retryable
+  }
+  throw lastError;
 }
 
 export async function getTournament(id: string): Promise<Tournament | null> {
@@ -120,7 +137,6 @@ export async function addPlayer(
   const db = createServiceClient();
   const existing = await listPlayers(tournamentId);
   const taken = new Set(existing.map((p) => p.resume_code));
-  const resume_code = generateUnique(generateResumeCode, taken);
 
   // Lagturnering: auto-assign to the currently smallest team so they stay
   // balanced regardless of join order.
@@ -143,19 +159,31 @@ export async function addPlayer(
   } = {
     tournament_id: tournamentId,
     display_name: displayName.slice(0, 40),
-    resume_code,
+    resume_code: "",
   };
   if (team) row.team = team;
-  const { data, error } = await db.from("players").insert(row).select("*").single();
-  if (error && team) {
-    // players.team may not be migrated yet (0006) — degrade to teamless join
-    delete row.team;
-    const retry = await db.from("players").insert(row).select("*").single();
-    if (retry.error) throw retry.error;
-    return retry.data as Player;
+
+  // Two failure modes, handled separately:
+  //  * 23505 (concurrent join picked the same resume code) → regenerate + retry
+  //  * anything else with team set (players.team not migrated, 0006) → drop team
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    row.resume_code = generateUnique(generateResumeCode, taken);
+    taken.add(row.resume_code);
+    const { data, error } = await db.from("players").insert(row).select("*").single();
+    if (!error) return data as Player;
+    lastError = error;
+    if (isUniqueViolation(error)) continue; // new code next loop
+    if (row.team) {
+      delete row.team;
+      const retry = await db.from("players").insert(row).select("*").single();
+      if (!retry.error) return retry.data as Player;
+      lastError = retry.error;
+      if (isUniqueViolation(retry.error)) continue; // teamless + new code
+    }
+    break; // non-retryable
   }
-  if (error) throw error;
-  return data as Player;
+  throw lastError;
 }
 
 export async function getPlayerByResume(
@@ -250,6 +278,15 @@ export async function setRoundStartedAt(
   await db.from("rounds").update({ started_at: startedAt }).eq("id", roundId);
 }
 
+/** Atomically add 60s to a round's timer extension (RPC from 0007).
+ * Throws when the RPC isn't migrated yet — callers fall back. */
+export async function extendRoundRpc(roundId: string): Promise<number> {
+  const db = createServiceClient();
+  const { data, error } = await db.rpc("extend_round", { p_round_id: roundId });
+  if (error) throw error;
+  return data as number;
+}
+
 export async function listGamesForRound(roundId: string): Promise<Game[]> {
   const db = createServiceClient();
   const { data } = await db
@@ -269,28 +306,34 @@ interface NewGame {
   resultSource?: Game["result_source"];
   /** Variant start position; defaults to the standard one. */
   startFen?: string;
+  /** Bracket/pairing position within the round (0007). */
+  slot?: number;
 }
 
 /** Create a game (or a bye when blackPlayerId is null). */
 export async function createGame(g: NewGame): Promise<Game> {
   const db = createServiceClient();
   const isBye = g.blackPlayerId === null;
-  const { data, error } = await db
-    .from("games")
-    .insert({
-      tournament_id: g.tournamentId,
-      round_id: g.roundId,
-      white_player_id: g.whitePlayerId,
-      black_player_id: g.blackPlayerId,
-      fen: g.startFen ?? START_FEN,
-      pgn: "",
-      status: g.status ?? (isBye ? "bye" : "live"),
-      result_source: g.resultSource ?? (isBye ? "bye" : null),
-      turn: "w",
-    })
-    .select("*")
-    .single();
-  if (error) throw error;
+  const row: Record<string, unknown> = {
+    tournament_id: g.tournamentId,
+    round_id: g.roundId,
+    white_player_id: g.whitePlayerId,
+    black_player_id: g.blackPlayerId,
+    fen: g.startFen ?? START_FEN,
+    pgn: "",
+    status: g.status ?? (isBye ? "bye" : "live"),
+    result_source: g.resultSource ?? (isBye ? "bye" : null),
+    turn: "w",
+    slot: g.slot ?? 0,
+  };
+  const { data, error } = await db.from("games").insert(row).select("*").single();
+  if (error) {
+    // games.slot may not be migrated yet (0007) — retry without it
+    delete row.slot;
+    const retry = await db.from("games").insert(row).select("*").single();
+    if (retry.error) throw error; // surface the ORIGINAL error
+    return retry.data as Game;
+  }
   return data as Game;
 }
 

@@ -31,6 +31,7 @@ export async function GET(
     white: { id: game.white_player_id, name: white?.display_name ?? "?" },
     black: black ? { id: black.id, name: black.display_name } : null,
     lastMove: lastMoveFromPgn(game.pgn),
+    drawOfferedBy: game.draw_offered_by ?? null,
     clock: clock?.info ?? null,
   };
   return ok(detail);

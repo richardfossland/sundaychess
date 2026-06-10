@@ -97,7 +97,11 @@ export function WaitingRoom({
     const timerSec = state?.tournament.config.roundTimerSec ?? null;
     const timer =
       timerSec && activeRound?.startedAt
-        ? { startedAt: activeRound.startedAt, durationSec: timerSec }
+        ? {
+            startedAt: activeRound.startedAt,
+            durationSec: timerSec,
+            extendedMs: activeRound.extendedMs ?? 0,
+          }
         : null;
     return (
       <GameView

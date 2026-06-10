@@ -17,10 +17,6 @@ import type { GameStatus, Turn } from "@/lib/types";
 
 // POST /api/move — THE server-authoritative move path (spec §4).
 export async function POST(req: Request) {
-  if (!rateLimit(`move:${clientIp(req)}`, 120, 60_000)) {
-    return fail(429, "rate_limited");
-  }
-
   const body = await readJson<{
     gameId?: string;
     from?: string;
@@ -30,6 +26,14 @@ export async function POST(req: Request) {
     resumeCode?: string;
   }>(req);
   if (!body?.gameId || !body.from || !body.to) return fail(400, "bad_request");
+
+  // Rate-limit per player, not per IP: a whole classroom shares one school
+  // NAT IP, so an IP-wide cap would throttle legitimate play. The playerId is
+  // unauthenticated here, but flooding random ids buys nothing — auth below
+  // is the real gate; this only bounds per-student request bursts.
+  if (!rateLimit(`move:${clientIp(req)}:${body.playerId ?? "anon"}`, 120, 60_000)) {
+    return fail(429, "rate_limited");
+  }
 
   // 1. Authenticate the mover (resume code is a bearer token).
   const player = await authPlayer(body.playerId, body.resumeCode);

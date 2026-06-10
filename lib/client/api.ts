@@ -156,7 +156,7 @@ export const api = {
     post<{ ok: boolean }>("/api/round/force", { tournamentId, hostCode }),
 
   extendRound: (tournamentId: string, hostCode: string) =>
-    post<{ startedAt: string }>("/api/round/extend", { tournamentId, hostCode }),
+    post<{ extendedMs: number | null }>("/api/round/extend", { tournamentId, hostCode }),
 
   override: (gameId: string, hostCode: string, result: GameStatus) =>
     post<{ status: GameStatus }>("/api/game/override", {

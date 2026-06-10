@@ -4,17 +4,22 @@ import { useCountdown, fmt } from "@/lib/client/useCountdown";
 import { no } from "@/lib/locale/no";
 
 /** Round countdown. On the board it's large; on a player's screen (`compact`)
- * it's a small chip. Counts down from `startedAt + durationSec`. */
+ * it's a small chip. Counts down to `startedAt + durationSec + extendedMs`
+ * (extendedMs = the organizer's accumulated "+1 min" extensions). */
 export function RoundTimer({
   startedAt,
   durationSec,
+  extendedMs = 0,
   compact = false,
 }: {
   startedAt: string | null;
   durationSec: number;
+  extendedMs?: number;
   compact?: boolean;
 }) {
-  const endMs = startedAt ? new Date(startedAt).getTime() + durationSec * 1000 : null;
+  const endMs = startedAt
+    ? new Date(startedAt).getTime() + durationSec * 1000 + extendedMs
+    : null;
   const { remainingMs, expired } = useCountdown(endMs);
   if (remainingMs == null) return null;
 

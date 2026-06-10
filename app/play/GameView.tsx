@@ -152,7 +152,11 @@ export function GameView({
   me: StoredPlayer;
   gameId: string;
   onFinished: () => void;
-  timer?: { startedAt: string | null; durationSec: number } | null;
+  timer?: {
+    startedAt: string | null;
+    durationSec: number;
+    extendedMs?: number;
+  } | null;
   reactionsEnabled?: boolean;
   /** the tournament's variant start position (for captured-piece baselines) */
   variantFen?: string;
@@ -207,7 +211,13 @@ export function GameView({
     setLastMove(d.lastMove ? { from: d.lastMove.from, to: d.lastMove.to } : null);
     confirmedFen.current = d.fen;
     takeClock(d.clock);
-  }, [gameId, takeClock]);
+    // Reconcile draw banners from the authoritative offer state, so a lost
+    // decline/offer broadcast can never leave a banner stuck (3s poll heals).
+    if (d.drawOfferedBy !== undefined) {
+      setIncomingDraw(d.drawOfferedBy != null && d.drawOfferedBy !== me.playerId);
+      setDrawSent(d.drawOfferedBy === me.playerId);
+    }
+  }, [gameId, takeClock, me.playerId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -322,7 +332,6 @@ export function GameView({
       if (!local.ok) return false;
       sound.play(moveCue(fen, local.fen));
 
-      const before = fen;
       setFen(local.fen);
       setTurn(local.turn);
       setLastMove({ from, to });
@@ -346,9 +355,13 @@ export function GameView({
         confirmedFen.current = res.fen;
         takeClock(res.clock);
       } catch (e) {
-        // Roll back to the last confirmed position.
-        setFen(before);
-        setTurn(myTurnLetter);
+        // Roll back to the last CONFIRMED position (the ref tracks load(),
+        // own-move success AND broadcasts) — never a stale local capture; a
+        // broadcast that landed mid-flight must not be undone. Turn derives
+        // from that FEN so isMyTurn can't lie.
+        const confirmed = confirmedFen.current || fen;
+        setFen(confirmed);
+        setTurn(confirmed.split(" ")[1] === "b" ? "b" : "w");
         const code = e instanceof ApiError ? e.code : "";
         if (code === "not_your_turn") flash(no.player.notYourTurn);
         else if (code === "flagged") {
@@ -368,7 +381,7 @@ export function GameView({
       }
       return true;
     },
-    [fen, gameId, isMyTurn, load, me.playerId, me.resumeCode, myTurnLetter, pending, takeClock],
+    [fen, gameId, isMyTurn, load, me.playerId, me.resumeCode, pending, takeClock],
   );
 
   function onDrop({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean {
@@ -463,7 +476,12 @@ export function GameView({
         {/* centre: timer + turn banner + board + actions */}
         <div className="game-center">
           {timer && timer.startedAt && !ended && (
-            <RoundTimer startedAt={timer.startedAt} durationSec={timer.durationSec} compact />
+            <RoundTimer
+              startedAt={timer.startedAt}
+              durationSec={timer.durationSec}
+              extendedMs={timer.extendedMs ?? 0}
+              compact
+            />
           )}
 
           {!ended && (
@@ -524,9 +542,10 @@ export function GameView({
                 disabled={pending}
                 onClick={() => {
                   if (!confirm(no.player.resignConfirm)) return;
-                  api
-                    .resign(gameId, me.playerId, me.resumeCode)
-                    .catch(() => flash(no.common.error));
+                  api.resign(gameId, me.playerId, me.resumeCode).catch(() => {
+                    flash(no.common.error);
+                    load().catch(() => {}); // maybe it DID resolve — resync
+                  });
                 }}
               >
                 {no.player.resign}

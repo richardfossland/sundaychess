@@ -35,6 +35,8 @@ export interface PublicGame {
   /** Present only once the game is decided — feeds replay + awards without a
    * per-game fetch. Live games omit it (don't ship the full history each poll). */
   pgn?: string;
+  /** Bracket/pairing position within the round (0 for pre-0007 rows). */
+  slot?: number;
 }
 
 export interface BoardState {
@@ -56,6 +58,8 @@ export interface BoardState {
     phase: string;
     status: string;
     startedAt: string | null;
+    /** Accumulated "+1 min" extensions (ms); timer end = start + dur + this. */
+    extendedMs: number;
   }[];
   /** Tipping leaderboard (1 point per correct prediction). Empty/absent until
    * the predictions migration is applied. */
@@ -85,6 +89,7 @@ export function toPublicGame(g: Game): PublicGame {
     fen: g.fen,
     status: g.status,
     turn: g.turn,
+    slot: g.slot ?? 0,
     ...(decided && g.pgn ? { pgn: g.pgn } : {}),
   };
 }
@@ -100,6 +105,9 @@ export interface GameDetail {
   white: { id: string; name: string };
   black: { id: string; name: string } | null;
   lastMove: { from: string; to: string; san: string } | null;
+  /** Player id with a pending draw offer (null = none) — lets clients
+   * self-heal stuck offer banners on poll/focus resync. */
+  drawOfferedBy?: string | null;
   /** Chess-clock snapshot (lyn/blitz); null/absent when no clock configured.
    * Clients tick the `turn` side down locally from receipt. */
   clock?: {

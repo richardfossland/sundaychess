@@ -360,6 +360,7 @@ button {
 }
 .input {
   font: inherit;
+  font-size: 16px; /* ≥16px stops iOS Safari from auto-zooming on focus */
   width: 100%;
   min-width: 0; /* let inputs shrink below their intrinsic size on narrow screens */
   background: rgba(0, 0, 0, 0.28);

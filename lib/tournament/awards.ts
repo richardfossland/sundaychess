@@ -92,7 +92,8 @@ export function computeAwards(games: AwardGame[]): Award[] {
       (g.status === "white_win" || g.status === "black_win" || g.status === "draw"),
   );
 
-  let fastestMate: { playerId: string; plies: number } | null = null;
+  // Ties share the award: equal-plies mates and equal capture counts all win.
+  let fastestMate: { playerIds: string[]; plies: number } | null = null;
   let longest: { ids: string[]; plies: number } | null = null;
   let comeback: { playerId: string; deficit: number } | null = null;
   const captures = new Map<string, number>();
@@ -108,7 +109,9 @@ export function computeAwards(games: AwardGame[]): Award[] {
     if (r.isMate && (g.status === "white_win" || g.status === "black_win")) {
       const winner = g.status === "white_win" ? g.whitePlayerId : black;
       if (!fastestMate || r.plies < fastestMate.plies) {
-        fastestMate = { playerId: winner, plies: r.plies };
+        fastestMate = { playerIds: [winner], plies: r.plies };
+      } else if (r.plies === fastestMate.plies && !fastestMate.playerIds.includes(winner)) {
+        fastestMate.playerIds.push(winner);
       }
     }
 
@@ -130,14 +133,15 @@ export function computeAwards(games: AwardGame[]): Award[] {
 
   const awards: Award[] = [];
   if (fastestMate) {
-    awards.push({ key: "fastest_mate", playerIds: [fastestMate.playerId], value: fastestMate.plies });
+    awards.push({ key: "fastest_mate", playerIds: fastestMate.playerIds, value: fastestMate.plies });
   }
-  let topCapture: { id: string; n: number } | null = null;
-  for (const [id, n] of captures) {
-    if (n > 0 && (!topCapture || n > topCapture.n)) topCapture = { id, n };
-  }
-  if (topCapture) {
-    awards.push({ key: "most_captures", playerIds: [topCapture.id], value: topCapture.n });
+  let maxCaptures = 0;
+  for (const n of captures.values()) maxCaptures = Math.max(maxCaptures, n);
+  if (maxCaptures > 0) {
+    const ids = [...captures.entries()]
+      .filter(([, n]) => n === maxCaptures)
+      .map(([id]) => id);
+    awards.push({ key: "most_captures", playerIds: ids, value: maxCaptures });
   }
   if (longest && longest.plies >= 10) {
     awards.push({ key: "longest_game", playerIds: longest.ids, value: longest.plies });

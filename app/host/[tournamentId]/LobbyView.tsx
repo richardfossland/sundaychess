@@ -32,6 +32,7 @@ export function LobbyView({
   }, [tournament.id]);
 
   async function startLeague() {
+    if (!hostCode) return setError(no.host.missingHostCode);
     setStarting(true);
     setError(null);
     try {

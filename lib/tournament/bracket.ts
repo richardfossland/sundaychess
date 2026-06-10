@@ -34,6 +34,13 @@ export function effectivePlayoffSize(
   return 0;
 }
 
+/** Sort games into their bracket-slot order. Pre-0007 rows have no slot
+ * (all 0) — Array.prototype.sort is stable, so they keep their fetched order
+ * (the old behavior). Single-elim pairing depends on this order. */
+export function sortBySlot<T extends { slot?: number | null }>(games: T[]): T[] {
+  return games.slice().sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
+}
+
 /** Cup bracket size: the next power of two ≥ n (players beyond n become
  * first-round byes for the top seeds). Capped at 32. */
 export function cupBracketSize(n: number): number {

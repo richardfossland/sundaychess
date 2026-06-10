@@ -43,6 +43,12 @@ export function LiveGamesView({ state }: { state: BoardState }) {
       for (const g of games) {
         if (!next[g.id] || plyOf(g.fen) >= plyOf(next[g.id])) next[g.id] = g.fen;
       }
+      // prune finished/removed games so the map doesn't grow for the whole
+      // life of a projector session
+      const liveIds = new Set(games.filter((g) => g.status === "live").map((g) => g.id));
+      for (const id of Object.keys(next)) {
+        if (!liveIds.has(id)) delete next[id];
+      }
       return next;
     });
   }, [games]);
