@@ -51,5 +51,14 @@ export function useBoardState(tournamentId: string | null) {
     };
   }, [refresh]);
 
+  // Poll backstop for missed broadcasts (round started, game resolved, etc.).
+  useEffect(() => {
+    if (!tournamentId) return;
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") refresh();
+    }, 5000);
+    return () => clearInterval(id);
+  }, [tournamentId, refresh]);
+
   return { state, error, refresh };
 }

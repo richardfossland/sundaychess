@@ -1,7 +1,11 @@
 import { applyMove } from "@/lib/chess/validateMove";
-import { applyMoveRpc, getGame } from "@/lib/server/store";
+import { applyMoveRpc, getGame, setDrawOffer } from "@/lib/server/store";
 import { authPlayer } from "@/lib/server/auth";
-import { afterGameResolved, broadcastPosition } from "@/lib/server/gameEvents";
+import {
+  afterGameResolved,
+  broadcastPosition,
+  broadcastSpectate,
+} from "@/lib/server/gameEvents";
 import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
 import type { Turn } from "@/lib/types";
 
@@ -70,12 +74,23 @@ export async function POST(req: Request) {
     return fail(status, code);
   }
 
-  // 6. Broadcast the new authoritative position (hint to refetch/sync).
+  // A move supersedes any pending draw offer.
+  if (game.draw_offered_by) await setDrawOffer(game.id, null);
+
+  // 6. Broadcast the new authoritative position (hint to refetch/sync) — to the
+  //    players' game channel and the teacher's tournament-wide spectate feed.
   await broadcastPosition(game.id, applied.fen, applied.turn as Turn, applied.status, {
     from: body.from,
     to: body.to,
     san: applied.san,
   });
+  await broadcastSpectate(
+    game.tournament_id,
+    game.id,
+    applied.fen,
+    applied.turn as Turn,
+    applied.status,
+  );
 
   // 7. If the game ended on this move, run resolution side-effects.
   if (applied.status !== "live") {

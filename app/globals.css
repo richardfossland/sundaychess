@@ -71,7 +71,7 @@ body {
   position: relative;
   background:
     radial-gradient(140% 100% at 50% -20%, #232a38 0%, #161b24 42%, var(--ink) 78%);
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 /* faint chessboard texture */
 body::before {
@@ -140,10 +140,13 @@ button {
 }
 .center-screen {
   min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: 32px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 14px;
 }
+/* flex centering caps width-100% children to the viewport (a grid auto-track
+   would grow to the child's max-width and overflow on narrow screens). */
 .stack {
   display: flex;
   flex-direction: column;
@@ -213,6 +216,8 @@ button {
 /* ============ card / panel ============ */
 .card {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 40%),
     linear-gradient(180deg, var(--ink-2), #14171f);
@@ -333,6 +338,7 @@ button {
 .input {
   font: inherit;
   width: 100%;
+  min-width: 0; /* let inputs shrink below their intrinsic size on narrow screens */
   background: rgba(0, 0, 0, 0.28);
   border: 1px solid var(--ink-line);
   color: var(--txt);
@@ -566,8 +572,16 @@ button {
   border: 1px solid rgba(235, 184, 75, 0.25);
   pointer-events: none;
 }
+/* player board — grows with the viewport on bigger screens */
 .board-shell {
-  width: min(92vw, 540px);
+  width: min(92vw, 66vh, 600px);
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+/* spectator/projector board — much larger on a big screen */
+.board-shell-lg {
+  width: min(82vw, 80vh, 820px);
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;

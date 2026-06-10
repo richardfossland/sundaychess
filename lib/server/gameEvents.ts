@@ -21,6 +21,23 @@ export async function broadcastPosition(
   });
 }
 
+/** Broadcast a move to the tournament-wide spectate feed so the teacher's
+ * live-games grid updates instantly without polling every game channel. */
+export async function broadcastSpectate(
+  tournamentId: string,
+  gameId: string,
+  fen: string,
+  turn: Turn,
+  status: GameStatus,
+): Promise<void> {
+  await broadcast(channels.spectate(tournamentId), events.position, {
+    gameId,
+    fen,
+    turn,
+    status,
+  });
+}
+
 /** Side-effects when a game reaches a terminal status: refresh the cached
  * scores and nudge both the game channel (players) and the lobby channel
  * (board standings + "neste runde" availability). */

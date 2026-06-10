@@ -6,8 +6,36 @@
 import type { BoardState, GameDetail } from "@/lib/dto";
 import type { GameStatus, Turn } from "@/lib/types";
 
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    public code: string,
+    public payload: unknown,
+  ) {
+    super(code);
+  }
+}
+
+const DEFAULT_TIMEOUT = 8000;
+
+/** fetch with a hard timeout — a hung request must never freeze the UI. On
+ * timeout/abort or a network failure it throws ApiError(0, "timeout"|"network")
+ * so callers always settle (releases optimistic locks, falls back gracefully). */
+async function timedFetch(url: string, init: RequestInit, timeoutMs = DEFAULT_TIMEOUT): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } catch (e) {
+    const aborted = e instanceof DOMException && e.name === "AbortError";
+    throw new ApiError(0, aborted ? "timeout" : "network", null);
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 async function post<T>(url: string, body: unknown): Promise<T> {
-  const res = await fetch(url, {
+  const res = await timedFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -17,14 +45,10 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   return data as T;
 }
 
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public code: string,
-    public payload: unknown,
-  ) {
-    super(code);
-  }
+async function getJson<T>(url: string, code: string): Promise<T> {
+  const res = await timedFetch(url, { cache: "no-store" });
+  if (!res.ok) throw new ApiError(res.status, code, null);
+  return (await res.json()) as T;
 }
 
 export interface CreatedTournament {
@@ -60,17 +84,9 @@ export const api = {
   resume: (resumeCode: string, ref: { pin?: string; tournamentId?: string }) =>
     post<ResumeResult>("/api/resume", { resumeCode, ...ref }),
 
-  board: async (id: string): Promise<BoardState> => {
-    const res = await fetch(`/api/tournament/${id}`, { cache: "no-store" });
-    if (!res.ok) throw new ApiError(res.status, "board_failed", null);
-    return (await res.json()) as BoardState;
-  },
+  board: (id: string) => getJson<BoardState>(`/api/tournament/${id}`, "board_failed"),
 
-  game: async (id: string): Promise<GameDetail> => {
-    const res = await fetch(`/api/game/${id}`, { cache: "no-store" });
-    if (!res.ok) throw new ApiError(res.status, "game_failed", null);
-    return (await res.json()) as GameDetail;
-  },
+  game: (id: string) => getJson<GameDetail>(`/api/game/${id}`, "game_failed"),
 
   move: (args: {
     gameId: string;
@@ -115,4 +131,23 @@ export const api = {
       hostCode,
       result,
     }),
+
+  absent: (
+    gameId: string,
+    hostCode: string,
+    absentPlayerId: string,
+    scope: "round" | "tournament",
+  ) =>
+    post<{ status: GameStatus }>("/api/game/absent", {
+      gameId,
+      hostCode,
+      absentPlayerId,
+      scope,
+    }),
+
+  codes: (tournamentId: string, hostCode: string) =>
+    post<{ players: { playerId: string; name: string; resumeCode: string }[] }>(
+      `/api/tournament/${tournamentId}/codes`,
+      { hostCode },
+    ),
 };

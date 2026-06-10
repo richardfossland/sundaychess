@@ -162,6 +162,14 @@ export async function setPlayerSeed(
   await db.from("players").update({ seed }).eq("id", playerId);
 }
 
+export async function setPlayerStatus(
+  playerId: string,
+  status: Player["status"],
+): Promise<void> {
+  const db = createServiceClient();
+  await db.from("players").update({ status }).eq("id", playerId);
+}
+
 // ---------------- rounds / games (used from Phase 2/3) ----------------
 
 export async function getRound(id: string): Promise<Round | null> {
@@ -294,15 +302,26 @@ export async function resolveGameRpc(
   gameId: string,
   status: Game["status"],
   resultSource: NonNullable<Game["result_source"]>,
+  requireLive = false,
 ): Promise<RpcResult> {
   const db = createServiceClient();
   const { data, error } = await db.rpc("resolve_game", {
     p_game_id: gameId,
     p_new_status: status,
     p_result_source: resultSource,
+    p_require_live: requireLive,
   });
   if (error) throw error;
   return data as RpcResult;
+}
+
+/** Set or clear the pending draw offer on a game (DB-backed, isolate-safe). */
+export async function setDrawOffer(
+  gameId: string,
+  byPlayerId: string | null,
+): Promise<void> {
+  const db = createServiceClient();
+  await db.from("games").update({ draw_offered_by: byPlayerId }).eq("id", gameId);
 }
 
 export async function recomputeScores(tournamentId: string): Promise<void> {

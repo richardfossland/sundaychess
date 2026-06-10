@@ -5,6 +5,7 @@ import type { BoardState, PublicGame } from "@/lib/dto";
 import { api, ApiError } from "@/lib/client/api";
 import { identity } from "@/lib/client/identity";
 import { no } from "@/lib/locale/no";
+import { JoinChip } from "@/lib/client/JoinChip";
 import { OverrideModal } from "./OverrideModal";
 
 function winnerId(g: PublicGame): string | null {
@@ -90,6 +91,8 @@ export function BracketView({
           <span className="knight">♞</span> Sunday<b>Chess</b>
         </span>
         <span className="badge badge-live">{no.host.bracket}</span>
+        <span className="grow" />
+        <JoinChip pin={tournament.joinPin} />
         {tournament.title && <span className="muted">{tournament.title}</span>}
       </header>
 
@@ -135,7 +138,12 @@ export function BracketView({
         <OverrideModal
           gameId={overrideGame.id}
           hostCode={hostCode ?? ""}
-          title={`${player(overrideGame.whitePlayerId)?.displayName ?? "?"} ${no.player.vs} ${player(overrideGame.blackPlayerId)?.displayName ?? "?"}`}
+          white={{ id: overrideGame.whitePlayerId, name: player(overrideGame.whitePlayerId)?.displayName ?? "?" }}
+          black={
+            overrideGame.blackPlayerId
+              ? { id: overrideGame.blackPlayerId, name: player(overrideGame.blackPlayerId)?.displayName ?? "?" }
+              : null
+          }
           onClose={() => setOverrideGame(null)}
           allowAbort={false}
           onDone={() => {

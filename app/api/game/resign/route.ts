@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
   // The other side wins.
   const status: GameStatus = isWhite ? "black_win" : "white_win";
-  const result = await resolveGameRpc(game.id, status, "play");
+  const result = await resolveGameRpc(game.id, status, "play", /* requireLive */ true);
   if (!result.ok) return fail(409, result.conflict ?? "conflict");
 
   await afterGameResolved(game, status, "play");

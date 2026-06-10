@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { bestMove } from "@/lib/chess/bot";
+import { bestMove, evaluateFen } from "@/lib/chess/bot";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const constRng = (v: number) => () => v;
@@ -38,5 +38,24 @@ describe("bestMove", () => {
       const m = bestMove(START, "easy", constRng(i / 10));
       expect(m).not.toBeNull();
     }
+  });
+});
+
+describe("evaluateFen (eval bar)", () => {
+  it("is roughly balanced at the start", () => {
+    expect(Math.abs(evaluateFen(START).cp)).toBeLessThan(120);
+  });
+
+  it("is strongly positive when White is up a queen", () => {
+    expect(evaluateFen("4k3/8/8/8/8/8/8/3QK3 w - - 0 1").cp).toBeGreaterThan(500);
+  });
+
+  it("is strongly negative when Black is up a queen", () => {
+    expect(evaluateFen("3qk3/8/8/8/8/8/8/4K3 w - - 0 1").cp).toBeLessThan(-500);
+  });
+
+  it("flags a checkmate", () => {
+    const mated = "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3";
+    expect(evaluateFen(mated).mate).toBe(-1); // White (to move) is mated
   });
 });

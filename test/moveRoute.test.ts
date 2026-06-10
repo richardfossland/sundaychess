@@ -20,6 +20,7 @@ vi.mock("@/lib/server/auth", () => ({
 vi.mock("@/lib/server/gameEvents", () => ({
   afterGameResolved: (...a: unknown[]) => afterGameResolved(...a),
   broadcastPosition: (...a: unknown[]) => broadcastPosition(...a),
+  broadcastSpectate: vi.fn(),
 }));
 
 import { POST } from "@/app/api/move/route";
@@ -38,6 +39,7 @@ function makeGame(over: Partial<Game> = {}): Game {
     status: "live",
     result_source: null,
     turn: "w",
+    draw_offered_by: null,
     updated_at: "",
     ...over,
   };

@@ -6,7 +6,9 @@ import { api } from "@/lib/client/api";
 import { identity } from "@/lib/client/identity";
 import { no } from "@/lib/locale/no";
 import { RoundTimer } from "@/lib/client/RoundTimer";
+import { JoinChip } from "@/lib/client/JoinChip";
 import { OverrideModal } from "./OverrideModal";
+import { CodesModal } from "./CodesModal";
 
 function resultLabel(g: PublicGame, name: (id: string | null) => string): string {
   switch (g.status) {
@@ -39,6 +41,7 @@ export function LeagueView({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [overrideGame, setOverrideGame] = useState<PublicGame | null>(null);
+  const [showCodes, setShowCodes] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -108,7 +111,11 @@ export function LeagueView({
             durationSec={tournament.config.roundTimerSec}
           />
         )}
-        {tournament.title && <span className="muted">{tournament.title}</span>}
+        <span className="grow" />
+        <JoinChip pin={tournament.joinPin} />
+        <button className="btn btn-ghost" onClick={() => setShowCodes(true)}>
+          {no.host.showCodes}
+        </button>
       </header>
 
       <div className="board-grid split-league">
@@ -213,12 +220,25 @@ export function LeagueView({
         <OverrideModal
           gameId={overrideGame.id}
           hostCode={hostCode ?? ""}
-          title={`${nameById(overrideGame.whitePlayerId)} ${no.player.vs} ${nameById(overrideGame.blackPlayerId)}`}
+          white={{ id: overrideGame.whitePlayerId, name: nameById(overrideGame.whitePlayerId) }}
+          black={
+            overrideGame.blackPlayerId
+              ? { id: overrideGame.blackPlayerId, name: nameById(overrideGame.blackPlayerId) }
+              : null
+          }
           onClose={() => setOverrideGame(null)}
           onDone={() => {
             setOverrideGame(null);
             onChanged();
           }}
+        />
+      )}
+
+      {showCodes && (
+        <CodesModal
+          tournamentId={tournament.id}
+          hostCode={hostCode ?? ""}
+          onClose={() => setShowCodes(false)}
         />
       )}
     </main>

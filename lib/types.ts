@@ -11,7 +11,13 @@ export type GameStatus =
   | "draw"
   | "bye"
   | "aborted";
-export type ResultSource = "play" | "teacher_override" | "bye" | "timeout_draw";
+export type ResultSource =
+  | "play"
+  | "teacher_override"
+  | "bye"
+  | "timeout_draw"
+  | "walkover"
+  | "opponent_absent";
 export type PlayerStatus = "active" | "left";
 export type Turn = "w" | "b";
 
@@ -67,6 +73,7 @@ export interface Game {
   status: GameStatus;
   result_source: ResultSource | null;
   turn: Turn;
+  draw_offered_by: string | null;
   updated_at: string;
 }
 

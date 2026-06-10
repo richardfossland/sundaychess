@@ -5,6 +5,9 @@
 export const channels = {
   lobby: (tournamentId: string) => `lobby:${tournamentId}`,
   game: (gameId: string) => `game:${gameId}`,
+  // tournament-wide move feed for the teacher's live-games view (one channel,
+  // scales to many games)
+  spectate: (tournamentId: string) => `spectate:${tournamentId}`,
 };
 
 export const events = {

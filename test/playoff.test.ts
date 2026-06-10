@@ -63,6 +63,7 @@ function game(white: string, black: string, status: Game["status"]): Game {
     status,
     result_source: null,
     turn: "w",
+    draw_offered_by: null,
     updated_at: "",
   };
 }

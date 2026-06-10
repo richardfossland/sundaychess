@@ -7,10 +7,12 @@ import type { GameDetail } from "@/lib/dto";
 import type { GameStatus, Turn } from "@/lib/types";
 import { api, ApiError } from "@/lib/client/api";
 import { applyMove, legalDestinations } from "@/lib/chess/validateMove";
+import { drawReasonFromFen } from "@/lib/chess/drawReason";
 import { channels } from "@/lib/realtime";
 import { useChannel } from "@/lib/client/useChannel";
 import type { StoredPlayer } from "@/lib/client/identity";
 import { Confetti, initials } from "@/lib/client/Confetti";
+import { CapturedPieces } from "@/lib/client/CapturedPieces";
 import { no } from "@/lib/locale/no";
 
 // DnD board: render client-only to avoid SSR/window issues.
@@ -77,6 +79,18 @@ export function GameView({
     };
   }, [load]);
 
+  // Poll backstop: realtime broadcasts are best-effort, so re-sync while waiting
+  // for the opponent (and nothing in flight). Guarantees the board un-freezes
+  // within ~3 s even if a "position" event was dropped — without disrupting my
+  // own selection / optimistic move.
+  useEffect(() => {
+    if (status !== "live" || isMyTurn || pending) return;
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") load().catch(() => {});
+    }, 3000);
+    return () => clearInterval(id);
+  }, [status, isMyTurn, pending, load]);
+
   // Authoritative updates from the game channel.
   useChannel(channels.game(gameId), (event, payload) => {
     if (event === "position") {
@@ -93,6 +107,7 @@ export function GameView({
       if (p.lastMove) setLastMove({ from: p.lastMove.from, to: p.lastMove.to });
       setSelected(null);
       setLegal([]);
+      setIncomingDraw(false); // a move supersedes any pending draw offer
     } else if (event === "result") {
       const p = payload as { status: GameStatus };
       setStatus(p.status);
@@ -146,7 +161,12 @@ export function GameView({
         setTurn(myTurnLetter);
         const code = e instanceof ApiError ? e.code : "";
         if (code === "not_your_turn") flash(no.player.notYourTurn);
-        else if (code === "stale" || code === "not_live") {
+        else if (code === "timeout" || code === "network") {
+          // Request hung/dropped — re-sync authoritative state so the board
+          // can't get stuck on a stale turn.
+          flash(no.player.connection);
+          load().catch(() => {});
+        } else if (code === "stale" || code === "not_live") {
           flash(no.common.error);
           load().catch(() => {});
         } else flash(no.player.illegalMove);
@@ -214,7 +234,7 @@ export function GameView({
       (status === "black_win" && myColor === "black"));
   let resultText = "";
   if (ended) {
-    if (status === "draw") resultText = no.player.gameDraw;
+    if (status === "draw") resultText = no.player.drawReason[drawReasonFromFen(fen)];
     else resultText = iWon ? no.player.youWon : no.player.youLost;
   }
 
@@ -237,6 +257,7 @@ export function GameView({
               <div className="faint" style={{ fontSize: 12 }}>
                 {no.player.youAre} {myColor === "white" ? no.player.white : no.player.black}
               </div>
+              <CapturedPieces fen={fen} side={myColor} />
             </div>
           </div>
           <span className="faint" style={{ fontStyle: "italic" }}>{no.player.vs}</span>
@@ -245,6 +266,9 @@ export function GameView({
               <b>{opponent?.name ?? "?"}</b>
               <div className="faint" style={{ fontSize: 12 }}>
                 {myColor === "white" ? no.player.black : no.player.white}
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <CapturedPieces fen={fen} side={myColor === "white" ? "black" : "white"} />
               </div>
             </div>
             <span className="avatar-lg" style={oppAvatar}>{initials(opponent?.name ?? "?")}</span>

@@ -188,3 +188,29 @@ export function bestMove(
     promotion: (best.promotion as MoveIntent["promotion"]) ?? "q",
   };
 }
+
+/** Position evaluation for the spectator eval bar. Returns centipawns from
+ * White's perspective (+ = White better) and a mate flag. Uses a shallow
+ * negamax for stability. */
+export function evaluateFen(
+  fen: string,
+  depth = 2,
+): { cp: number; mate: 1 | -1 | null } {
+  let chess: Chess;
+  try {
+    chess = new Chess(fen);
+  } catch {
+    return { cp: 0, mate: null };
+  }
+  if (chess.isGameOver()) {
+    if (chess.isCheckmate()) {
+      const whiteWon = chess.turn() === "b"; // black to move & mated → White won
+      return { cp: whiteWon ? 100000 : -100000, mate: whiteWon ? 1 : -1 };
+    }
+    return { cp: 0, mate: null }; // draw
+  }
+  const stm = negamax(chess, depth, -Infinity, Infinity);
+  const white = chess.turn() === "w" ? stm : -stm;
+  if (Math.abs(white) > MATE - 10000) return { cp: white, mate: white > 0 ? 1 : -1 };
+  return { cp: white, mate: null };
+}

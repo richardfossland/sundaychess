@@ -1,14 +1,15 @@
-import { getGame, resolveGameRpc } from "@/lib/server/store";
+import { getGame, resolveGameRpc, setDrawOffer } from "@/lib/server/store";
 import { authPlayer } from "@/lib/server/auth";
 import { afterGameResolved } from "@/lib/server/gameEvents";
 import { broadcast } from "@/lib/server/broadcast";
 import { channels } from "@/lib/realtime";
-import { clearOffer, getOffer, setOffer } from "@/lib/server/drawOffers";
 import { fail, ok, readJson } from "@/lib/server/http";
 
-// POST /api/game/draw — draw by agreement.
-//   action 'offer'   → record + broadcast an offer to the opponent
-//   action 'accept'  → only valid if the OPPONENT has a pending offer → draw
+// POST /api/game/draw — draw by agreement, with the pending offer stored in the
+// DB (consistent across Worker isolates — the old in-memory store was not).
+//   action 'offer'   → record draw_offered_by + notify the opponent
+//   action 'accept'  → only resolves if the OPPONENT has a pending offer AND the
+//                      game is still live (require_live) → draw
 //   action 'decline' → clear the offer + notify
 export async function POST(req: Request) {
   const body = await readJson<{
@@ -34,24 +35,25 @@ export async function POST(req: Request) {
   const topic = channels.game(game.id);
 
   if (body.action === "offer") {
-    setOffer(game.id, player.id);
+    await setDrawOffer(game.id, player.id);
     await broadcast(topic, "draw_offer", { by: player.id });
     return ok({ offered: true });
   }
 
   if (body.action === "decline") {
-    clearOffer(game.id);
+    await setDrawOffer(game.id, null);
     await broadcast(topic, "draw_declined", { by: player.id });
     return ok({ declined: true });
   }
 
-  // accept: there must be a pending offer from the OTHER player.
-  const offerer = getOffer(game.id);
-  if (!offerer || offerer === player.id) return fail(409, "no_offer");
+  // accept: there must be a pending offer from the OTHER player (read from DB,
+  // so it is correct regardless of which isolate handled the offer).
+  if (!game.draw_offered_by || game.draw_offered_by === player.id) {
+    return fail(409, "no_offer");
+  }
 
-  const result = await resolveGameRpc(game.id, "draw", "play");
+  const result = await resolveGameRpc(game.id, "draw", "play", /* requireLive */ true);
   if (!result.ok) return fail(409, result.conflict ?? "conflict");
-  clearOffer(game.id);
   await afterGameResolved(game, "draw", "play");
   return ok({ status: "draw" });
 }

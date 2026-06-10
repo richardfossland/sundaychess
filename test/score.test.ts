@@ -26,6 +26,7 @@ function game(
     status,
     result_source: null,
     turn: "w",
+    draw_offered_by: null,
     updated_at: "",
   };
 }
