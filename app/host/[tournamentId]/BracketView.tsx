@@ -6,7 +6,9 @@ import { api, ApiError } from "@/lib/client/api";
 import { identity } from "@/lib/client/identity";
 import { no } from "@/lib/locale/no";
 import { JoinChip } from "@/lib/client/JoinChip";
+import { RoundTimer } from "@/lib/client/RoundTimer";
 import { OverrideModal } from "./OverrideModal";
+import { CodesModal } from "./CodesModal";
 
 function winnerId(g: PublicGame): string | null {
   if (g.status === "white_win") return g.whitePlayerId;
@@ -26,6 +28,7 @@ export function BracketView({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [overrideGame, setOverrideGame] = useState<PublicGame | null>(null);
+  const [showCodes, setShowCodes] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -54,6 +57,21 @@ export function BracketView({
   const allResolved =
     (currentCol?.games.length ?? 0) > 0 && liveCount === 0;
   const isFinal = (currentCol?.games.length ?? 0) === 1;
+
+  const timerSec = tournament.config.roundTimerSec;
+
+  async function addMinute() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.extendRound(tournament.id, hostCode ?? "");
+      onChanged();
+    } catch {
+      setError(no.common.error);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function advance() {
     setBusy(true);
@@ -91,8 +109,24 @@ export function BracketView({
           <span className="knight">♞</span> Sunday<b>Chess</b>
         </span>
         <span className="badge badge-live">{no.host.bracket}</span>
+        {timerSec && currentCol?.round.startedAt && liveCount > 0 && (
+          <div className="row" style={{ gap: 10 }}>
+            <RoundTimer startedAt={currentCol.round.startedAt} durationSec={timerSec} />
+            <button
+              className="btn btn-ghost"
+              style={{ padding: "8px 12px" }}
+              disabled={busy}
+              onClick={addMinute}
+            >
+              {no.host.addMinute}
+            </button>
+          </div>
+        )}
         <span className="grow" />
         <JoinChip pin={tournament.joinPin} />
+        <button className="btn btn-ghost" onClick={() => setShowCodes(true)}>
+          {no.host.showCodes}
+        </button>
         {tournament.title && <span className="muted">{tournament.title}</span>}
       </header>
 
@@ -133,6 +167,14 @@ export function BracketView({
         </p>
       )}
       {error && <div className="banner banner-error" style={{ marginTop: 10, maxWidth: 480 }}>{error}</div>}
+
+      {showCodes && (
+        <CodesModal
+          tournamentId={tournament.id}
+          hostCode={hostCode ?? ""}
+          onClose={() => setShowCodes(false)}
+        />
+      )}
 
       {overrideGame && (
         <OverrideModal

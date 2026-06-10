@@ -13,6 +13,7 @@ export async function POST(req: Request) {
 
   const config: TournamentConfig = { ...DEFAULT_CONFIG, ...(body?.config ?? {}) };
   // Clamp to allowed ranges (defence against a hand-crafted request).
+  if (config.format !== "cup") config.format = "league";
   config.leagueRounds = Math.min(7, Math.max(3, Math.round(config.leagueRounds)));
   if (![0, 4, 8, 16].includes(config.playoffSize)) config.playoffSize = 0;
   if (!config.playoff) config.playoffSize = 0;

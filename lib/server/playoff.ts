@@ -16,6 +16,7 @@ import { channels, events } from "@/lib/realtime";
 import { computeStandings } from "@/lib/tournament/score";
 import {
   buildFirstRound,
+  cupBracketSize,
   effectivePlayoffSize,
   type SeededPlayer,
 } from "@/lib/tournament/bracket";
@@ -23,10 +24,12 @@ import { variantStartFen } from "@/lib/chess/variants";
 import type { Game, Tournament } from "@/lib/types";
 
 /** Winner of a resolved game, or null if it has no decisive winner (draw /
- * aborted → the teacher must decide a playoff game). */
+ * aborted → the teacher must decide a playoff game). A bye advances its
+ * player (cup first rounds when the field isn't a power of two). */
 function winnerOf(g: Game): string | null {
   if (g.status === "white_win") return g.white_player_id;
   if (g.status === "black_win") return g.black_player_id;
+  if (g.status === "bye") return g.white_player_id;
   return null;
 }
 
@@ -74,6 +77,47 @@ export async function maybeStartPlayoff(
 
   await updateTournament(tournament.id, { status: "playoff", current_round: 1 });
   return true;
+}
+
+/** Cup mode: straight to the knockout — EVERY active player enters. Seeding is
+ * shuffled (no standings exist yet); when the field isn't a power of two, the
+ * top of the bracket gets first-round byes. */
+export async function startCup(tournament: Tournament): Promise<void> {
+  const players = await listPlayers(tournament.id);
+  const active = players.filter((p) => p.status === "active");
+  const size = cupBracketSize(active.length);
+  if (size === 0) throw new Error("not_enough_players");
+
+  // Fisher–Yates shuffle — fair, fun seeding for a fresh cup.
+  const order = [...active];
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  const seeded: SeededPlayer[] = order
+    .slice(0, size)
+    .map((p, i) => ({ playerId: p.id, seed: i + 1 }));
+  await Promise.all(seeded.map((s) => setPlayerSeed(s.playerId, s.seed)));
+
+  const matches = buildFirstRound(seeded, size);
+  const round = await createRound(tournament.id, 1, "playoff", "live");
+  const startFen = variantStartFen(tournament.config.variant);
+  for (const m of matches) {
+    if (!m.topPlayerId) continue; // can't happen (top seeds always present)
+    await createGame({
+      tournamentId: tournament.id,
+      roundId: round.id,
+      whitePlayerId: m.topPlayerId,
+      blackPlayerId: m.bottomPlayerId, // null → bye, auto-advances
+      startFen,
+    });
+  }
+
+  await updateTournament(tournament.id, { status: "playoff", current_round: 1 });
+  await broadcast(channels.lobby(tournament.id), events.tournament, {
+    started: true,
+    cup: true,
+  });
 }
 
 /** Every game in the current playoff round is resolved (decisive or not). */

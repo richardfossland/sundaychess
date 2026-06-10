@@ -59,6 +59,10 @@ export function LeagueView({
     () => computeTeamStandings(tournament.config.teams ?? [], players),
     [tournament.config.teams, players],
   );
+  const teamById = useMemo(() => {
+    const m = new Map(players.map((p) => [p.id, p.team]));
+    return (id: string) => m.get(id) ?? null;
+  }, [players]);
 
   const currentRound = useMemo(
     () =>
@@ -173,7 +177,20 @@ export function LeagueView({
                       {s.rank}
                     </span>
                   </td>
-                  <td>{s.displayName}</td>
+                  <td>
+                    {s.displayName}
+                    {teamById(s.playerId) && (
+                      <span
+                        className="team-dot"
+                        title={teamById(s.playerId) ?? ""}
+                        style={{
+                          background: teamColor(teamById(s.playerId) ?? ""),
+                          display: "inline-block",
+                          marginLeft: 7,
+                        }}
+                      />
+                    )}
+                  </td>
                   <td className="num"><b>{s.score}</b></td>
                   <td className="num muted">{s.tiebreak}</td>
                 </tr>

@@ -8,9 +8,53 @@ import { initials } from "@/lib/client/Confetti";
 import { PuzzleCard } from "@/lib/client/PuzzleCard";
 import { PredictPanel } from "@/lib/client/PredictPanel";
 import { variantStartFen } from "@/lib/chess/variants";
-import { teamColor } from "@/lib/tournament/teams";
+import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
 import { no } from "@/lib/locale/no";
 import { GameView } from "./GameView";
+
+/** The player's own end-of-tournament card: placement, top 3, winning team. */
+function FinalResults({ state, playerId }: { state: BoardState; playerId: string }) {
+  const { standings, tournament, players } = state;
+  const mine = standings.find((s) => s.playerId === playerId);
+  const top = standings.slice(0, 3);
+  const medals = ["🥇", "🥈", "🥉"];
+  const teamRows = computeTeamStandings(tournament.config.teams ?? [], players);
+
+  return (
+    <div className="card stack" style={{ padding: 18, width: "100%", maxWidth: 420, gap: 10 }}>
+      <p className="eyebrow" style={{ fontSize: 11 }}>🏁 {no.player.finalTitle}</p>
+      {mine && (
+        <p style={{ fontSize: 17 }}>
+          {no.player.youPlaced} <b style={{ color: "var(--gold)", fontSize: 22 }}>{mine.rank}</b>{" "}
+          {no.player.of} {standings.length} · {mine.score} {no.host.score.toLowerCase()}
+        </p>
+      )}
+      <div className="stack" style={{ gap: 4 }}>
+        {top.map((s, i) => (
+          <div
+            className="spread"
+            key={s.playerId}
+            style={{ fontSize: 14, fontWeight: s.playerId === playerId ? 700 : 400 }}
+          >
+            <span>
+              {medals[i]} {s.displayName}
+            </span>
+            <span className="muted">{s.score}</span>
+          </div>
+        ))}
+      </div>
+      {teamRows.length > 0 && (
+        <div className="spread" style={{ marginTop: 4 }}>
+          <span className="muted" style={{ fontSize: 13 }}>{no.teams.winner}</span>
+          <span className="team-chip">
+            <span className="team-dot" style={{ background: teamColor(teamRows[0].team) }} />
+            🏆 {teamRows[0].team} · <b>{teamRows[0].score}</b>
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Find the player's most relevant game in the current board state. */
 function myGame(state: BoardState, playerId: string): PublicGame | null {
@@ -52,7 +96,7 @@ export function WaitingRoom({
       : null;
     const timerSec = state?.tournament.config.roundTimerSec ?? null;
     const timer =
-      timerSec && activeRound?.phase === "league" && activeRound.startedAt
+      timerSec && activeRound?.startedAt
         ? { startedAt: activeRound.startedAt, durationSec: timerSec }
         : null;
     return (
@@ -128,6 +172,11 @@ export function WaitingRoom({
           Logg ut
         </button>
       </div>
+
+      {/* the player's own final standings once it's all over */}
+      {state && status === "finished" && (
+        <FinalResults state={state} playerId={me.playerId} />
+      )}
 
       {/* something to chew on while waiting */}
       {state && status !== "lobby" && status !== "finished" && (

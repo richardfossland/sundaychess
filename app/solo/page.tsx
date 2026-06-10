@@ -9,7 +9,15 @@ import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import { bestMove, type BotLevel } from "@/lib/chess/bot";
 import { legalDestinations } from "@/lib/chess/validateMove";
 import { Confetti } from "@/lib/client/Confetti";
+import { ReplayBoard } from "@/lib/client/ReplayBoard";
+import { SoundToggle } from "@/lib/client/SoundToggle";
+import { sound } from "@/lib/client/sound";
 import { no } from "@/lib/locale/no";
+
+/** Audible cue for the move just played on `c`. */
+function playMoveCue(c: Chess, captured: boolean) {
+  sound.play(c.inCheck() ? "check" : captured ? "capture" : "move");
+}
 
 const Chessboard = dynamic(
   () => import("react-chessboard").then((m) => m.Chessboard),
@@ -41,6 +49,7 @@ export default function Solo() {
   const [selected, setSelected] = useState<string | null>(null);
   const [legal, setLegal] = useState<string[]>([]);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [replayPgn, setReplayPgn] = useState<string | null>(null);
 
   const myLetter = playerColor === "white" ? "w" : "b";
   // Whose turn it is is derived from the rendered fen (not the mutable ref).
@@ -55,8 +64,10 @@ export default function Solo() {
     if (c.isCheckmate()) {
       const loserIsMe = c.turn() === (forColor === "white" ? "w" : "b");
       setOutcome(loserIsMe ? "loss" : "win");
+      sound.play(loserIsMe ? "lose" : "win");
     } else {
       setOutcome("draw");
+      sound.play("draw");
     }
     return true;
   }
@@ -69,9 +80,10 @@ export default function Solo() {
     setTimeout(() => {
       const m = bestMove(chess.current.fen(), level);
       if (m) {
-        chess.current.move({ from: m.from, to: m.to, promotion: m.promotion ?? "q" });
+        const mv = chess.current.move({ from: m.from, to: m.to, promotion: m.promotion ?? "q" });
         setLastMove({ from: m.from, to: m.to });
         refresh();
+        playMoveCue(chess.current, Boolean(mv?.captured));
       }
       setThinking(false);
       settle(forColor);
@@ -80,9 +92,11 @@ export default function Solo() {
 
   function tryMove(from: string, to: string): boolean {
     if (!isMyTurn) return false;
+    let captured = false;
     try {
       const mv = chess.current.move({ from, to, promotion: "q" });
       if (!mv) return false;
+      captured = Boolean(mv.captured);
     } catch {
       return false;
     }
@@ -90,6 +104,7 @@ export default function Solo() {
     setSelected(null);
     setLegal([]);
     refresh();
+    playMoveCue(chess.current, captured);
     if (settle(playerColor)) return true;
     botMove(playerColor);
     return true;
@@ -105,7 +120,9 @@ export default function Solo() {
     setOutcome(null);
     setSelected(null);
     setLegal([]);
+    setReplayPgn(null);
     setPhase("game");
+    sound.play("start");
     if (color === "black") botMove(color); // computer (white) opens
   }
 
@@ -280,23 +297,43 @@ export default function Solo() {
 
       {outcome && (
         <div className="result-overlay">
-          <div className="result-card stack" style={{ alignItems: "center", gap: 12 }}>
-            <div className="result-emoji">
-              {outcome === "win" ? "🎉" : outcome === "draw" ? "🤝" : "🤖"}
+          {replayPgn !== null ? (
+            <div className="result-card" style={{ maxWidth: 680, width: "100%" }}>
+              <ReplayBoard
+                pgn={replayPgn}
+                orientation={playerColor}
+                whiteName={playerColor === "white" ? no.solo.you : no.solo.computer}
+                blackName={playerColor === "black" ? no.solo.you : no.solo.computer}
+                onClose={() => setReplayPgn(null)}
+              />
             </div>
-            <h1 style={{ fontSize: "clamp(34px,8vw,60px)" }}>{outText}</h1>
-            <p className="muted">{outSub}</p>
-            <div className="row" style={{ marginTop: 6 }}>
-              <button className="btn btn-primary btn-lg" onClick={start}>
-                {no.solo.newGame}
+          ) : (
+            <div className="result-card stack" style={{ alignItems: "center", gap: 12 }}>
+              <div className="result-emoji">
+                {outcome === "win" ? "🎉" : outcome === "draw" ? "🤝" : "🤖"}
+              </div>
+              <h1 style={{ fontSize: "clamp(34px,8vw,60px)" }}>{outText}</h1>
+              <p className="muted">{outSub}</p>
+              <div className="row" style={{ marginTop: 6 }}>
+                <button className="btn btn-primary btn-lg" onClick={start}>
+                  {no.solo.newGame}
+                </button>
+                <Link href="/play" className="btn btn-lg">
+                  {no.solo.back}
+                </Link>
+              </div>
+              <button
+                className="btn btn-ghost"
+                onClick={() => setReplayPgn(chess.current.pgn())}
+              >
+                ♟ {no.replay.cta}
               </button>
-              <Link href="/play" className="btn btn-lg">
-                {no.solo.back}
-              </Link>
             </div>
-          </div>
+          )}
         </div>
       )}
+
+      <SoundToggle />
     </main>
   );
 }

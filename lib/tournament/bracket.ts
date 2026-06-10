@@ -34,6 +34,15 @@ export function effectivePlayoffSize(
   return 0;
 }
 
+/** Cup bracket size: the next power of two ≥ n (players beyond n become
+ * first-round byes for the top seeds). Capped at 32. */
+export function cupBracketSize(n: number): number {
+  if (n < 2) return 0;
+  let size = 2;
+  while (size < n && size < 32) size *= 2;
+  return size;
+}
+
 /** Standard seed order for a bracket of size n (n a power of two).
  * Returns pairs of seeds [top, bottom] for round 1 so that 1 meets the lowest
  * seed, and the bracket is balanced (1 and 2 can only meet in the final). */
@@ -54,11 +63,15 @@ export function seedOrder(n: number): [number, number][] {
   return pairs;
 }
 
-/** Build the first playoff round from seeded players. */
-export function buildFirstRound(seeded: SeededPlayer[]): BracketMatch[] {
-  const n = seeded.length;
+/** Build the first playoff round from seeded players. `bracketSize` defaults
+ * to the player count (league playoff: exact power of two); pass a larger
+ * power of two for cup mode — missing bottom seeds become byes (null). */
+export function buildFirstRound(
+  seeded: SeededPlayer[],
+  bracketSize = seeded.length,
+): BracketMatch[] {
   const bySeed = new Map(seeded.map((s) => [s.seed, s.playerId]));
-  const order = seedOrder(n);
+  const order = seedOrder(bracketSize);
   return order.map((pair, slot) => ({
     matchId: `R1-M${slot}`,
     round: 1,

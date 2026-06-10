@@ -23,6 +23,9 @@ export type Turn = "w" | "b";
 
 /** playoffSize 0 = no playoff. */
 export interface TournamentConfig {
+  /** "league" (default): Swiss rounds, optional playoff. "cup": straight to
+   * the knockout bracket with everyone in (byes fill a non-power-of-two). */
+  format?: "league" | "cup";
   leagueRounds: number; // 3..7
   playoff: boolean;
   playoffSize: 0 | 4 | 8 | 16;

@@ -87,7 +87,13 @@ export function LobbyView({
             disabled={starting || active.length < 2}
             onClick={startLeague}
           >
-            {starting ? <span className="spin" /> : `${no.host.startLeague} →`}
+            {starting ? (
+              <span className="spin" />
+            ) : tournament.config.format === "cup" ? (
+              `🏆 ${no.host.startCup} →`
+            ) : (
+              `${no.host.startLeague} →`
+            )}
           </button>
           {active.length < 2 && (
             <p className="faint" style={{ fontSize: 13 }}>Minst 2 spillere må bli med.</p>

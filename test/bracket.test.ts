@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cupBracketSize,
   bracketRounds,
   buildFirstRound,
   effectivePlayoffSize,
@@ -77,5 +78,36 @@ describe("buildFirstRound + nextRound", () => {
     expect(totalRounds).toBe(3);
     expect(round).toHaveLength(1);
     expect(round[0].winnerPlayerId).toBe("p1"); // top seed wins out
+  });
+});
+
+describe("cupBracketSize", () => {
+  it("rounds up to the next power of two", () => {
+    expect(cupBracketSize(2)).toBe(2);
+    expect(cupBracketSize(3)).toBe(4);
+    expect(cupBracketSize(5)).toBe(8);
+    expect(cupBracketSize(8)).toBe(8);
+    expect(cupBracketSize(19)).toBe(32);
+  });
+  it("needs at least 2 players, caps at 32", () => {
+    expect(cupBracketSize(1)).toBe(0);
+    expect(cupBracketSize(60)).toBe(32);
+  });
+});
+
+describe("buildFirstRound with byes (cup)", () => {
+  it("gives top seeds byes when the bracket is bigger than the field", () => {
+    const seeded = [1, 2, 3, 4, 5].map((s) => ({ playerId: `p${s}`, seed: s }));
+    const matches = buildFirstRound(seeded, 8);
+    expect(matches).toHaveLength(4);
+    // seed order for 8: [1,8] [4,5] [2,7] [3,6] — seeds 6,7,8 are absent
+    const byes = matches.filter((m) => m.topPlayerId && !m.bottomPlayerId);
+    expect(byes.map((m) => m.topPlayerId).sort()).toEqual(["p1", "p2", "p3"]);
+    // the only real round-1 game is 4 vs 5
+    const real = matches.filter((m) => m.topPlayerId && m.bottomPlayerId);
+    expect(real).toHaveLength(1);
+    expect([real[0].topPlayerId, real[0].bottomPlayerId].sort()).toEqual(["p4", "p5"]);
+    // no match is ever entirely empty
+    expect(matches.every((m) => m.topPlayerId !== null)).toBe(true);
   });
 });

@@ -3,7 +3,7 @@
 
 export const no = {
   appName: "SundayChess",
-  tagline: "Sjakkturnering for klasserommet",
+  tagline: "Sjakkturnering for hele gruppa",
 
   common: {
     next: "Neste",
@@ -36,6 +36,7 @@ export const no = {
     players: "Spillere",
     noPlayers: "Ingen har blitt med ennå …",
     startLeague: "Start liga",
+    startCup: "Start cup",
     standings: "Stilling",
     rank: "#",
     name: "Navn",
@@ -83,6 +84,12 @@ export const no = {
     titleStep: "Tittel",
     titleHint: "Valgfritt — f.eks. «7A vårturnering»",
     titlePlaceholder: "Turneringstittel",
+    formatStep: "Turneringsform",
+    formatLeague: "Liga",
+    formatLeagueSub: "Alle spiller flere runder (sveitsisk) — ev. sluttspill til slutt",
+    formatCup: "Cup",
+    formatCupSub: "Rett på utslagsrunder — vinn eller ryk 🏆",
+    reviewFormat: "Form",
     roundsStep: "Antall ligarunder",
     roundsHint: "Sveitsisk system — anbefalt 5",
     playoffStep: "Sluttspill?",
@@ -190,7 +197,7 @@ export const no = {
     join: "Bli med",
     nameTitle: "Hva heter du?",
     namePlaceholder: "Visningsnavn",
-    nameHint: "Bruk bare fornavn hvis skolen krever det",
+    nameHint: "Bruk gjerne bare fornavn",
     resumeTitle: "Koden din",
     resumeHint: "Skriv den ned! Du trenger den hvis fanen lukkes.",
     resumeAck: "Jeg har skrevet ned koden",
@@ -227,6 +234,9 @@ export const no = {
     oppOutOfTime: "Motstanderens tid er ute!",
     claimWin: "Krev seier på tid",
     myTimeOut: "Tiden din er ute",
+    finalTitle: "Sluttresultat",
+    youPlaced: "Du ble nr.",
+    of: "av",
     drawReason: {
       agreement: "Remis ved avtale",
       threefold: "Remis – trekkgjentakelse",

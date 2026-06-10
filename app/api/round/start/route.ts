@@ -1,9 +1,11 @@
 import { authHost } from "@/lib/server/auth";
 import { listPlayers } from "@/lib/server/store";
 import { startLeague } from "@/lib/server/league";
+import { startCup } from "@/lib/server/playoff";
 import { fail, ok, readJson } from "@/lib/server/http";
 
-// POST /api/round/start — teacher starts the league (lobby → league, round 1).
+// POST /api/round/start — organizer starts the tournament: league round 1, or
+// straight into the knockout bracket when format = "cup".
 export async function POST(req: Request) {
   const body = await readJson<{ tournamentId?: string; hostCode?: string }>(req);
   const t = await authHost(body?.tournamentId, body?.hostCode);
@@ -16,6 +18,10 @@ export async function POST(req: Request) {
   }
 
   try {
+    if (t.config.format === "cup") {
+      await startCup(t);
+      return ok({ status: "playoff" });
+    }
     await startLeague(t);
     return ok({ status: "league" });
   } catch (err) {

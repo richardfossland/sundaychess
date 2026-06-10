@@ -9,6 +9,7 @@ import type { TournamentConfig } from "@/lib/types";
 
 type StepKey =
   | "title"
+  | "format"
   | "rounds"
   | "variant"
   | "playoff"
@@ -26,6 +27,7 @@ export const TEAM_NAMES = ["Rød", "Blå", "Grønn", "Gul"] as const;
 export function Wizard({ onExit }: { onExit?: () => void }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
+  const [format, setFormat] = useState<"league" | "cup">("league");
   const [leagueRounds, setLeagueRounds] = useState(5);
   const [variant, setVariant] = useState<VariantKey>("standard");
   const [playoff, setPlayoff] = useState(false);
@@ -38,14 +40,16 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // The 'size' step only exists when a playoff is enabled.
-  const steps = useMemo<StepKey[]>(
-    () =>
-      playoff
-        ? ["title", "rounds", "variant", "playoff", "size", "timer", "clock", "reactions", "teams", "review"]
-        : ["title", "rounds", "variant", "playoff", "timer", "clock", "reactions", "teams", "review"],
-    [playoff],
-  );
+  // Cup skips rounds/playoff config (everyone goes straight into the bracket);
+  // the 'size' step only exists when a league playoff is enabled.
+  const steps = useMemo<StepKey[]>(() => {
+    if (format === "cup") {
+      return ["title", "format", "variant", "timer", "clock", "reactions", "teams", "review"];
+    }
+    return playoff
+      ? ["title", "format", "rounds", "variant", "playoff", "size", "timer", "clock", "reactions", "teams", "review"]
+      : ["title", "format", "rounds", "variant", "playoff", "timer", "clock", "reactions", "teams", "review"];
+  }, [playoff, format]);
   const key = steps[Math.min(step, steps.length - 1)];
   const isLast = step >= steps.length - 1;
 
@@ -62,10 +66,12 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
   async function create() {
     setBusy(true);
     setError(null);
+    const cup = format === "cup";
     const config: TournamentConfig = {
+      format,
       leagueRounds,
-      playoff,
-      playoffSize: playoff ? playoffSize : 0,
+      playoff: cup ? true : playoff,
+      playoffSize: cup ? 16 : playoff ? playoffSize : 0,
       roundTimerSec: timerMin === 0 ? null : timerMin * 60,
       reactions,
       variant,
@@ -118,6 +124,36 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
           <span className="muted" style={{ fontSize: 12 }}>
             {no.wizard.titleHint}
           </span>
+        </div>
+      )}
+
+      {key === "format" && (
+        <div className="stack">
+          <p className="field" style={{ gap: 4 }}>
+            {no.wizard.formatStep}
+          </p>
+          <div className="stack" style={{ gap: 8 }}>
+            <button
+              className={`btn btn-block ${format === "league" ? "btn-primary" : "btn-ghost"}`}
+              style={{ textAlign: "left", padding: "12px 16px" }}
+              onClick={() => setFormat("league")}
+            >
+              <b>🏅 {no.wizard.formatLeague}</b>
+              <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
+                {no.wizard.formatLeagueSub}
+              </span>
+            </button>
+            <button
+              className={`btn btn-block ${format === "cup" ? "btn-primary" : "btn-ghost"}`}
+              style={{ textAlign: "left", padding: "12px 16px" }}
+              onClick={() => setFormat("cup")}
+            >
+              <b>🏆 {no.wizard.formatCup}</b>
+              <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
+                {no.wizard.formatCupSub}
+              </span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -336,19 +372,27 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
             </div>
           )}
           <div className="spread">
-            <span className="muted">{no.wizard.reviewRounds}</span>
-            <b>{leagueRounds}</b>
+            <span className="muted">{no.wizard.reviewFormat}</span>
+            <b>{format === "cup" ? `🏆 ${no.wizard.formatCup}` : `🏅 ${no.wizard.formatLeague}`}</b>
           </div>
+          {format === "league" && (
+            <div className="spread">
+              <span className="muted">{no.wizard.reviewRounds}</span>
+              <b>{leagueRounds}</b>
+            </div>
+          )}
           {variant !== "standard" && (
             <div className="spread">
               <span className="muted">{no.wizard.reviewVariant}</span>
               <b>{no.wizard.variants[variant]}</b>
             </div>
           )}
-          <div className="spread">
-            <span className="muted">{no.wizard.reviewPlayoff}</span>
-            <b>{playoff ? `${playoffSize}` : no.wizard.none}</b>
-          </div>
+          {format === "league" && (
+            <div className="spread">
+              <span className="muted">{no.wizard.reviewPlayoff}</span>
+              <b>{playoff ? `${playoffSize}` : no.wizard.none}</b>
+            </div>
+          )}
           <div className="spread">
             <span className="muted">{no.wizard.reviewTimer}</span>
             <b>{timerMin === 0 ? no.wizard.none : `${timerMin} ${no.wizard.min}`}</b>
