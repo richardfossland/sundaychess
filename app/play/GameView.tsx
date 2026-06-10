@@ -103,6 +103,7 @@ export function GameView({
   const [pending, setPending] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [incomingDraw, setIncomingDraw] = useState(false);
+  const [drawSent, setDrawSent] = useState(false);
 
   // Last server-confirmed FEN — the rollback target for a failed optimistic move.
   const confirmedFen = useRef<string>("");
@@ -169,6 +170,7 @@ export function GameView({
       setSelected(null);
       setLegal([]);
       setIncomingDraw(false); // a move supersedes any pending draw offer
+      setDrawSent(false);
     } else if (event === "result") {
       const p = payload as { status: GameStatus };
       setStatus(p.status);
@@ -176,7 +178,13 @@ export function GameView({
       const p = payload as { by: string };
       if (p.by !== me.playerId) setIncomingDraw(true);
     } else if (event === "draw_declined") {
+      const p = payload as { by: string };
       setIncomingDraw(false);
+      if (p.by !== me.playerId) {
+        // The opponent declined my offer.
+        setDrawSent(false);
+        flash(no.player.drawDeclined);
+      }
     }
   });
 
@@ -357,11 +365,11 @@ export function GameView({
             <div className="row">
               <button
                 className="btn btn-ghost"
-                disabled={pending}
+                disabled={pending || drawSent}
                 onClick={() =>
-                  api.draw(gameId, me.playerId, me.resumeCode, "offer").then(() =>
-                    flash(no.player.drawOffered),
-                  ).catch(() => flash(no.common.error))
+                  api.draw(gameId, me.playerId, me.resumeCode, "offer")
+                    .then(() => setDrawSent(true))
+                    .catch(() => flash(no.common.error))
                 }
               >
                 ½ {no.player.offerDraw}
@@ -378,6 +386,12 @@ export function GameView({
               >
                 {no.player.resign}
               </button>
+            </div>
+          )}
+
+          {drawSent && !ended && (
+            <div className="banner banner-wait" style={{ width: "100%" }} role="status" aria-live="polite">
+              ½ {no.player.drawSent}
             </div>
           )}
 

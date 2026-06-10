@@ -126,6 +126,8 @@ export const no = {
     resign: "Gi opp",
     resignConfirm: "Gi opp partiet?",
     drawOffered: "Remis tilbudt",
+    drawSent: "Remis-forespørsel sendt til motstander – venter på svar",
+    drawDeclined: "Motstander avslo remis",
     drawOfferedByOpponent: "Motstander tilbyr remis",
     accept: "Godta",
     decline: "Avslå",
