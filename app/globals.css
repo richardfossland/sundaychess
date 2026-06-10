@@ -576,6 +576,79 @@ button {
   box-shadow: var(--shadow-1);
 }
 
+/* ============ player identity card (who is white / black) ============ */
+.player-card {
+  position: relative;
+  overflow: hidden;
+}
+/* a tinted left accent stripe in the player's piece colour */
+.player-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+.player-card-white::before {
+  background: linear-gradient(180deg, #fdfaf2, #d8cfb8);
+}
+.player-card-black::before {
+  background: linear-gradient(180deg, #2b303b, #0c0e13);
+}
+.player-card-white {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, #fdfaf2 8%, var(--ink-soft)),
+    #1a1f29
+  );
+}
+.player-card-black {
+  background: linear-gradient(180deg, #161a22, #0c0e13);
+}
+
+/* the colour chip: a piece glyph on a white / black swatch */
+.color-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 5px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+.color-chip-glyph {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 14px;
+}
+.color-chip-white {
+  background: rgba(253, 250, 242, 0.1);
+  color: #fdfaf2;
+  border: 1px solid rgba(253, 250, 242, 0.22);
+}
+.color-chip-white .color-chip-glyph {
+  background: #fdfaf2;
+  color: #11141b;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.color-chip-black {
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--txt);
+  border: 1px solid var(--ink-line-strong);
+}
+.color-chip-black .color-chip-glyph {
+  background: #0c0e13;
+  color: #fdfaf2;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
 /* ============ chess board frame ============ */
 .board-frame {
   position: relative;
@@ -597,7 +670,7 @@ button {
 }
 /* player board — a comfortably large centre on every screen */
 .board-shell {
-  width: min(94vw, 78vh, 720px);
+  width: min(94vw, 78vh, 760px);
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
@@ -629,7 +702,7 @@ button {
     grid-template-columns: minmax(190px, 1fr) auto minmax(190px, 1fr);
     align-items: center;
     gap: 30px;
-    max-width: 1320px;
+    max-width: 1640px;
   }
   .game-grid .panel-opp {
     justify-self: end;
@@ -642,6 +715,18 @@ button {
   }
   .game-grid .game-center {
     width: auto;
+  }
+  /* with side panels and space around, let the board fill the room.
+     48vw keeps clear of the two panels; 80vh leaves room for the turn
+     banner above and the action buttons below. */
+  .game-grid .board-shell {
+    width: min(48vw, 80vh, 900px);
+  }
+}
+/* very wide screens (projector / large monitor): go bigger still */
+@media (min-width: 1500px) {
+  .game-grid .board-shell {
+    width: min(46vw, 82vh, 1040px);
   }
 }
 /* spectator/projector board — much larger on a big screen */

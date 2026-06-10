@@ -18,23 +18,34 @@ import { no } from "@/lib/locale/no";
 
 /** A player's side panel (avatar, name, colour, captured pieces) — sits beside
  * the board on wide screens and stacks above/below it on narrow ones. */
+function ColorChip({ color, label }: { color: "white" | "black"; label: string }) {
+  return (
+    <span className={`color-chip color-chip-${color}`}>
+      <span className="color-chip-glyph">{color === "white" ? "♔" : "♚"}</span>
+      {label}
+    </span>
+  );
+}
+
 function SidePanel({
   name,
-  sub,
+  color,
+  colorLabel,
   fen,
   capSide,
   isMe,
   active,
 }: {
   name: string;
-  sub: string;
+  color: "white" | "black";
+  colorLabel: string;
   fen: string;
   capSide: "white" | "black";
   isMe: boolean;
   active: boolean;
 }) {
   return (
-    <div className="card" style={{ padding: 15 }}>
+    <div className={`card player-card player-card-${color}`} style={{ padding: 15 }}>
       <div className="row" style={{ gap: 10 }}>
         <span
           className="avatar-lg"
@@ -50,9 +61,11 @@ function SidePanel({
         >
           {initials(name)}
         </span>
-        <div style={{ lineHeight: 1.25, minWidth: 0, flex: 1 }}>
+        <div style={{ lineHeight: 1.3, minWidth: 0, flex: 1 }}>
           <b>{name}</b>
-          <div className="faint" style={{ fontSize: 12 }}>{sub}</div>
+          <div style={{ marginTop: 3 }}>
+            <ColorChip color={color} label={colorLabel} />
+          </div>
         </div>
         {active && (
           <span
@@ -317,7 +330,8 @@ export function GameView({
         <div className="game-side panel-opp">
           <SidePanel
             name={opponent?.name ?? "?"}
-            sub={oppColor === "white" ? no.player.white : no.player.black}
+            color={oppColor}
+            colorLabel={oppColor === "white" ? no.player.white : no.player.black}
             fen={fen}
             capSide={oppColor}
             isMe={false}
@@ -432,7 +446,8 @@ export function GameView({
         <div className="game-side panel-me">
           <SidePanel
             name={me.displayName}
-            sub={`${no.player.youAre} ${myColor === "white" ? no.player.white : no.player.black}`}
+            color={myColor}
+            colorLabel={`${no.player.youAre} ${myColor === "white" ? no.player.white : no.player.black}`}
             fen={fen}
             capSide={myColor}
             isMe

@@ -17,7 +17,9 @@ describe("effectivePlayoffSize", () => {
     expect(effectivePlayoffSize(8, 8)).toBe(8);
     expect(effectivePlayoffSize(8, 6)).toBe(4);
     expect(effectivePlayoffSize(16, 10)).toBe(8);
-    expect(effectivePlayoffSize(16, 3)).toBe(0); // under 4 → no playoff
+    expect(effectivePlayoffSize(16, 3)).toBe(2); // 3 players → a 2-player final
+    expect(effectivePlayoffSize(8, 2)).toBe(2); // 2 students → still a final
+    expect(effectivePlayoffSize(8, 1)).toBe(0); // 1 player → no playoff
   });
 });
 

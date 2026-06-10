@@ -24,11 +24,12 @@ export interface BracketMatch {
 export function effectivePlayoffSize(
   requested: 0 | 4 | 8 | 16,
   playerCount: number,
-): 0 | 4 | 8 | 16 {
+): 0 | 2 | 4 | 8 | 16 {
   if (requested === 0) return 0;
   const size = Math.min(requested, playerCount);
-  // shrink to nearest power of two ≤ size, floor at 4 (no playoff under 4)
-  const allowed: (0 | 4 | 8 | 16)[] = [16, 8, 4];
+  // shrink to nearest power of two ≤ size; allow a 2-player final so small
+  // groups (and a 2-student test) still get a real knockout.
+  const allowed: (0 | 2 | 4 | 8 | 16)[] = [16, 8, 4, 2];
   for (const a of allowed) if (size >= a) return a;
   return 0;
 }
