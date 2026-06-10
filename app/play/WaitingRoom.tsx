@@ -56,6 +56,7 @@ export function WaitingRoom({
         me={me}
         gameId={activeGameId}
         timer={timer}
+        reactionsEnabled={state?.tournament.config.reactions === true}
         onFinished={() => {
           setActiveGameId(null);
           refresh();

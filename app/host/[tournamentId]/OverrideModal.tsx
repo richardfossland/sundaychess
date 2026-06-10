@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/client/api";
+import { ReplayBoard } from "@/lib/client/ReplayBoard";
 import { no } from "@/lib/locale/no";
 import type { GameStatus } from "@/lib/types";
 
@@ -32,6 +33,7 @@ export function OverrideModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scope, setScope] = useState<"round" | "tournament">("round");
+  const [replayPgn, setReplayPgn] = useState<string | null>(null);
 
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -64,13 +66,38 @@ export function OverrideModal({
       }}
     >
       <div
-        className="card card-narrow stack scale-in"
+        className={`card stack scale-in ${replayPgn !== null ? "" : "card-narrow"}`}
+        style={replayPgn !== null ? { maxWidth: 680, width: "100%" } : undefined}
         onClick={(e) => e.stopPropagation()}
       >
+        {replayPgn !== null ? (
+          <ReplayBoard
+            pgn={replayPgn}
+            whiteName={white.name}
+            blackName={black?.name ?? no.host.bye}
+            onClose={() => setReplayPgn(null)}
+          />
+        ) : (
+          <>
         <h3 style={{ fontSize: 20 }}>{no.host.overrideTitle}</h3>
         <p className="muted">
           {white.name} {no.player.vs} {black?.name ?? no.host.bye}
         </p>
+
+        {black && (
+          <button
+            className="btn btn-ghost btn-block"
+            disabled={busy}
+            onClick={() =>
+              api
+                .game(gameId)
+                .then((d) => setReplayPgn(d.pgn))
+                .catch(() => setError(no.common.error))
+            }
+          >
+            ♟ {no.replay.cta}
+          </button>
+        )}
 
         <p className="eyebrow">{no.host.setResult}</p>
         <button className="btn btn-block" disabled={busy} onClick={() => setResult("white_win")}>
@@ -121,6 +148,8 @@ export function OverrideModal({
         <button className="btn btn-ghost btn-block" onClick={onClose}>
           {no.common.cancel}
         </button>
+          </>
+        )}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { Chess } from "chess.js";
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import type { GameDetail } from "@/lib/dto";
 import type { GameStatus, Turn } from "@/lib/types";
@@ -14,7 +15,30 @@ import type { StoredPlayer } from "@/lib/client/identity";
 import { Confetti, initials } from "@/lib/client/Confetti";
 import { CapturedPieces } from "@/lib/client/CapturedPieces";
 import { RoundTimer } from "@/lib/client/RoundTimer";
+import { sound } from "@/lib/client/sound";
+import { SoundToggle } from "@/lib/client/SoundToggle";
+import {
+  ReactionBar,
+  ReactionLayer,
+  type FloatingReaction,
+} from "@/lib/client/Reactions";
+import { ReplayBoard } from "@/lib/client/ReplayBoard";
 import { no } from "@/lib/locale/no";
+
+/** Piece count from a FEN board field — a drop between positions = capture. */
+function pieceCount(fen: string): number {
+  return (fen.split(" ")[0].match(/[a-zA-Z]/g) ?? []).length;
+}
+
+/** Pick the sound cue for arriving at `fen` from `prevFen`. */
+function moveCue(prevFen: string, fen: string): "move" | "capture" | "check" {
+  try {
+    if (new Chess(fen).inCheck()) return "check";
+  } catch {
+    // unparseable fen → fall through to the count check
+  }
+  return prevFen && pieceCount(fen) < pieceCount(prevFen) ? "capture" : "move";
+}
 
 /** A player's side panel (avatar, name, colour, captured pieces) — sits beside
  * the board on wide screens and stacks above/below it on narrow ones. */
@@ -100,11 +124,13 @@ export function GameView({
   gameId,
   onFinished,
   timer,
+  reactionsEnabled = false,
 }: {
   me: StoredPlayer;
   gameId: string;
   onFinished: () => void;
   timer?: { startedAt: string | null; durationSec: number } | null;
+  reactionsEnabled?: boolean;
 }) {
   const [detail, setDetail] = useState<GameDetail | null>(null);
   const [fen, setFen] = useState<string>("");
@@ -117,9 +143,23 @@ export function GameView({
   const [toast, setToast] = useState<string | null>(null);
   const [incomingDraw, setIncomingDraw] = useState(false);
   const [drawSent, setDrawSent] = useState(false);
+  const [floats, setFloats] = useState<FloatingReaction[]>([]);
+  const [replayPgn, setReplayPgn] = useState<string | null>(null);
+  const floatSeq = useRef(0);
 
   // Last server-confirmed FEN — the rollback target for a failed optimistic move.
   const confirmedFen = useRef<string>("");
+
+  const addFloat = useCallback((emoji: string) => {
+    const id = ++floatSeq.current;
+    setFloats((f) => [...f, { id, emoji, x: 12 + Math.random() * 70 }]);
+    setTimeout(() => setFloats((f) => f.filter((r) => r.id !== id)), 2600);
+  }, []);
+
+  // game-start jingle (also nudges the AudioContext awake on mount)
+  useEffect(() => {
+    sound.play("start");
+  }, []);
 
   const myColor: Color = detail?.black?.id === me.playerId ? "black" : "white";
   const myTurnLetter: Turn = myColor === "white" ? "w" : "b";
@@ -171,8 +211,18 @@ export function GameView({
     setTimeout(() => setToast(null), 2200);
   };
 
+  // Result sound — fires once when the game flips from live to a result.
+  useEffect(() => {
+    if (status === "live") return;
+    if (status === "bye" || status === "aborted") return;
+    const won =
+      (status === "white_win" && myColor === "white") ||
+      (status === "black_win" && myColor === "black");
+    sound.play(status === "draw" ? "draw" : won ? "win" : "lose");
+  }, [status, myColor]);
+
   // Authoritative updates from the game channel.
-  useChannel(channels.game(gameId), (event, payload) => {
+  const sendOnGame = useChannel(channels.game(gameId), (event, payload) => {
     if (event === "position") {
       const p = payload as {
         fen: string;
@@ -180,6 +230,8 @@ export function GameView({
         status: GameStatus;
         lastMove?: { from: string; to: string } | null;
       };
+      // The opponent moved (self-broadcasts are off) — audible cue.
+      if (p.fen !== fen) sound.play(moveCue(fen, p.fen));
       setFen(p.fen);
       setTurn(p.turn);
       setStatus(p.status);
@@ -189,6 +241,9 @@ export function GameView({
       setLegal([]);
       setIncomingDraw(false); // a move supersedes any pending draw offer
       setDrawSent(false);
+    } else if (event === "reaction") {
+      const p = payload as { emoji?: string };
+      if (typeof p.emoji === "string" && p.emoji.length <= 8) addFloat(p.emoji);
     } else if (event === "result") {
       const p = payload as { status: GameStatus };
       setStatus(p.status);
@@ -214,6 +269,7 @@ export function GameView({
       // Auto-queen on promotion (custom promotion UI is a Phase 6 open question).
       const local = applyMove(fen, { from, to, promotion: "q" });
       if (!local.ok) return false;
+      sound.play(moveCue(fen, local.fen));
 
       const before = fen;
       setFen(local.fen);
@@ -373,7 +429,17 @@ export function GameView({
                 }}
               />
             </div>
+            <ReactionLayer items={floats} />
           </div>
+
+          {reactionsEnabled && !ended && (
+            <ReactionBar
+              onSend={(emoji) => {
+                addFloat(emoji); // self-broadcast is off → show mine locally
+                sendOnGame("reaction", { emoji, by: me.playerId });
+              }}
+            />
+          )}
 
           {!ended && (
             <div className="row">
@@ -458,24 +524,50 @@ export function GameView({
 
       {ended && (
         <div className="result-overlay">
-          <div className="result-card stack" style={{ alignItems: "center", gap: 12 }}>
-            <div className="result-emoji">
-              {status === "draw" ? "🤝" : iWon ? "🎉" : "😔"}
+          {replayPgn !== null ? (
+            <div className="result-card" style={{ maxWidth: 680, width: "100%" }}>
+              <ReplayBoard
+                pgn={replayPgn}
+                orientation={myColor}
+                whiteName={detail.white.name}
+                blackName={detail.black?.name ?? "?"}
+                onClose={() => setReplayPgn(null)}
+              />
             </div>
-            <h1 style={{ fontSize: "clamp(36px,9vw,64px)" }}>{resultText}</h1>
-            <p className="muted">
-              {status === "draw"
-                ? "Godt spilt av begge."
-                : iWon
-                  ? "Sterkt spilt!"
-                  : "Bedre lykke neste runde."}
-            </p>
-            <button className="btn btn-primary btn-lg" style={{ marginTop: 6 }} onClick={onFinished}>
-              {no.common.next} →
-            </button>
-          </div>
+          ) : (
+            <div className="result-card stack" style={{ alignItems: "center", gap: 12 }}>
+              <div className="result-emoji">
+                {status === "draw" ? "🤝" : iWon ? "🎉" : "😔"}
+              </div>
+              <h1 style={{ fontSize: "clamp(36px,9vw,64px)" }}>{resultText}</h1>
+              <p className="muted">
+                {status === "draw"
+                  ? "Godt spilt av begge."
+                  : iWon
+                    ? "Sterkt spilt!"
+                    : "Bedre lykke neste runde."}
+              </p>
+              <button className="btn btn-primary btn-lg" style={{ marginTop: 6 }} onClick={onFinished}>
+                {no.common.next} →
+              </button>
+              <button
+                className="btn btn-ghost"
+                onClick={() =>
+                  // refetch: `detail.pgn` predates the final moves
+                  api
+                    .game(gameId)
+                    .then((d) => setReplayPgn(d.pgn))
+                    .catch(() => setReplayPgn(detail.pgn))
+                }
+              >
+                ♟ {no.replay.cta}
+              </button>
+            </div>
+          )}
         </div>
       )}
+
+      <SoundToggle />
     </main>
   );
 }

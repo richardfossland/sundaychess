@@ -22,6 +22,7 @@ export async function POST(req: Request) {
   ) {
     config.roundTimerSec = null;
   }
+  config.reactions = config.reactions === true;
 
   const title = body?.title?.toString().slice(0, 80).trim() || null;
 

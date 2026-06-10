@@ -1,8 +1,15 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { EvalBar } from "@/lib/client/EvalBar";
 import { CapturedPieces } from "@/lib/client/CapturedPieces";
+import { HypeCallout } from "@/lib/client/HypeCallout";
+import { ReactionLayer, type FloatingReaction } from "@/lib/client/Reactions";
+import { SoundToggle } from "@/lib/client/SoundToggle";
+import { sound } from "@/lib/client/sound";
+import { channels } from "@/lib/realtime";
+import { useChannel } from "@/lib/client/useChannel";
 import { initials } from "@/lib/client/Confetti";
 import { no } from "@/lib/locale/no";
 
@@ -45,19 +52,44 @@ function SpectatePlayer({
 }
 
 /** Big-screen spectator view of one game: large read-only board with the
- * engine eval bar + captured pieces. Driven by `fen` from the parent (which
- * patches it live), so no own subscription. */
+ * engine eval bar, hype callouts, captured pieces, player reactions and a
+ * subtle move tick. Position is driven by `fen` from the parent (which
+ * patches it live); the own subscription is only for ephemeral reactions. */
 export function SpectateGame({
+  gameId,
   fen,
   white,
   black,
   onClose,
 }: {
+  gameId: string;
   fen: string;
   white: string;
   black: string;
   onClose: () => void;
 }) {
+  const [floats, setFloats] = useState<FloatingReaction[]>([]);
+  const floatSeq = useRef(0);
+
+  const addFloat = useCallback((emoji: string) => {
+    const id = ++floatSeq.current;
+    setFloats((f) => [...f, { id, emoji, x: 12 + Math.random() * 70 }]);
+    setTimeout(() => setFloats((f) => f.filter((r) => r.id !== id)), 2600);
+  }, []);
+
+  useChannel(channels.game(gameId), (event, payload) => {
+    if (event !== "reaction") return;
+    const p = payload as { emoji?: string };
+    if (typeof p.emoji === "string" && p.emoji.length <= 8) addFloat(p.emoji);
+  });
+
+  // subtle tick on each new position (skip the first render)
+  const prevFen = useRef<string | null>(null);
+  useEffect(() => {
+    if (prevFen.current !== null && prevFen.current !== fen) sound.play("tick");
+    prevFen.current = fen;
+  }, [fen]);
+
   return (
     <main className="center-screen">
       <div className="stack" style={{ alignItems: "center", gap: 14 }}>
@@ -82,11 +114,15 @@ export function SpectateGame({
                 }}
               />
             </div>
+            <HypeCallout fen={fen} />
+            <ReactionLayer items={floats} />
           </div>
         </div>
 
         <SpectatePlayer name={white} side="white" fen={fen} />
       </div>
+
+      <SoundToggle />
     </main>
   );
 }

@@ -63,6 +63,7 @@ export function LiveGamesView({ state }: { state: BoardState }) {
     if (g) {
       return (
         <SpectateGame
+          gameId={g.id}
           fen={fenMap[g.id] ?? g.fen}
           white={nameById(g.whitePlayerId)}
           black={nameById(g.blackPlayerId)}

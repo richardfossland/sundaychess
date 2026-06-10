@@ -7,7 +7,14 @@ import { api } from "@/lib/client/api";
 import { identity } from "@/lib/client/identity";
 import type { TournamentConfig } from "@/lib/types";
 
-type StepKey = "title" | "rounds" | "playoff" | "size" | "timer" | "review";
+type StepKey =
+  | "title"
+  | "rounds"
+  | "playoff"
+  | "size"
+  | "timer"
+  | "reactions"
+  | "review";
 
 export function Wizard({ onExit }: { onExit?: () => void }) {
   const router = useRouter();
@@ -16,6 +23,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
   const [playoff, setPlayoff] = useState(false);
   const [playoffSize, setPlayoffSize] = useState<4 | 8 | 16>(8);
   const [timerMin, setTimerMin] = useState<0 | 5 | 10 | 15>(0);
+  const [reactions, setReactions] = useState(false);
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,8 +32,8 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
   const steps = useMemo<StepKey[]>(
     () =>
       playoff
-        ? ["title", "rounds", "playoff", "size", "timer", "review"]
-        : ["title", "rounds", "playoff", "timer", "review"],
+        ? ["title", "rounds", "playoff", "size", "timer", "reactions", "review"]
+        : ["title", "rounds", "playoff", "timer", "reactions", "review"],
     [playoff],
   );
   const key = steps[Math.min(step, steps.length - 1)];
@@ -49,6 +57,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
       playoff,
       playoffSize: playoff ? playoffSize : 0,
       roundTimerSec: timerMin === 0 ? null : timerMin * 60,
+      reactions,
     };
     try {
       const t = await api.createTournament({ title: title.trim(), config });
@@ -202,6 +211,31 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
         </div>
       )}
 
+      {key === "reactions" && (
+        <div className="stack">
+          <p className="field" style={{ gap: 4 }}>
+            {no.wizard.reactionsStep}
+          </p>
+          <div className="row">
+            <button
+              className={`btn grow btn-lg ${!reactions ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => setReactions(false)}
+            >
+              {no.wizard.reactionsOff}
+            </button>
+            <button
+              className={`btn grow btn-lg ${reactions ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => setReactions(true)}
+            >
+              👍😄🔥 {no.wizard.reactionsOn}
+            </button>
+          </div>
+          <span className="muted text-center" style={{ fontSize: 13 }}>
+            {no.wizard.reactionsHint}
+          </span>
+        </div>
+      )}
+
       {key === "review" && (
         <div className="stack">
           <p className="eyebrow">{no.wizard.reviewStep}</p>
@@ -222,6 +256,10 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
           <div className="spread">
             <span className="muted">{no.wizard.reviewTimer}</span>
             <b>{timerMin === 0 ? no.wizard.none : `${timerMin} ${no.wizard.min}`}</b>
+          </div>
+          <div className="spread">
+            <span className="muted">{no.wizard.reviewReactions}</span>
+            <b>{reactions ? no.wizard.reactionsOn : no.wizard.reactionsOff}</b>
           </div>
         </div>
       )}

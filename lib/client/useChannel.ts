@@ -1,18 +1,27 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
 type Handler = (event: string, payload: Record<string, unknown>) => void;
 
 /** Subscribe to a Supabase Realtime channel and invoke `onEvent` for every
  * broadcast event on it. Resubscribes when the topic changes. The handler is
- * kept in a ref so consumers don't need to memoise it. */
-export function useChannel(topic: string | null, onEvent: Handler) {
+ * kept in a ref so consumers don't need to memoise it.
+ *
+ * Returns a stable `send(event, payload)` for ephemeral client broadcasts
+ * (e.g. emoji reactions) on the same channel — a no-op until subscribed. */
+export function useChannel(
+  topic: string | null,
+  onEvent: Handler,
+): (event: string, payload: Record<string, unknown>) => void {
   const handlerRef = useRef(onEvent);
   useEffect(() => {
     handlerRef.current = onEvent;
   });
+
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
     if (!topic) return;
@@ -31,9 +40,15 @@ export function useChannel(topic: string | null, onEvent: Handler) {
       );
     });
     channel.subscribe();
+    channelRef.current = channel;
 
     return () => {
+      channelRef.current = null;
       supabase.removeChannel(channel);
     };
   }, [topic]);
+
+  return useCallback((event: string, payload: Record<string, unknown>) => {
+    void channelRef.current?.send({ type: "broadcast", event, payload });
+  }, []);
 }

@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import type { BoardState, PublicGame } from "@/lib/dto";
 import { Confetti, initials } from "@/lib/client/Confetti";
+import { SoundToggle } from "@/lib/client/SoundToggle";
+import { sound } from "@/lib/client/sound";
 import { no } from "@/lib/locale/no";
 
 function gameWinner(g: PublicGame): string | null {
@@ -15,6 +17,11 @@ function gameWinner(g: PublicGame): string | null {
 
 export function FinishedView({ state }: { state: BoardState }) {
   const { standings, players, games, rounds } = state;
+
+  // victory fanfare, once, when the podium appears
+  useEffect(() => {
+    sound.play("win");
+  }, []);
 
   const championId = useMemo(() => {
     const playoffRounds = rounds
@@ -84,6 +91,8 @@ export function FinishedView({ state }: { state: BoardState }) {
           {no.host.newTournament} →
         </Link>
       </div>
+
+      <SoundToggle />
     </main>
   );
 }

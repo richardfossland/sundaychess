@@ -94,11 +94,33 @@ export const no = {
     timerHint: "Nedtelling vises bare på arrangørtavla",
     timerOff: "Av",
     min: "min",
+    reactionsStep: "Emoji-reaksjoner?",
+    reactionsHint:
+      "Spillerne kan sende emojis til hverandre under partiet. Skru av hvis det blir for mye fnising.",
+    reactionsOn: "På",
+    reactionsOff: "Av",
     reviewStep: "Se over",
     reviewRounds: "Ligarunder",
     reviewPlayoff: "Sluttspill",
     reviewTimer: "Rundetimer",
+    reviewReactions: "Reaksjoner",
     none: "Ingen",
+  },
+
+  hype: {
+    blunder: "💥 Bommert!",
+    brilliant: "🌟 Strålende trekk!",
+    swing: "😮 Vending!",
+    mate: "♔ Sjakkmatt!",
+  },
+
+  replay: {
+    title: "Reprise",
+    cta: "Se gjennom partiet",
+    play: "▶ Spill av",
+    pause: "⏸ Pause",
+    move: "Trekk",
+    empty: "Ingen trekk å vise for dette partiet.",
   },
 
   player: {

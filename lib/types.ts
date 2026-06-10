@@ -27,6 +27,9 @@ export interface TournamentConfig {
   playoff: boolean;
   playoffSize: 0 | 4 | 8 | 16;
   roundTimerSec: number | null;
+  /** Players can send emoji reactions in-game. Optional (older rows lack it);
+   * default OFF — the organizer opts in. */
+  reactions?: boolean;
 }
 
 export interface Tournament {
