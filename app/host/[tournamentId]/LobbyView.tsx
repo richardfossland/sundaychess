@@ -48,7 +48,7 @@ export function LobbyView({
     <main className="wrap" style={{ padding: "34px 24px 64px" }}>
       <header className="spread reveal" style={{ marginBottom: 30 }}>
         <span className="brandmark">
-          <span className="knight">♞</span> Sunday<b>Sjakk</b>
+          <span className="knight">♞</span> Sunday<b>Chess</b>
         </span>
         <div className="row" style={{ gap: 12 }}>
           {tournament.title && <span className="muted">{tournament.title}</span>}

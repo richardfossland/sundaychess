@@ -1,6 +1,6 @@
 # Deploy — chess.sundaysuite.app
 
-**Decision (see the plan):** SundaySjakk is its **own** deployment on the
+**Decision (see the plan):** SundayChess is its **own** deployment on the
 subdomain `chess.sundaysuite.app` (the `sundaysuite.app` zone is already on
 Cloudflare). The main SundaySuite site is static HTML and cannot host a Next.js
 route segment, so there is no `/sjakk` subpath proxy — `basePath` stays root.

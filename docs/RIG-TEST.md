@@ -6,7 +6,7 @@ need a real Supabase project (realtime + Postgres) and, ideally, two devices.
 
 ## 1. Provision the dedicated Supabase project
 
-Per the plan, SundaySjakk uses its **own** Supabase project (not the
+Per the plan, SundayChess uses its **own** Supabase project (not the
 church-tenant `sundayplan`).
 
 1. Create a new Supabase project (e.g. `sundaysjakk`). Realtime is enabled by

@@ -1,4 +1,4 @@
-// Shared domain types for SundaySjakk.
+// Shared domain types for SundayChess.
 // Mirrors the Postgres schema in supabase/migrations/0001_schema.sql.
 
 export type TournamentStatus = "lobby" | "league" | "playoff" | "finished";

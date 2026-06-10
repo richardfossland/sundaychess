@@ -19,7 +19,7 @@ export default function Landing() {
           {no.tagline}
         </p>
         <h1 className="reveal" style={r(2, { fontSize: "clamp(48px, 10vw, 96px)", letterSpacing: "-0.03em" })}>
-          Sunday<span style={{ color: "var(--gold)" }}>Sjakk</span>
+          Sunday<span style={{ color: "var(--gold)" }}>Chess</span>
         </h1>
         <hr className="thread reveal" style={r(3, { width: 120 })} />
         <p className="muted reveal" style={r(4, { maxWidth: 440, fontSize: 17 })}>

@@ -2,7 +2,7 @@
 // pass is a one-file copy later.
 
 export const no = {
-  appName: "SundaySjakk",
+  appName: "SundayChess",
   tagline: "Sjakkturnering for klasserommet",
 
   common: {

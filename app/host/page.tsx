@@ -33,7 +33,7 @@ export default function HostEntry() {
     <main className="center-screen">
       <div className="card card-narrow stack scale-in">
         <div className="brandmark" style={{ justifyContent: "center" }}>
-          <span className="knight">♞</span> Sunday<b>Sjakk</b>
+          <span className="knight">♞</span> Sunday<b>Chess</b>
         </div>
 
         <div className="row" style={{ gap: 8 }}>

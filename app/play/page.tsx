@@ -131,7 +131,7 @@ export default function Play() {
     <main className="center-screen">
       <div className="card card-narrow stack">
         <div className="brandmark" style={{ justifyContent: "center", marginBottom: 2 }}>
-          <span className="knight">♞</span> Sunday<b>Sjakk</b>
+          <span className="knight">♞</span> Sunday<b>Chess</b>
         </div>
 
         <div key={screen} className="stack scale-in" style={{ gap: 16 }}>

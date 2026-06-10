@@ -87,7 +87,7 @@ export function BracketView({
     <main className="wrap" style={{ padding: "28px 24px 64px" }}>
       <header className="spread" style={{ marginBottom: 24 }}>
         <span className="brandmark">
-          <span className="knight">♞</span> Sunday<b>Sjakk</b>
+          <span className="knight">♞</span> Sunday<b>Chess</b>
         </span>
         <span className="badge badge-live">{no.host.bracket}</span>
         {tournament.title && <span className="muted">{tournament.title}</span>}

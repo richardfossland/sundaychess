@@ -1,4 +1,4 @@
-# SundaySjakk
+# SundayChess
 
 A Kahoot-style classroom chess tournament for ungdomsskole. A live Swiss league
 (3–7 rounds) with an optional knockout playoff. Students join with a PIN; the

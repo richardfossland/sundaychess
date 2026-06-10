@@ -64,7 +64,7 @@ export function WaitingRoom({
     <main className="center-screen">
       <div className="card card-narrow stack text-center scale-in" style={{ alignItems: "center" }}>
         <div className="brandmark" style={{ justifyContent: "center" }}>
-          <span className="knight">♞</span> Sunday<b>Sjakk</b>
+          <span className="knight">♞</span> Sunday<b>Chess</b>
         </div>
         <div className="avatar-lg float" style={{ width: 64, height: 64, fontSize: 22, marginTop: 4 }}>
           {initials(me.displayName)}

@@ -147,7 +147,7 @@ export default function Solo() {
       <main className="center-screen">
         <div className="card card-narrow stack scale-in" style={{ alignItems: "stretch" }}>
           <div className="brandmark" style={{ justifyContent: "center" }}>
-            <span className="knight">♞</span> Sunday<b>Sjakk</b>
+            <span className="knight">♞</span> Sunday<b>Chess</b>
           </div>
           <div className="text-center stack" style={{ gap: 4 }}>
             <p className="eyebrow">{no.solo.title}</p>

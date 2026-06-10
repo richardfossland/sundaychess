@@ -15,7 +15,7 @@ const body = Hanken_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "SundaySjakk — sjakkturnering for klasserommet",
+  title: "SundayChess — sjakkturnering for klasserommet",
   description: "Kahoot-stil sjakkturnering for ungdomsskolen.",
 };
 

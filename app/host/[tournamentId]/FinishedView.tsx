@@ -39,7 +39,7 @@ export function FinishedView({ state }: { state: BoardState }) {
       <Confetti />
       <div className="stack text-center" style={{ alignItems: "center", maxWidth: 680, gap: 18 }}>
         <span className="brandmark reveal" style={{ ["--i" as string]: 0 } as CSSProperties}>
-          <span className="knight">♞</span> Sunday<b>Sjakk</b>
+          <span className="knight">♞</span> Sunday<b>Chess</b>
         </span>
         <p className="eyebrow reveal" style={{ ["--i" as string]: 1 } as CSSProperties}>
           {no.host.podium}
