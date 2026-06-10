@@ -19,9 +19,9 @@ export const no = {
   },
 
   landing: {
-    teacher: "Jeg er lærer",
+    teacher: "Jeg arrangerer",
     teacherSub: "Lag en turnering og vis tavla",
-    student: "Jeg er spiller",
+    student: "Jeg spiller",
     studentSub: "Bli med med en PIN",
   },
 
@@ -91,7 +91,7 @@ export const no = {
     playoffSizeStep: "Antall i sluttspill",
     playoffSizeHint: "Topp N går videre til utslagsrunder",
     timerStep: "Rundetimer",
-    timerHint: "Nedtelling vises bare på lærertavla",
+    timerHint: "Nedtelling vises bare på arrangørtavla",
     timerOff: "Av",
     min: "min",
     reviewStep: "Se over",
@@ -114,7 +114,7 @@ export const no = {
     haveCode: "Har du en kode?",
     resumePlaceholder: "f.eks. KOLE-7F",
     resume: "Gjenoppta",
-    waitingStart: "Venter på at læreren starter …",
+    waitingStart: "Venter på at arrangøren starter …",
     waitingNext: "Venter på neste motstander …",
     waitingBye: "Du har frirunde — slapp av til neste runde 🎉",
     yourTurn: "DIN TUR",
