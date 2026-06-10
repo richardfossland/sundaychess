@@ -8,6 +8,7 @@ import { no } from "@/lib/locale/no";
 import { RoundTimer } from "@/lib/client/RoundTimer";
 import { useCountdown } from "@/lib/client/useCountdown";
 import { JoinChip } from "@/lib/client/JoinChip";
+import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
 import { OverrideModal } from "./OverrideModal";
 import { CodesModal } from "./CodesModal";
 
@@ -53,6 +54,11 @@ export function LeagueView({
     const m = new Map(players.map((p) => [p.id, p.displayName]));
     return (id: string | null) => (id ? (m.get(id) ?? "?") : no.host.bye);
   }, [players]);
+
+  const teamRows = useMemo(
+    () => computeTeamStandings(tournament.config.teams ?? [], players),
+    [tournament.config.teams, players],
+  );
 
   const currentRound = useMemo(
     () =>
@@ -174,6 +180,30 @@ export function LeagueView({
               ))}
             </tbody>
           </table>
+
+          {/* lagstilling — sum of each team's player scores */}
+          {teamRows.length > 0 && (
+            <div className="stack" style={{ gap: 8, marginTop: 20 }}>
+              <p className="eyebrow">{no.teams.standings}</p>
+              <div className="stack" style={{ gap: 6 }}>
+                {teamRows.map((r, i) => (
+                  <div className="spread" key={r.team} style={{ fontSize: 15 }}>
+                    <span className="row" style={{ gap: 8 }}>
+                      <span className="muted">{i + 1}.</span>
+                      <span className="team-chip">
+                        <span className="team-dot" style={{ background: teamColor(r.team) }} />
+                        {r.team}
+                      </span>
+                      <span className="faint" style={{ fontSize: 12 }}>
+                        {r.players} {no.teams.members}
+                      </span>
+                    </span>
+                    <b style={{ color: "var(--gold)", fontSize: 16 }}>{r.score}</b>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* tipping leaderboard — appears once anyone has earned a point */}
           {(tipping?.length ?? 0) > 0 && (

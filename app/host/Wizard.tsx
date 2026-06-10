@@ -14,10 +14,14 @@ type StepKey =
   | "playoff"
   | "size"
   | "timer"
+  | "clock"
   | "reactions"
+  | "teams"
   | "review";
 
 type VariantKey = "standard" | "no_queens" | "pawn_war";
+
+export const TEAM_NAMES = ["Rød", "Blå", "Grønn", "Gul"] as const;
 
 export function Wizard({ onExit }: { onExit?: () => void }) {
   const router = useRouter();
@@ -27,7 +31,9 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
   const [playoff, setPlayoff] = useState(false);
   const [playoffSize, setPlayoffSize] = useState<4 | 8 | 16>(8);
   const [timerMin, setTimerMin] = useState<0 | 5 | 10 | 15>(0);
+  const [clockMin, setClockMin] = useState<0 | 3 | 5 | 10>(0);
   const [reactions, setReactions] = useState(false);
+  const [teamCount, setTeamCount] = useState<0 | 2 | 3 | 4>(0);
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,8 +42,8 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
   const steps = useMemo<StepKey[]>(
     () =>
       playoff
-        ? ["title", "rounds", "variant", "playoff", "size", "timer", "reactions", "review"]
-        : ["title", "rounds", "variant", "playoff", "timer", "reactions", "review"],
+        ? ["title", "rounds", "variant", "playoff", "size", "timer", "clock", "reactions", "teams", "review"]
+        : ["title", "rounds", "variant", "playoff", "timer", "clock", "reactions", "teams", "review"],
     [playoff],
   );
   const key = steps[Math.min(step, steps.length - 1)];
@@ -63,6 +69,8 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
       roundTimerSec: timerMin === 0 ? null : timerMin * 60,
       reactions,
       variant,
+      clockSec: clockMin === 0 ? null : clockMin * 60,
+      teams: teamCount === 0 ? [] : TEAM_NAMES.slice(0, teamCount) as unknown as string[],
     };
     try {
       const t = await api.createTournament({ title: title.trim(), config });
@@ -244,6 +252,55 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
         </div>
       )}
 
+      {key === "clock" && (
+        <div className="stack">
+          <p className="field" style={{ gap: 4 }}>
+            {no.wizard.clockStep}
+          </p>
+          <div className="row" style={{ flexWrap: "wrap" }}>
+            {([0, 3, 5, 10] as const).map((m) => (
+              <button
+                key={m}
+                className={`btn grow btn-lg ${clockMin === m ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => setClockMin(m)}
+              >
+                {m === 0 ? no.wizard.clockOff : `⏱ ${m} ${no.wizard.min}`}
+              </button>
+            ))}
+          </div>
+          <span className="muted text-center" style={{ fontSize: 13 }}>
+            {no.wizard.clockHint}
+          </span>
+        </div>
+      )}
+
+      {key === "teams" && (
+        <div className="stack">
+          <p className="field" style={{ gap: 4 }}>
+            {no.wizard.teamsStep}
+          </p>
+          <div className="row" style={{ flexWrap: "wrap" }}>
+            {([0, 2, 3, 4] as const).map((n) => (
+              <button
+                key={n}
+                className={`btn grow btn-lg ${teamCount === n ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => setTeamCount(n)}
+              >
+                {n === 0 ? no.wizard.teamsOff : `${n} lag`}
+              </button>
+            ))}
+          </div>
+          {teamCount > 0 && (
+            <p className="text-center" style={{ fontSize: 14 }}>
+              {TEAM_NAMES.slice(0, teamCount).join(" · ")}
+            </p>
+          )}
+          <span className="muted text-center" style={{ fontSize: 13 }}>
+            {no.wizard.teamsHint}
+          </span>
+        </div>
+      )}
+
       {key === "reactions" && (
         <div className="stack">
           <p className="field" style={{ gap: 4 }}>
@@ -296,6 +353,18 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
             <span className="muted">{no.wizard.reviewTimer}</span>
             <b>{timerMin === 0 ? no.wizard.none : `${timerMin} ${no.wizard.min}`}</b>
           </div>
+          {clockMin > 0 && (
+            <div className="spread">
+              <span className="muted">{no.wizard.reviewClock}</span>
+              <b>⏱ {clockMin} {no.wizard.min}</b>
+            </div>
+          )}
+          {teamCount > 0 && (
+            <div className="spread">
+              <span className="muted">{no.wizard.reviewTeams}</span>
+              <b>{TEAM_NAMES.slice(0, teamCount).join(", ")}</b>
+            </div>
+          )}
           <div className="spread">
             <span className="muted">{no.wizard.reviewReactions}</span>
             <b>{reactions ? no.wizard.reactionsOn : no.wizard.reactionsOff}</b>

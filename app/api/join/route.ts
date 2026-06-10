@@ -22,13 +22,14 @@ export async function POST(req: Request) {
   if (t.status !== "lobby") return fail(409, "already_started");
 
   try {
-    const player = await addPlayer(t.id, displayName);
+    const player = await addPlayer(t.id, displayName, t.config.teams ?? []);
     await broadcast(channels.lobby(t.id), events.roster, { joined: player.id });
     return ok({
       tournamentId: t.id,
       playerId: player.id,
       resumeCode: player.resume_code,
       displayName: player.display_name,
+      team: player.team ?? null,
     });
   } catch (err) {
     console.error("[join]", err);

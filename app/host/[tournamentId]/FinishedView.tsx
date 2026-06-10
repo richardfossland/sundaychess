@@ -8,6 +8,7 @@ import { Confetti, initials } from "@/lib/client/Confetti";
 import { SoundToggle } from "@/lib/client/SoundToggle";
 import { sound } from "@/lib/client/sound";
 import { computeAwards, type Award } from "@/lib/tournament/awards";
+import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
 import { no } from "@/lib/locale/no";
 
 const AWARD_EMOJI: Record<Award["key"], string> = {
@@ -37,7 +38,7 @@ function gameWinner(g: PublicGame): string | null {
 }
 
 export function FinishedView({ state }: { state: BoardState }) {
-  const { standings, players, games, rounds } = state;
+  const { standings, players, games, rounds, tournament } = state;
 
   // victory fanfare, once, when the podium appears
   useEffect(() => {
@@ -76,6 +77,11 @@ export function FinishedView({ state }: { state: BoardState }) {
           })),
       ),
     [games],
+  );
+
+  const teamRows = useMemo(
+    () => computeTeamStandings(tournament.config.teams ?? [], players),
+    [tournament.config.teams, players],
   );
   // podium order: 2nd, 1st, 3rd  (champion centre, tallest)
   const top = standings.slice(0, 3);
@@ -127,6 +133,34 @@ export function FinishedView({ state }: { state: BoardState }) {
             </div>
           ))}
         </div>
+
+        {teamRows.length > 0 && (
+          <div className="stack" style={{ alignItems: "center", gap: 10, marginTop: 12, width: "100%" }}>
+            <p className="eyebrow">{no.teams.winner}</p>
+            <div className="row" style={{ flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
+              {teamRows.map((r, i) => (
+                <span
+                  key={r.team}
+                  className="team-chip"
+                  style={{
+                    fontSize: i === 0 ? 17 : 14,
+                    padding: i === 0 ? "8px 18px" : undefined,
+                    borderColor:
+                      i === 0
+                        ? `color-mix(in srgb, ${teamColor(r.team)} 70%, transparent)`
+                        : undefined,
+                    boxShadow:
+                      i === 0 ? `0 8px 30px -10px ${teamColor(r.team)}` : undefined,
+                  }}
+                >
+                  <span className="team-dot" style={{ background: teamColor(r.team) }} />
+                  {i === 0 && "🏆 "}
+                  {r.team} · <b>{r.score}</b>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {awards.length > 0 && (
           <div className="stack" style={{ alignItems: "center", gap: 12, marginTop: 18, width: "100%" }}>

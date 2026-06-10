@@ -96,10 +96,20 @@ export const api = {
     playerId: string;
     resumeCode: string;
   }) =>
-    post<{ fen: string; turn: Turn; status: GameStatus; san: string }>(
-      "/api/move",
-      args,
-    ),
+    post<{
+      fen: string;
+      turn: Turn;
+      status: GameStatus;
+      san: string;
+      clock: { whiteMs: number; blackMs: number; turn: Turn; running: boolean } | null;
+    }>("/api/move", args),
+
+  claimTime: (gameId: string, playerId: string, resumeCode: string) =>
+    post<{ status: GameStatus }>("/api/game/claim", {
+      gameId,
+      playerId,
+      resumeCode,
+    }),
 
   resign: (gameId: string, playerId: string, resumeCode: string) =>
     post<{ status: GameStatus }>("/api/game/resign", {

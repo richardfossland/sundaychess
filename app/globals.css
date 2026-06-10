@@ -1220,3 +1220,53 @@ button {
   line-height: 1;
   filter: drop-shadow(0 6px 16px rgba(235, 184, 75, 0.35));
 }
+
+/* ============ chess clock (lyn/blitz) ============ */
+.chess-clock {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  background: #12151b;
+  border: 1px solid var(--ink-line);
+  color: var(--txt-dim);
+  font-variant-numeric: tabular-nums;
+}
+.chess-clock.clock-running {
+  color: var(--txt);
+  border-color: color-mix(in srgb, var(--gold) 55%, transparent);
+  box-shadow: 0 0 12px -4px rgba(235, 184, 75, 0.6);
+}
+.chess-clock.clock-low {
+  color: #ffd9cf;
+  border-color: color-mix(in srgb, var(--danger) 70%, transparent);
+}
+.chess-clock.clock-running.clock-low {
+  animation: clock-pulse 1s ease-in-out infinite;
+}
+@keyframes clock-pulse {
+  0%, 100% { box-shadow: 0 0 10px -4px rgba(210, 85, 77, 0.7); }
+  50% { box-shadow: 0 0 16px -2px rgba(210, 85, 77, 0.95); }
+}
+
+/* ============ team chips / standings ============ */
+.team-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  border: 1px solid var(--ink-line-strong);
+  background: rgba(0, 0, 0, 0.25);
+}
+.team-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}

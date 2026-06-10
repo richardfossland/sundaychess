@@ -1,13 +1,19 @@
 import { applyMove } from "@/lib/chess/validateMove";
-import { applyMoveRpc, getGame, setDrawOffer } from "@/lib/server/store";
+import {
+  applyMoveRpc,
+  getGame,
+  resolveGameRpc,
+  setDrawOffer,
+} from "@/lib/server/store";
 import { authPlayer } from "@/lib/server/auth";
+import { gameClock } from "@/lib/server/clock";
 import {
   afterGameResolved,
   broadcastPosition,
   broadcastSpectate,
 } from "@/lib/server/gameEvents";
 import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
-import type { Turn } from "@/lib/types";
+import type { GameStatus, Turn } from "@/lib/types";
 
 // POST /api/move — THE server-authoritative move path (spec §4).
 export async function POST(req: Request) {
@@ -39,6 +45,24 @@ export async function POST(req: Request) {
   //    the real enforcement, not just a UI hint.
   const sideOwner = game.turn === "w" ? game.white_player_id : game.black_player_id;
   if (sideOwner !== player.id) return fail(403, "not_your_turn");
+
+  // 3b. Chess clock (lyn/blitz): a flagged mover loses on time instead of
+  //     moving. Resolved server-side so the result is authoritative.
+  const clock = await gameClock(game);
+  if (clock && clock.snap.flagged === game.turn) {
+    const winner: GameStatus =
+      game.turn === "w" ? "black_win" : "white_win";
+    const resolved = await resolveGameRpc(game.id, winner, "play", true);
+    if (resolved.ok) {
+      await afterGameResolved(game, winner, "play");
+      await broadcastPosition(game.id, game.fen, game.turn, winner, null, {
+        ...clock.info,
+        running: false,
+      });
+      await broadcastSpectate(game.tournament_id, game.id, game.fen, game.turn, winner);
+    }
+    return fail(409, "flagged");
+  }
 
   // 4. Validate legality against the stored FEN + history.
   const promotion =
@@ -77,13 +101,30 @@ export async function POST(req: Request) {
   // A move supersedes any pending draw offer.
   if (game.draw_offered_by) await setDrawOffer(game.id, null);
 
+  // The pre-move snapshot already charged the mover up to "now", which equals
+  // the post-move clock state; only the side to move flips.
+  const newClock = clock
+    ? {
+        ...clock.info,
+        turn: applied.turn as Turn,
+        running: applied.status === "live",
+      }
+    : null;
+
   // 6. Broadcast the new authoritative position (hint to refetch/sync) — to the
   //    players' game channel and the teacher's tournament-wide spectate feed.
-  await broadcastPosition(game.id, applied.fen, applied.turn as Turn, applied.status, {
-    from: body.from,
-    to: body.to,
-    san: applied.san,
-  });
+  await broadcastPosition(
+    game.id,
+    applied.fen,
+    applied.turn as Turn,
+    applied.status,
+    {
+      from: body.from,
+      to: body.to,
+      san: applied.san,
+    },
+    newClock,
+  );
   await broadcastSpectate(
     game.tournament_id,
     game.id,
@@ -102,5 +143,6 @@ export async function POST(req: Request) {
     turn: applied.turn,
     status: applied.status,
     san: applied.san,
+    clock: newClock,
   });
 }

@@ -99,6 +99,16 @@ export const no = {
       "Spillerne kan sende emojis til hverandre under partiet. Skru av hvis det blir for mye fnising.",
     reactionsOn: "På",
     reactionsOff: "Av",
+    clockStep: "Sjakklokke (lyn)?",
+    clockHint:
+      "Betenkningstid per spiller. Går tiden ut, kan motstanderen kreve seier.",
+    clockOff: "Uten klokke",
+    reviewClock: "Sjakklokke",
+    teamsStep: "Lagturnering?",
+    teamsHint:
+      "Spillerne fordeles automatisk jevnt på lagene når de blir med. Lagets poeng = summen av spillernes poeng.",
+    teamsOff: "Individuelt",
+    reviewTeams: "Lag",
     variantStep: "Variant",
     variantHint: "Alle varianter følger vanlige sjakkregler.",
     variants: {
@@ -156,6 +166,13 @@ export const no = {
     counter: "løst",
   },
 
+  teams: {
+    standings: "Lagstilling",
+    members: "spillere",
+    yourTeam: "Du er på lag",
+    winner: "Vinnerlag",
+  },
+
   predict: {
     title: "Tipp resultatene",
     hint: "Hvem vinner de andre partiene? 1 poeng per riktig svar.",
@@ -207,6 +224,9 @@ export const no = {
     illegalMove: "Ulovlig trekk",
     notYourTurn: "Det er ikke din tur",
     connection: "Tilkobling ustabil – synkroniserer …",
+    oppOutOfTime: "Motstanderens tid er ute!",
+    claimWin: "Krev seier på tid",
+    myTimeOut: "Tiden din er ute",
     drawReason: {
       agreement: "Remis ved avtale",
       threefold: "Remis – trekkgjentakelse",

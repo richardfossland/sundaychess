@@ -8,6 +8,7 @@ import { initials } from "@/lib/client/Confetti";
 import { PuzzleCard } from "@/lib/client/PuzzleCard";
 import { PredictPanel } from "@/lib/client/PredictPanel";
 import { variantStartFen } from "@/lib/chess/variants";
+import { teamColor } from "@/lib/tournament/teams";
 import { no } from "@/lib/locale/no";
 import { GameView } from "./GameView";
 
@@ -76,6 +77,9 @@ export function WaitingRoom({
     else banner = no.player.waitingNext;
   }
 
+  const myTeam =
+    state?.players.find((p) => p.id === me.playerId)?.team ?? null;
+
   return (
     <main className="center-screen">
       <div className="stack" style={{ alignItems: "center", gap: 16, width: "100%", maxWidth: 450 }}>
@@ -87,6 +91,12 @@ export function WaitingRoom({
           {initials(me.displayName)}
         </div>
         <h2 style={{ fontSize: 26 }}>{me.displayName}</h2>
+        {myTeam && (
+          <span className="team-chip" style={{ fontSize: 13 }}>
+            <span className="team-dot" style={{ background: teamColor(myTeam) }} />
+            {no.teams.yourTeam} {myTeam}
+          </span>
+        )}
 
         <div className="banner banner-wait" style={{ marginTop: 2, width: "100%" }}>
           <span

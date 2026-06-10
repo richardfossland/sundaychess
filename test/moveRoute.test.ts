@@ -9,10 +9,22 @@ const applyMoveRpc = vi.fn();
 const authPlayer = vi.fn();
 const afterGameResolved = vi.fn();
 const broadcastPosition = vi.fn();
+// clock path: defaults (set in beforeEach) configure no clockSec → gameClock()
+// returns null and the flag-fall branch is skipped (clock logic itself is
+// covered by clock.test.ts)
+const getTournament = vi.fn();
+const resolveGameRpc = vi.fn();
+const getRound = vi.fn();
+const listMoveStamps = vi.fn();
 
 vi.mock("@/lib/server/store", () => ({
   getGame: (...a: unknown[]) => getGame(...a),
   applyMoveRpc: (...a: unknown[]) => applyMoveRpc(...a),
+  resolveGameRpc: (...a: unknown[]) => resolveGameRpc(...a),
+  getTournament: (...a: unknown[]) => getTournament(...a),
+  getRound: (...a: unknown[]) => getRound(...a),
+  listMoveStamps: (...a: unknown[]) => listMoveStamps(...a),
+  setDrawOffer: vi.fn(),
 }));
 vi.mock("@/lib/server/auth", () => ({
   authPlayer: (...a: unknown[]) => authPlayer(...a),
@@ -70,6 +82,10 @@ beforeEach(() => {
   applyMoveRpc.mockResolvedValue({ ok: true, ply: 1, status: "live" });
   broadcastPosition.mockResolvedValue(undefined);
   afterGameResolved.mockResolvedValue(undefined);
+  getTournament.mockResolvedValue({ id: "t", config: {} });
+  resolveGameRpc.mockResolvedValue({ ok: true });
+  getRound.mockResolvedValue({ id: "r", started_at: "2026-01-01T00:00:00Z" });
+  listMoveStamps.mockResolvedValue([]);
 });
 
 describe("POST /api/move", () => {
@@ -145,5 +161,18 @@ describe("POST /api/move", () => {
     getGame.mockResolvedValue(null);
     const res = await POST(req({ gameId: "g1", from: "e2", to: "e4", playerId: "white", resumeCode: "AAAA-AA" }));
     expect(res.status).toBe(404);
+  });
+
+  it("flag-fall: a flagged mover loses on time instead of moving", async () => {
+    // 60s clock, round started long ago, no moves → white (to move) is flagged.
+    getTournament.mockResolvedValueOnce({ id: "t", config: { clockSec: 60 } });
+    authPlayer.mockResolvedValue(makePlayer("white"));
+    getGame.mockResolvedValue(makeGame());
+    const res = await POST(req({ gameId: "g1", from: "e2", to: "e4", playerId: "white", resumeCode: "AAAA-AA" }));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe("flagged");
+    expect(resolveGameRpc).toHaveBeenCalledWith("g1", "black_win", "play", true);
+    expect(afterGameResolved).toHaveBeenCalledOnce();
+    expect(applyMoveRpc).not.toHaveBeenCalled();
   });
 });

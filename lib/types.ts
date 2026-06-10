@@ -33,6 +33,11 @@ export interface TournamentConfig {
   /** Theme variant: alternative start position, standard rules. Optional;
    * missing/unknown ⇒ standard. */
   variant?: "standard" | "no_queens" | "pawn_war";
+  /** Per-player chess clock in seconds (lyn/blitz). null/absent = no clock. */
+  clockSec?: number | null;
+  /** Team names (lagturnering). Players are auto-assigned at join to keep the
+   * teams balanced. Empty/absent = individual tournament. */
+  teams?: string[];
 }
 
 export interface Tournament {
@@ -56,6 +61,8 @@ export interface Player {
   tiebreak: number;
   status: PlayerStatus;
   seed: number | null;
+  /** Team name (lagturnering, migration 0006); null/undefined = no team. */
+  team?: string | null;
   joined_at: string;
 }
 

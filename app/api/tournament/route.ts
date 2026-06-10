@@ -25,6 +25,21 @@ export async function POST(req: Request) {
   }
   config.reactions = config.reactions === true;
   if (!isVariant(config.variant)) config.variant = "standard";
+  if (config.clockSec != null && ![180, 300, 600].includes(config.clockSec)) {
+    config.clockSec = null;
+  }
+  // teams: 2-4 trimmed, unique, non-empty names — else individual tournament
+  if (Array.isArray(config.teams)) {
+    const names = config.teams
+      .map((n) => String(n).trim().slice(0, 20))
+      .filter(Boolean);
+    config.teams =
+      names.length >= 2 && names.length <= 4 && new Set(names).size === names.length
+        ? names
+        : [];
+  } else {
+    config.teams = [];
+  }
 
   const title = body?.title?.toString().slice(0, 80).trim() || null;
 

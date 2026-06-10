@@ -1,4 +1,5 @@
 import { getGame, getPlayer } from "@/lib/server/store";
+import { gameClock } from "@/lib/server/clock";
 import { lastMoveFromPgn } from "@/lib/chess/lastMove";
 import { fail, ok } from "@/lib/server/http";
 import type { GameDetail } from "@/lib/dto";
@@ -13,9 +14,10 @@ export async function GET(
   const game = await getGame(id);
   if (!game) return fail(404, "no_game");
 
-  const [white, black] = await Promise.all([
+  const [white, black, clock] = await Promise.all([
     getPlayer(game.white_player_id),
     game.black_player_id ? getPlayer(game.black_player_id) : Promise.resolve(null),
+    gameClock(game).catch(() => null),
   ]);
 
   const detail: GameDetail = {
@@ -29,6 +31,7 @@ export async function GET(
     white: { id: game.white_player_id, name: white?.display_name ?? "?" },
     black: black ? { id: black.id, name: black.display_name } : null,
     lastMove: lastMoveFromPgn(game.pgn),
+    clock: clock?.info ?? null,
   };
   return ok(detail);
 }

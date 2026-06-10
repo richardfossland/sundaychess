@@ -12,12 +12,19 @@ export async function broadcastPosition(
   turn: Turn,
   status: GameStatus,
   lastMove: { from: string; to: string; san: string } | null,
+  clock?: {
+    whiteMs: number;
+    blackMs: number;
+    turn: Turn;
+    running: boolean;
+  } | null,
 ): Promise<void> {
   await broadcast(channels.game(gameId), events.position, {
     fen,
     turn,
     status,
     lastMove,
+    clock: clock ?? null,
   });
 }
 

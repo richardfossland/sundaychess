@@ -115,21 +115,45 @@ export async function listPlayers(tournamentId: string): Promise<Player[]> {
 export async function addPlayer(
   tournamentId: string,
   displayName: string,
+  teams: string[] = [],
 ): Promise<Player> {
   const db = createServiceClient();
   const existing = await listPlayers(tournamentId);
   const taken = new Set(existing.map((p) => p.resume_code));
   const resume_code = generateUnique(generateResumeCode, taken);
 
-  const { data, error } = await db
-    .from("players")
-    .insert({
-      tournament_id: tournamentId,
-      display_name: displayName.slice(0, 40),
-      resume_code,
-    })
-    .select("*")
-    .single();
+  // Lagturnering: auto-assign to the currently smallest team so they stay
+  // balanced regardless of join order.
+  let team: string | null = null;
+  if (teams.length >= 2) {
+    const counts = new Map(teams.map((name) => [name, 0]));
+    for (const p of existing) {
+      if (p.team && counts.has(p.team)) counts.set(p.team, counts.get(p.team)! + 1);
+    }
+    team = teams.reduce((min, name) =>
+      counts.get(name)! < counts.get(min)! ? name : min,
+    );
+  }
+
+  const row: {
+    tournament_id: string;
+    display_name: string;
+    resume_code: string;
+    team?: string;
+  } = {
+    tournament_id: tournamentId,
+    display_name: displayName.slice(0, 40),
+    resume_code,
+  };
+  if (team) row.team = team;
+  const { data, error } = await db.from("players").insert(row).select("*").single();
+  if (error && team) {
+    // players.team may not be migrated yet (0006) — degrade to teamless join
+    delete row.team;
+    const retry = await db.from("players").insert(row).select("*").single();
+    if (retry.error) throw retry.error;
+    return retry.data as Player;
+  }
   if (error) throw error;
   return data as Player;
 }
@@ -355,6 +379,22 @@ export async function getGame(id: string): Promise<Game | null> {
   return (data as Game) ?? null;
 }
 
+
+/** Move timestamps for clock computation (ply + created_at only). */
+export async function listMoveStamps(
+  gameId: string,
+): Promise<{ ply: number; createdAt: string }[]> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("moves")
+    .select("ply, created_at")
+    .eq("game_id", gameId)
+    .order("ply", { ascending: true });
+  return ((data as { ply: number; created_at: string }[]) ?? []).map((m) => ({
+    ply: m.ply,
+    createdAt: m.created_at,
+  }));
+}
 
 // ---------------- predictions (tippemodus, migration 0005) ----------------
 // All prediction helpers degrade gracefully (return/skip) if the predictions

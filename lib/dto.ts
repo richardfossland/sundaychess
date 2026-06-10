@@ -21,6 +21,7 @@ export interface PublicPlayer {
   tiebreak: number;
   status: "active" | "left";
   seed: number | null;
+  team: string | null;
 }
 
 export interface PublicGame {
@@ -69,6 +70,7 @@ export function toPublicPlayer(p: Player): PublicPlayer {
     tiebreak: Number(p.tiebreak),
     status: p.status,
     seed: p.seed,
+    team: p.team ?? null,
   };
 }
 
@@ -98,6 +100,14 @@ export interface GameDetail {
   white: { id: string; name: string };
   black: { id: string; name: string } | null;
   lastMove: { from: string; to: string; san: string } | null;
+  /** Chess-clock snapshot (lyn/blitz); null/absent when no clock configured.
+   * Clients tick the `turn` side down locally from receipt. */
+  clock?: {
+    whiteMs: number;
+    blackMs: number;
+    turn: Turn;
+    running: boolean;
+  } | null;
 }
 
 export function toBoardTournament(t: Tournament) {

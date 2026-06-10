@@ -14,6 +14,7 @@ import { useChannel } from "@/lib/client/useChannel";
 import type { StoredPlayer } from "@/lib/client/identity";
 import { Confetti, initials } from "@/lib/client/Confetti";
 import { CapturedPieces } from "@/lib/client/CapturedPieces";
+import { ChessClock } from "@/lib/client/ChessClock";
 import { RoundTimer } from "@/lib/client/RoundTimer";
 import { sound } from "@/lib/client/sound";
 import { SoundToggle } from "@/lib/client/SoundToggle";
@@ -40,6 +41,22 @@ function moveCue(prevFen: string, fen: string): "move" | "capture" | "check" {
   return prevFen && pieceCount(fen) < pieceCount(prevFen) ? "capture" : "move";
 }
 
+/** Client copy of a server clock snapshot, stamped with local receipt time. */
+interface ClockState {
+  whiteMs: number;
+  blackMs: number;
+  turn: Turn;
+  running: boolean;
+  at: number;
+}
+
+function clockRemaining(c: ClockState, side: Turn): number {
+  const base = side === "w" ? c.whiteMs : c.blackMs;
+  return c.running && c.turn === side
+    ? Math.max(0, base - (Date.now() - c.at))
+    : base;
+}
+
 /** A player's side panel (avatar, name, colour, captured pieces) — sits beside
  * the board on wide screens and stacks above/below it on narrow ones. */
 function ColorChip({ color, label }: { color: "white" | "black"; label: string }) {
@@ -60,6 +77,7 @@ function SidePanel({
   isMe,
   active,
   baselineFen,
+  clock,
 }: {
   name: string;
   color: "white" | "black";
@@ -69,6 +87,7 @@ function SidePanel({
   isMe: boolean;
   active: boolean;
   baselineFen?: string;
+  clock?: { ms: number; at: number; running: boolean } | null;
 }) {
   return (
     <div className={`card player-card player-card-${color}`} style={{ padding: 15 }}>
@@ -93,6 +112,7 @@ function SidePanel({
             <ColorChip color={color} label={colorLabel} />
           </div>
         </div>
+        {clock && <ChessClock ms={clock.ms} at={clock.at} running={clock.running} />}
         {active && (
           <span
             style={{
@@ -150,7 +170,15 @@ export function GameView({
   const [drawSent, setDrawSent] = useState(false);
   const [floats, setFloats] = useState<FloatingReaction[]>([]);
   const [replayPgn, setReplayPgn] = useState<string | null>(null);
+  const [clock, setClock] = useState<ClockState | null>(null);
   const floatSeq = useRef(0);
+
+  const takeClock = useCallback(
+    (c: { whiteMs: number; blackMs: number; turn: Turn; running: boolean } | null | undefined) => {
+      if (c) setClock({ ...c, at: Date.now() });
+    },
+    [],
+  );
 
   // Last server-confirmed FEN — the rollback target for a failed optimistic move.
   const confirmedFen = useRef<string>("");
@@ -178,7 +206,8 @@ export function GameView({
     setStatus(d.status);
     setLastMove(d.lastMove ? { from: d.lastMove.from, to: d.lastMove.to } : null);
     confirmedFen.current = d.fen;
-  }, [gameId]);
+    takeClock(d.clock);
+  }, [gameId, takeClock]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -226,6 +255,21 @@ export function GameView({
     sound.play(status === "draw" ? "draw" : won ? "win" : "lose");
   }, [status, myColor]);
 
+  // Chess-clock flag watcher: re-render twice a second while a clock runs so
+  // the "krev seier på tid" / "tiden din er ute" states appear on time.
+  const [, setFlagTick] = useState(0);
+  useEffect(() => {
+    if (!clock?.running || status !== "live") return;
+    const t = setInterval(() => setFlagTick((n) => n + 1), 500);
+    return () => clearInterval(t);
+  }, [clock, status]);
+
+  const oppTurnLetter: Turn = myTurnLetter === "w" ? "b" : "w";
+  const myClockMs = clock ? clockRemaining(clock, myTurnLetter) : null;
+  const oppClockMs = clock ? clockRemaining(clock, oppTurnLetter) : null;
+  const oppFlagged = status === "live" && oppClockMs !== null && oppClockMs <= 0;
+  const meFlagged = status === "live" && myClockMs !== null && myClockMs <= 0;
+
   // Authoritative updates from the game channel.
   const sendOnGame = useChannel(channels.game(gameId), (event, payload) => {
     if (event === "position") {
@@ -234,12 +278,14 @@ export function GameView({
         turn: Turn;
         status: GameStatus;
         lastMove?: { from: string; to: string } | null;
+        clock?: { whiteMs: number; blackMs: number; turn: Turn; running: boolean } | null;
       };
       // The opponent moved (self-broadcasts are off) — audible cue.
       if (p.fen !== fen) sound.play(moveCue(fen, p.fen));
       setFen(p.fen);
       setTurn(p.turn);
       setStatus(p.status);
+      takeClock(p.clock);
       confirmedFen.current = p.fen;
       if (p.lastMove) setLastMove({ from: p.lastMove.from, to: p.lastMove.to });
       setSelected(null);
@@ -298,13 +344,17 @@ export function GameView({
         setTurn(res.turn);
         setStatus(res.status);
         confirmedFen.current = res.fen;
+        takeClock(res.clock);
       } catch (e) {
         // Roll back to the last confirmed position.
         setFen(before);
         setTurn(myTurnLetter);
         const code = e instanceof ApiError ? e.code : "";
         if (code === "not_your_turn") flash(no.player.notYourTurn);
-        else if (code === "timeout" || code === "network") {
+        else if (code === "flagged") {
+          // My time ran out — the server resolved the game; sync the result.
+          load().catch(() => {});
+        } else if (code === "timeout" || code === "network") {
           // Request hung/dropped — re-sync authoritative state so the board
           // can't get stuck on a stale turn.
           flash(no.player.connection);
@@ -318,7 +368,7 @@ export function GameView({
       }
       return true;
     },
-    [fen, gameId, isMyTurn, load, me.playerId, me.resumeCode, myTurnLetter, pending],
+    [fen, gameId, isMyTurn, load, me.playerId, me.resumeCode, myTurnLetter, pending, takeClock],
   );
 
   function onDrop({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean {
@@ -398,6 +448,15 @@ export function GameView({
             isMe={false}
             active={!ended && !isMyTurn}
             baselineFen={variantFen}
+            clock={
+              clock
+                ? {
+                    ms: oppTurnLetter === "w" ? clock.whiteMs : clock.blackMs,
+                    at: clock.at,
+                    running: clock.running && clock.turn === oppTurnLetter && !ended,
+                  }
+                : null
+            }
           />
         </div>
 
@@ -475,6 +534,32 @@ export function GameView({
             </div>
           )}
 
+          {oppFlagged && (
+            <div
+              className="banner banner-turn"
+              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}
+            >
+              <span>{no.player.oppOutOfTime}</span>
+              <button
+                className="btn btn-primary"
+                style={{ flexShrink: 0 }}
+                onClick={() =>
+                  api
+                    .claimTime(gameId, me.playerId, me.resumeCode)
+                    .catch(() => load().catch(() => {}))
+                }
+              >
+                ⏱ {no.player.claimWin}
+              </button>
+            </div>
+          )}
+
+          {meFlagged && (
+            <div className="banner banner-error" style={{ width: "100%" }} role="status" aria-live="polite">
+              ⏱ {no.player.myTimeOut}
+            </div>
+          )}
+
           {drawSent && !ended && (
             <div className="banner banner-wait" style={{ width: "100%" }} role="status" aria-live="polite">
               ½ {no.player.drawSent}
@@ -525,6 +610,15 @@ export function GameView({
             isMe
             active={!ended && isMyTurn}
             baselineFen={variantFen}
+            clock={
+              clock
+                ? {
+                    ms: myTurnLetter === "w" ? clock.whiteMs : clock.blackMs,
+                    at: clock.at,
+                    running: clock.running && clock.turn === myTurnLetter && !ended,
+                  }
+                : null
+            }
           />
         </div>
       </div>

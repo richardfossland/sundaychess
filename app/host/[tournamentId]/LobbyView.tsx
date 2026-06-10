@@ -7,6 +7,7 @@ import { QRCode } from "@/lib/client/QRCode";
 import { identity } from "@/lib/client/identity";
 import { api } from "@/lib/client/api";
 import { initials } from "@/lib/client/Confetti";
+import { teamColor } from "@/lib/tournament/teams";
 import { no } from "@/lib/locale/no";
 
 export function LobbyView({
@@ -111,6 +112,13 @@ export function LobbyView({
                 <span className="chip" key={p.id}>
                   <span className="avatar">{initials(p.displayName)}</span>
                   {p.displayName}
+                  {p.team && (
+                    <span
+                      className="team-dot"
+                      title={p.team}
+                      style={{ background: teamColor(p.team), marginLeft: 2 }}
+                    />
+                  )}
                 </span>
               ))}
             </div>
