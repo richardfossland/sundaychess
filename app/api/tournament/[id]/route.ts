@@ -3,6 +3,7 @@ import {
   listGames,
   listPlayers,
   listRounds,
+  predictionPoints,
 } from "@/lib/server/store";
 import { computeStandings } from "@/lib/tournament/score";
 import { fail, ok } from "@/lib/server/http";
@@ -22,10 +23,11 @@ export async function GET(
   const t = await getTournament(id);
   if (!t) return fail(404, "not_found");
 
-  const [players, games, rounds] = await Promise.all([
+  const [players, games, rounds, tipping] = await Promise.all([
     listPlayers(id),
     listGames(id),
     listRounds(id),
+    predictionPoints(id).catch(() => []), // empty until 0005 is migrated
   ]);
 
   const state: BoardState = {
@@ -40,6 +42,7 @@ export async function GET(
       status: r.status,
       startedAt: r.started_at,
     })),
+    tipping,
   };
   return ok(state);
 }

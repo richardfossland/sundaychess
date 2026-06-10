@@ -115,6 +115,26 @@ export const api = {
     action: "offer" | "accept" | "decline",
   ) => post<unknown>("/api/game/draw", { gameId, playerId, resumeCode, action }),
 
+  predict: (
+    playerId: string,
+    resumeCode: string,
+    gameId: string,
+    predicted: "white" | "black" | "draw",
+  ) =>
+    post<{ predicted: string }>("/api/predict", {
+      playerId,
+      resumeCode,
+      gameId,
+      predicted,
+      action: "tip",
+    }),
+
+  myPredictions: (playerId: string, resumeCode: string) =>
+    post<{ predictions: Record<string, "white" | "black" | "draw"> }>(
+      "/api/predict",
+      { playerId, resumeCode, action: "list" },
+    ),
+
   // ---- teacher actions (authenticated by host code) ----
   startRound: (tournamentId: string, hostCode: string) =>
     post<{ status: string }>("/api/round/start", { tournamentId, hostCode }),

@@ -1199,3 +1199,24 @@ button {
     transform: translate(-50%, -50%) scale(0.94) translateY(-12px);
   }
 }
+
+/* ============ awards (podium) ============ */
+.award-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+.award-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 12px;
+  text-align: center;
+}
+.award-emoji {
+  font-size: 34px;
+  line-height: 1;
+  filter: drop-shadow(0 6px 16px rgba(235, 184, 75, 0.35));
+}

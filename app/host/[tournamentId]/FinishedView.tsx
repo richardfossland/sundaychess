@@ -7,7 +7,28 @@ import type { BoardState, PublicGame } from "@/lib/dto";
 import { Confetti, initials } from "@/lib/client/Confetti";
 import { SoundToggle } from "@/lib/client/SoundToggle";
 import { sound } from "@/lib/client/sound";
+import { computeAwards, type Award } from "@/lib/tournament/awards";
 import { no } from "@/lib/locale/no";
+
+const AWARD_EMOJI: Record<Award["key"], string> = {
+  fastest_mate: "⚡",
+  most_captures: "⚔️",
+  longest_game: "⏳",
+  comeback: "💪",
+};
+
+function awardDetail(a: Award): string {
+  switch (a.key) {
+    case "fastest_mate":
+      return `Sjakkmatt på ${Math.ceil(a.value / 2)} ${no.awards.movesUnit}`;
+    case "most_captures":
+      return `${a.value} ${no.awards.capturesUnit}`;
+    case "longest_game":
+      return `${Math.ceil(a.value / 2)} ${no.awards.movesUnit}`;
+    case "comeback":
+      return no.awards.comebackDetail;
+  }
+}
 
 function gameWinner(g: PublicGame): string | null {
   if (g.status === "white_win") return g.whitePlayerId;
@@ -36,6 +57,26 @@ export function FinishedView({ state }: { state: BoardState }) {
   }, [rounds, games, standings]);
 
   const champion = players.find((p) => p.id === championId);
+  const nameById = useMemo(() => {
+    const m = new Map(players.map((p) => [p.id, p.displayName]));
+    return (id: string) => m.get(id) ?? "?";
+  }, [players]);
+
+  const awards = useMemo(
+    () =>
+      computeAwards(
+        games
+          .filter((g) => g.pgn)
+          .map((g) => ({
+            id: g.id,
+            whitePlayerId: g.whitePlayerId,
+            blackPlayerId: g.blackPlayerId,
+            status: g.status,
+            pgn: g.pgn as string,
+          })),
+      ),
+    [games],
+  );
   // podium order: 2nd, 1st, 3rd  (champion centre, tallest)
   const top = standings.slice(0, 3);
   const order = [top[1], top[0], top[2]].filter(Boolean);
@@ -86,6 +127,30 @@ export function FinishedView({ state }: { state: BoardState }) {
             </div>
           ))}
         </div>
+
+        {awards.length > 0 && (
+          <div className="stack" style={{ alignItems: "center", gap: 12, marginTop: 18, width: "100%" }}>
+            <p className="eyebrow">{no.awards.title}</p>
+            <div className="award-grid">
+              {awards.map((a, i) => (
+                <div
+                  key={a.key}
+                  className="card award-card reveal"
+                  style={{ ["--i" as string]: 3 + i } as CSSProperties}
+                >
+                  <span className="award-emoji">{AWARD_EMOJI[a.key]}</span>
+                  <b style={{ fontSize: 15 }}>{no.awards[a.key]}</b>
+                  <span style={{ fontSize: 14, color: "var(--gold)" }}>
+                    {a.playerIds.map(nameById).join(" & ")}
+                  </span>
+                  <span className="faint" style={{ fontSize: 12 }}>
+                    {awardDetail(a)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <Link href="/host" className="btn btn-primary btn-lg" style={{ marginTop: 28 }}>
           {no.host.newTournament} →

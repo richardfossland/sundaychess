@@ -1,6 +1,6 @@
 import "server-only";
 
-import { recomputeScores } from "@/lib/server/store";
+import { recomputeScores, scorePredictions } from "@/lib/server/store";
 import { broadcast } from "@/lib/server/broadcast";
 import { channels, events } from "@/lib/realtime";
 import type { Game, GameStatus, ResultSource, Turn } from "@/lib/types";
@@ -47,6 +47,8 @@ export async function afterGameResolved(
   resultSource: ResultSource,
 ): Promise<void> {
   await recomputeScores(game.tournament_id);
+  // settle the tipping points; no-op until the predictions table exists
+  await scorePredictions(game.id, status).catch(() => {});
   await Promise.all([
     broadcast(channels.game(game.id), events.result, {
       gameId: game.id,

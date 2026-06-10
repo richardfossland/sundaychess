@@ -5,6 +5,8 @@ import type { BoardState, PublicGame } from "@/lib/dto";
 import { useBoardState } from "@/lib/client/useBoardState";
 import { identity, type StoredPlayer } from "@/lib/client/identity";
 import { initials } from "@/lib/client/Confetti";
+import { PuzzleCard } from "@/lib/client/PuzzleCard";
+import { PredictPanel } from "@/lib/client/PredictPanel";
 import { no } from "@/lib/locale/no";
 import { GameView } from "./GameView";
 
@@ -74,6 +76,7 @@ export function WaitingRoom({
 
   return (
     <main className="center-screen">
+      <div className="stack" style={{ alignItems: "center", gap: 16, width: "100%", maxWidth: 450 }}>
       <div className="card card-narrow stack text-center scale-in" style={{ alignItems: "center" }}>
         <div className="brandmark" style={{ justifyContent: "center" }}>
           <span className="knight">♞</span> Sunday<b>Chess</b>
@@ -112,6 +115,13 @@ export function WaitingRoom({
         >
           Logg ut
         </button>
+      </div>
+
+      {/* something to chew on while waiting */}
+      {state && status !== "lobby" && status !== "finished" && (
+        <PredictPanel me={me} state={state} />
+      )}
+      <PuzzleCard />
       </div>
     </main>
   );

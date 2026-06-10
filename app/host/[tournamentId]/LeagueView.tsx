@@ -37,7 +37,7 @@ export function LeagueView({
   state: BoardState;
   onChanged: () => void;
 }) {
-  const { tournament, players, games, standings, rounds } = state;
+  const { tournament, players, games, standings, rounds, tipping } = state;
   const [hostCode, setHostCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -174,6 +174,26 @@ export function LeagueView({
               ))}
             </tbody>
           </table>
+
+          {/* tipping leaderboard — appears once anyone has earned a point */}
+          {(tipping?.length ?? 0) > 0 && (
+            <div className="stack" style={{ gap: 8, marginTop: 20 }}>
+              <p className="eyebrow">🎯 {no.predict.leaderboard}</p>
+              <div className="stack" style={{ gap: 4 }}>
+                {(tipping ?? []).slice(0, 5).map((t, i) => (
+                  <div className="spread" key={t.playerId} style={{ fontSize: 14 }}>
+                    <span>
+                      <span className="muted">{i + 1}.</span>{" "}
+                      {nameById(t.playerId)}
+                    </span>
+                    <b style={{ color: "var(--gold)" }}>
+                      {t.points} {no.predict.points}
+                    </b>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Games grid */}

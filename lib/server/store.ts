@@ -354,6 +354,97 @@ export async function getGame(id: string): Promise<Game | null> {
 }
 
 
+// ---------------- predictions (tippemodus, migration 0005) ----------------
+// All prediction helpers degrade gracefully (return/skip) if the predictions
+// table hasn't been migrated yet, so the rest of the app never breaks on it.
+
+export type PredictedResult = "white" | "black" | "draw";
+
+export async function upsertPrediction(
+  tournamentId: string,
+  gameId: string,
+  playerId: string,
+  predicted: PredictedResult,
+): Promise<boolean> {
+  const db = createServiceClient();
+  const { error } = await db.from("predictions").upsert(
+    {
+      tournament_id: tournamentId,
+      game_id: gameId,
+      player_id: playerId,
+      predicted,
+      correct: null,
+    },
+    { onConflict: "game_id,player_id" },
+  );
+  return !error;
+}
+
+/** Mark every prediction on a resolved game right/wrong. Draw counts too. */
+export async function scorePredictions(
+  gameId: string,
+  status: Game["status"],
+): Promise<void> {
+  const map: Partial<Record<Game["status"], PredictedResult>> = {
+    white_win: "white",
+    black_win: "black",
+    draw: "draw",
+  };
+  const actual = map[status];
+  if (!actual) return; // aborted/bye → predictions stay void
+  const db = createServiceClient();
+  await db
+    .from("predictions")
+    .update({ correct: false })
+    .eq("game_id", gameId)
+    .neq("predicted", actual);
+  await db
+    .from("predictions")
+    .update({ correct: true })
+    .eq("game_id", gameId)
+    .eq("predicted", actual);
+}
+
+/** Points per player (1 per correct prediction). Empty if unmigrated. */
+export async function predictionPoints(
+  tournamentId: string,
+): Promise<{ playerId: string; points: number }[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("predictions")
+    .select("player_id, correct")
+    .eq("tournament_id", tournamentId)
+    .eq("correct", true);
+  if (error || !data) return [];
+  const tally = new Map<string, number>();
+  for (const row of data as { player_id: string }[]) {
+    tally.set(row.player_id, (tally.get(row.player_id) ?? 0) + 1);
+  }
+  return [...tally.entries()]
+    .map(([playerId, points]) => ({ playerId, points }))
+    .sort((a, b) => b.points - a.points);
+}
+
+/** A player's own predictions in a tournament (gameId → predicted). */
+export async function listPredictionsForPlayer(
+  tournamentId: string,
+  playerId: string,
+): Promise<Record<string, PredictedResult>> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("predictions")
+    .select("game_id, predicted")
+    .eq("tournament_id", tournamentId)
+    .eq("player_id", playerId);
+  if (error || !data) return {};
+  return Object.fromEntries(
+    (data as { game_id: string; predicted: PredictedResult }[]).map((r) => [
+      r.game_id,
+      r.predicted,
+    ]),
+  );
+}
+
 /** The current live (or most recent) game for a player, for resume/waiting. */
 export async function currentGameForPlayer(
   tournamentId: string,

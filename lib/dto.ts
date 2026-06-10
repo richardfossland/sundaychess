@@ -31,6 +31,9 @@ export interface PublicGame {
   fen: string;
   status: GameStatus;
   turn: Turn;
+  /** Present only once the game is decided — feeds replay + awards without a
+   * per-game fetch. Live games omit it (don't ship the full history each poll). */
+  pgn?: string;
 }
 
 export interface BoardState {
@@ -53,6 +56,9 @@ export interface BoardState {
     status: string;
     startedAt: string | null;
   }[];
+  /** Tipping leaderboard (1 point per correct prediction). Empty/absent until
+   * the predictions migration is applied. */
+  tipping?: { playerId: string; points: number }[];
 }
 
 export function toPublicPlayer(p: Player): PublicPlayer {
@@ -67,6 +73,8 @@ export function toPublicPlayer(p: Player): PublicPlayer {
 }
 
 export function toPublicGame(g: Game): PublicGame {
+  const decided =
+    g.status === "white_win" || g.status === "black_win" || g.status === "draw";
   return {
     id: g.id,
     roundId: g.round_id,
@@ -75,6 +83,7 @@ export function toPublicGame(g: Game): PublicGame {
     fen: g.fen,
     status: g.status,
     turn: g.turn,
+    ...(decided && g.pgn ? { pgn: g.pgn } : {}),
   };
 }
 

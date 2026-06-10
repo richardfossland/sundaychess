@@ -123,6 +123,39 @@ export const no = {
     empty: "Ingen trekk å vise for dette partiet.",
   },
 
+  awards: {
+    title: "Utmerkelser",
+    fastest_mate: "Lyn-matt",
+    most_captures: "Brikkesluker",
+    longest_game: "Maratonpartiet",
+    comeback: "Comeback",
+    movesUnit: "trekk",
+    capturesUnit: "brikker slått",
+    comebackDetail: "Vant fra håpløs stilling",
+  },
+
+  puzzle: {
+    title: "Sjakknøtt mens du venter",
+    prompt: "Sett sjakkmatt i ett trekk",
+    toMoveWhite: "Hvit sin tur",
+    toMoveBlack: "Svart sin tur",
+    solved: "Riktig! 🎉",
+    wrong: "Ikke matt – prøv igjen!",
+    next: "Neste nøtt",
+    counter: "løst",
+  },
+
+  predict: {
+    title: "Tipp resultatene",
+    hint: "Hvem vinner de andre partiene? 1 poeng per riktig svar.",
+    white: "Hvit",
+    draw: "Uavgjort",
+    black: "Svart",
+    leaderboard: "Tippeliga",
+    points: "poeng",
+    myPoints: "Dine tippepoeng",
+  },
+
   player: {
     joinTitle: "Bli med",
     pinPlaceholder: "6-sifret PIN",
