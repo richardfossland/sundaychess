@@ -21,7 +21,7 @@ export const no = {
   landing: {
     teacher: "Jeg er lærer",
     teacherSub: "Lag en turnering og vis tavla",
-    student: "Jeg er elev",
+    student: "Jeg er spiller",
     studentSub: "Bli med med en PIN",
   },
 
@@ -60,9 +60,9 @@ export const no = {
     absentRound: "Denne runden",
     absentTournament: "Ute av turneringen",
     absentSuffix: "er borte",
-    showCodes: "Elevkoder",
-    codesTitle: "Elevkoder",
-    codesHint: "Les koden til en elev som har mistet sin.",
+    showCodes: "Spillerkoder",
+    codesTitle: "Spillerkoder",
+    codesHint: "Les koden til en spiller som har mistet sin.",
     join: "Bli med",
     liveToggle: "Live",
     boardToggle: "Tavle",

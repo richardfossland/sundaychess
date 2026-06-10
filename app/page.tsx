@@ -23,7 +23,7 @@ export default function Landing() {
         </h1>
         <hr className="thread reveal" style={r(3, { width: 120 })} />
         <p className="muted reveal" style={r(4, { maxWidth: 440, fontSize: 17 })}>
-          En sjakkturnering for hele klassen. Læreren styrer tavla, elevene blir
+          En sjakkturnering for hele gruppa. Læreren styrer tavla, spillerne blir
           med med en PIN — akkurat som Kahoot, men med konger og bønder.
         </p>
 

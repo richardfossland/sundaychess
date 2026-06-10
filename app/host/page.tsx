@@ -8,7 +8,10 @@ import { Wizard } from "./Wizard";
 
 export default function HostEntry() {
   const router = useRouter();
-  const [mode, setMode] = useState<"create" | "open">("create");
+  // Chooser-first: the create/open choice is its own screen, so once you're in
+  // the wizard there is no "Åpne turnering" button to accidentally hit (which
+  // would reset your progress). A back button returns to the chooser.
+  const [mode, setMode] = useState<"choose" | "create" | "open">("choose");
   const [hostCode, setHostCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,25 +39,32 @@ export default function HostEntry() {
           <span className="knight">♞</span> Sunday<b>Chess</b>
         </div>
 
-        <div className="row" style={{ gap: 8 }}>
-          <button
-            className={`btn grow ${mode === "create" ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => setMode("create")}
-          >
-            {no.host.createTitle}
-          </button>
-          <button
-            className={`btn grow ${mode === "open" ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => setMode("open")}
-          >
-            {no.host.enterTitle}
-          </button>
-        </div>
+        {mode === "choose" && (
+          <div className="stack" style={{ gap: 12 }}>
+            <p className="eyebrow text-center">Lærer</p>
+            <button
+              className="btn btn-primary btn-block btn-lg"
+              onClick={() => setMode("create")}
+            >
+              {no.host.createTitle}
+            </button>
+            <button
+              className="btn btn-block btn-lg"
+              onClick={() => {
+                setError(null);
+                setMode("open");
+              }}
+            >
+              {no.host.enterTitle}
+            </button>
+          </div>
+        )}
 
-        {mode === "create" ? (
-          <Wizard />
-        ) : (
+        {mode === "create" && <Wizard onExit={() => setMode("choose")} />}
+
+        {mode === "open" && (
           <>
+            <p className="eyebrow text-center">{no.host.enterTitle}</p>
             <div className="field">
               <label htmlFor="hc">{no.host.hostCodeLabel}</label>
               <input
@@ -62,18 +72,26 @@ export default function HostEntry() {
                 className="input"
                 placeholder="f.eks. ABCD-7F"
                 value={hostCode}
-                onChange={(e) => setHostCode(e.target.value)}
+                autoFocus
                 autoCapitalize="characters"
+                onChange={(e) => setHostCode(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && hostCode.trim() && open()}
               />
             </div>
             <button
               className="btn btn-primary btn-block btn-lg"
-              disabled={busy}
+              disabled={busy || !hostCode.trim()}
               onClick={open}
             >
               {busy ? <span className="spin" /> : no.host.open}
             </button>
             {error && <div className="banner banner-error">{error}</div>}
+            <button
+              className="btn btn-ghost btn-block"
+              onClick={() => setMode("choose")}
+            >
+              ← {no.common.back}
+            </button>
           </>
         )}
       </div>

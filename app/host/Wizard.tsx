@@ -9,7 +9,7 @@ import type { TournamentConfig } from "@/lib/types";
 
 type StepKey = "title" | "rounds" | "playoff" | "size" | "timer" | "review";
 
-export function Wizard() {
+export function Wizard({ onExit }: { onExit?: () => void }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [leagueRounds, setLeagueRounds] = useState(5);
@@ -229,9 +229,15 @@ export function Wizard() {
       {error && <div className="banner banner-error">{error}</div>}
 
       <div className="row" style={{ marginTop: 8 }}>
-        {step > 0 && (
-          <button className="btn btn-ghost" onClick={back} disabled={busy}>
-            {no.common.back}
+        {/* Step 0 back returns to the chooser (onExit); later steps go back a
+            step. Single back button → no accidental progress reset. */}
+        {(step > 0 || onExit) && (
+          <button
+            className="btn btn-ghost"
+            onClick={step > 0 ? back : onExit}
+            disabled={busy}
+          >
+            ← {no.common.back}
           </button>
         )}
         <button className="btn btn-primary grow" onClick={next} disabled={busy}>
