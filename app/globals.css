@@ -241,6 +241,29 @@ button {
   max-width: 450px;
 }
 
+/* landing entrance cards — gold chess glyph + playful hover lift */
+.entrance {
+  transition: transform 0.22s var(--ease), border-color 0.22s, box-shadow 0.22s;
+}
+.entrance:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--gold) 45%, transparent);
+  box-shadow: var(--shadow-2), var(--shadow-gold);
+}
+.entrance-glyph {
+  font-size: 54px;
+  line-height: 1;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 7px 20px rgba(235, 184, 75, 0.35));
+  transition: transform 0.3s var(--spring);
+}
+.entrance:hover .entrance-glyph {
+  transform: translateY(-3px) scale(1.08) rotate(-3deg);
+}
+
 /* ============ buttons ============ */
 .btn {
   position: relative;

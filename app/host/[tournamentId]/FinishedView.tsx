@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import type { CSSProperties } from "react";
 import type { BoardState, PublicGame } from "@/lib/dto";
 import { Confetti, initials } from "@/lib/client/Confetti";
@@ -78,6 +79,10 @@ export function FinishedView({ state }: { state: BoardState }) {
             </div>
           ))}
         </div>
+
+        <Link href="/host" className="btn btn-primary btn-lg" style={{ marginTop: 28 }}>
+          {no.host.newTournament} →
+        </Link>
       </div>
     </main>
   );

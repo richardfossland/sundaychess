@@ -68,6 +68,7 @@ export const no = {
     boardToggle: "Tavle",
     podium: "Vinnere",
     champion: "Mester",
+    newTournament: "Ny turnering",
     bracket: "Sluttspill",
     timer: "Rundetid",
     timeUp: "Tiden er ute",

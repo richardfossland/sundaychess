@@ -38,13 +38,13 @@ export default function Landing() {
             marginTop: 8,
           })}
         >
-          <Link href="/host" className="card stack" style={{ padding: 24, alignItems: "center", gap: 8, textAlign: "center" }}>
-            <span style={{ fontSize: 34 }}>👩‍🏫</span>
+          <Link href="/host" className="card stack entrance" style={{ padding: 26, alignItems: "center", gap: 8, textAlign: "center" }}>
+            <span className="entrance-glyph">♚</span>
             <b style={{ fontSize: 19 }}>{no.landing.teacher}</b>
             <span className="faint" style={{ fontSize: 13 }}>{no.landing.teacherSub}</span>
           </Link>
-          <Link href="/play" className="card stack" style={{ padding: 24, alignItems: "center", gap: 8, textAlign: "center" }}>
-            <span style={{ fontSize: 34 }}>♟️</span>
+          <Link href="/play" className="card stack entrance" style={{ padding: 26, alignItems: "center", gap: 8, textAlign: "center" }}>
+            <span className="entrance-glyph">♟</span>
             <b style={{ fontSize: 19 }}>{no.landing.student}</b>
             <span className="faint" style={{ fontSize: 13 }}>{no.landing.studentSub}</span>
           </Link>
