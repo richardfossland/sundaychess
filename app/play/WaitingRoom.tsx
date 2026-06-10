@@ -41,10 +41,21 @@ export function WaitingRoom({
   }, [game, activeGameId]);
 
   if (activeGameId) {
+    // Round timer (league rounds only) — fed to the player's board.
+    const activeGame = state?.games.find((g) => g.id === activeGameId);
+    const activeRound = activeGame
+      ? state?.rounds.find((r) => r.id === activeGame.roundId)
+      : null;
+    const timerSec = state?.tournament.config.roundTimerSec ?? null;
+    const timer =
+      timerSec && activeRound?.phase === "league" && activeRound.startedAt
+        ? { startedAt: activeRound.startedAt, durationSec: timerSec }
+        : null;
     return (
       <GameView
         me={me}
         gameId={activeGameId}
+        timer={timer}
         onFinished={() => {
           setActiveGameId(null);
           refresh();

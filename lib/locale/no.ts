@@ -71,6 +71,9 @@ export const no = {
     bracket: "Sluttspill",
     timer: "Rundetid",
     timeUp: "Tiden er ute",
+    addMinute: "+1 min",
+    timeUpSuggestion: "Tiden er ute – vil du avslutte runden?",
+    endRound: "Avslutt runden",
   },
 
   wizard: {

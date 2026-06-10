@@ -13,7 +13,66 @@ import { useChannel } from "@/lib/client/useChannel";
 import type { StoredPlayer } from "@/lib/client/identity";
 import { Confetti, initials } from "@/lib/client/Confetti";
 import { CapturedPieces } from "@/lib/client/CapturedPieces";
+import { RoundTimer } from "@/lib/client/RoundTimer";
 import { no } from "@/lib/locale/no";
+
+/** A player's side panel (avatar, name, colour, captured pieces) — sits beside
+ * the board on wide screens and stacks above/below it on narrow ones. */
+function SidePanel({
+  name,
+  sub,
+  fen,
+  capSide,
+  isMe,
+  active,
+}: {
+  name: string;
+  sub: string;
+  fen: string;
+  capSide: "white" | "black";
+  isMe: boolean;
+  active: boolean;
+}) {
+  return (
+    <div className="card" style={{ padding: 15 }}>
+      <div className="row" style={{ gap: 10 }}>
+        <span
+          className="avatar-lg"
+          style={
+            isMe
+              ? undefined
+              : {
+                  background: "linear-gradient(180deg, var(--ink-soft), #1c212b)",
+                  color: "var(--txt)",
+                  border: "1px solid var(--ink-line-strong)",
+                }
+          }
+        >
+          {initials(name)}
+        </span>
+        <div style={{ lineHeight: 1.25, minWidth: 0, flex: 1 }}>
+          <b>{name}</b>
+          <div className="faint" style={{ fontSize: 12 }}>{sub}</div>
+        </div>
+        {active && (
+          <span
+            style={{
+              width: 9,
+              height: 9,
+              borderRadius: "50%",
+              background: "var(--turn)",
+              boxShadow: "0 0 0 0 color-mix(in srgb, var(--turn) 70%, transparent)",
+              animation: "ping 1.6s var(--ease-out) infinite",
+            }}
+          />
+        )}
+      </div>
+      <div style={{ marginTop: 8 }}>
+        <CapturedPieces fen={fen} side={capSide} />
+      </div>
+    </div>
+  );
+}
 
 // DnD board: render client-only to avoid SSR/window issues.
 const Chessboard = dynamic(
@@ -27,10 +86,12 @@ export function GameView({
   me,
   gameId,
   onFinished,
+  timer,
 }: {
   me: StoredPlayer;
   gameId: string;
   onFinished: () => void;
+  timer?: { startedAt: string | null; durationSec: number } | null;
 }) {
   const [detail, setDetail] = useState<GameDetail | null>(null);
   const [fen, setFen] = useState<string>("");
@@ -238,132 +299,132 @@ export function GameView({
     else resultText = iWon ? no.player.youWon : no.player.youLost;
   }
 
-  const oppAvatar: React.CSSProperties = {
-    background: "linear-gradient(180deg, var(--ink-soft), #1c212b)",
-    color: "var(--txt)",
-    border: "1px solid var(--ink-line-strong)",
-  };
+  const oppColor: "white" | "black" = myColor === "white" ? "black" : "white";
 
   return (
     <main className="center-screen">
       {iWon && <Confetti count={120} />}
-      <div className="stack" style={{ alignItems: "center", width: "100%", maxWidth: 600, gap: 16 }}>
-        {/* player vs player */}
-        <div className="spread" style={{ width: "min(92vw,560px)" }}>
-          <div className="row" style={{ gap: 10 }}>
-            <span className="avatar-lg">{initials(me.displayName)}</span>
-            <div style={{ lineHeight: 1.25 }}>
-              <b>{me.displayName}</b>
-              <div className="faint" style={{ fontSize: 12 }}>
-                {no.player.youAre} {myColor === "white" ? no.player.white : no.player.black}
-              </div>
-              <CapturedPieces fen={fen} side={myColor} />
-            </div>
-          </div>
-          <span className="faint" style={{ fontStyle: "italic" }}>{no.player.vs}</span>
-          <div className="row" style={{ gap: 10 }}>
-            <div style={{ lineHeight: 1.25, textAlign: "right" }}>
-              <b>{opponent?.name ?? "?"}</b>
-              <div className="faint" style={{ fontSize: 12 }}>
-                {myColor === "white" ? no.player.black : no.player.white}
-              </div>
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <CapturedPieces fen={fen} side={myColor === "white" ? "black" : "white"} />
-              </div>
-            </div>
-            <span className="avatar-lg" style={oppAvatar}>{initials(opponent?.name ?? "?")}</span>
-          </div>
+      <div className="game-grid">
+        {/* opponent — left on wide, top on narrow */}
+        <div className="game-side panel-opp">
+          <SidePanel
+            name={opponent?.name ?? "?"}
+            sub={oppColor === "white" ? no.player.white : no.player.black}
+            fen={fen}
+            capSide={oppColor}
+            isMe={false}
+            active={!ended && !isMyTurn}
+          />
         </div>
 
-        {!ended && (
-          <div
-            className={`banner ${isMyTurn ? "banner-turn" : "banner-wait"}`}
-            style={{ width: "min(92vw,560px)" }}
-            role="status"
-            aria-live="polite"
-          >
-            {isMyTurn ? `♟ ${no.player.yourTurn}` : no.player.opponentTurn}
-          </div>
-        )}
+        {/* centre: timer + turn banner + board + actions */}
+        <div className="game-center">
+          {timer && timer.startedAt && !ended && (
+            <RoundTimer startedAt={timer.startedAt} durationSec={timer.durationSec} compact />
+          )}
 
-        <div className="board-frame">
-          <div className="board-shell">
-            <Chessboard
-              options={{
-                position: fen || undefined,
-                boardOrientation: myColor,
-                allowDragging: isMyTurn,
-                onPieceDrop: onDrop,
-                onSquareClick,
-                squareStyles,
-                darkSquareStyle: { backgroundColor: "var(--board-dark)" },
-                lightSquareStyle: { backgroundColor: "var(--board-light)" },
-                animationDurationInMs: 180,
-                id: "play-board",
-              }}
-            />
-          </div>
-        </div>
-
-        {!ended && (
-          <div className="row">
-            <button
-              className="btn btn-ghost"
-              disabled={pending}
-              onClick={() =>
-                api.draw(gameId, me.playerId, me.resumeCode, "offer").then(() =>
-                  flash(no.player.drawOffered),
-                ).catch(() => flash(no.common.error))
-              }
+          {!ended && (
+            <div
+              className={`banner ${isMyTurn ? "banner-turn" : "banner-wait"}`}
+              style={{ width: "100%" }}
+              role="status"
+              aria-live="polite"
             >
-              ½ {no.player.offerDraw}
-            </button>
-            <button
-              className="btn btn-danger"
-              disabled={pending}
-              onClick={() => {
-                if (!confirm(no.player.resignConfirm)) return;
-                api
-                  .resign(gameId, me.playerId, me.resumeCode)
-                  .catch(() => flash(no.common.error));
-              }}
-            >
-              {no.player.resign}
-            </button>
-          </div>
-        )}
+              {isMyTurn ? `♟ ${no.player.yourTurn}` : no.player.opponentTurn}
+            </div>
+          )}
 
-        {incomingDraw && !ended && (
-          <div className="card stack" style={{ padding: 16, width: "min(92vw,560px)" }}>
-            <p>{no.player.drawOfferedByOpponent}</p>
+          <div className="board-frame">
+            <div className="board-shell">
+              <Chessboard
+                options={{
+                  position: fen || undefined,
+                  boardOrientation: myColor,
+                  allowDragging: isMyTurn,
+                  onPieceDrop: onDrop,
+                  onSquareClick,
+                  squareStyles,
+                  darkSquareStyle: { backgroundColor: "var(--board-dark)" },
+                  lightSquareStyle: { backgroundColor: "var(--board-light)" },
+                  animationDurationInMs: 180,
+                  id: "play-board",
+                }}
+              />
+            </div>
+          </div>
+
+          {!ended && (
             <div className="row">
               <button
-                className="btn btn-primary grow"
+                className="btn btn-ghost"
+                disabled={pending}
                 onClick={() =>
-                  api
-                    .draw(gameId, me.playerId, me.resumeCode, "accept")
-                    .then(() => setIncomingDraw(false))
-                    .catch(() => flash(no.common.error))
+                  api.draw(gameId, me.playerId, me.resumeCode, "offer").then(() =>
+                    flash(no.player.drawOffered),
+                  ).catch(() => flash(no.common.error))
                 }
               >
-                {no.player.accept}
+                ½ {no.player.offerDraw}
               </button>
               <button
-                className="btn grow"
-                onClick={() =>
+                className="btn btn-danger"
+                disabled={pending}
+                onClick={() => {
+                  if (!confirm(no.player.resignConfirm)) return;
                   api
-                    .draw(gameId, me.playerId, me.resumeCode, "decline")
-                    .then(() => setIncomingDraw(false))
-                    .catch(() => {})
-                }
+                    .resign(gameId, me.playerId, me.resumeCode)
+                    .catch(() => flash(no.common.error));
+                }}
               >
-                {no.player.decline}
+                {no.player.resign}
               </button>
             </div>
-          </div>
-        )}
+          )}
 
-        {toast && <div className="banner banner-error">{toast}</div>}
+          {incomingDraw && !ended && (
+            <div className="card stack" style={{ padding: 16, width: "100%" }}>
+              <p>{no.player.drawOfferedByOpponent}</p>
+              <div className="row">
+                <button
+                  className="btn btn-primary grow"
+                  onClick={() =>
+                    api
+                      .draw(gameId, me.playerId, me.resumeCode, "accept")
+                      .then(() => setIncomingDraw(false))
+                      .catch(() => flash(no.common.error))
+                  }
+                >
+                  {no.player.accept}
+                </button>
+                <button
+                  className="btn grow"
+                  onClick={() =>
+                    api
+                      .draw(gameId, me.playerId, me.resumeCode, "decline")
+                      .then(() => setIncomingDraw(false))
+                      .catch(() => {})
+                  }
+                >
+                  {no.player.decline}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {toast && <div className="banner banner-error" style={{ width: "100%" }}>{toast}</div>}
+        </div>
+
+        {/* me — right on wide, bottom on narrow */}
+        <div className="game-side panel-me">
+          <SidePanel
+            name={me.displayName}
+            sub={`${no.player.youAre} ${myColor === "white" ? no.player.white : no.player.black}`}
+            fen={fen}
+            capSide={myColor}
+            isMe
+            active={!ended && isMyTurn}
+          />
+        </div>
       </div>
 
       {ended && (

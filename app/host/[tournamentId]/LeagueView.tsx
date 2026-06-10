@@ -6,6 +6,7 @@ import { api } from "@/lib/client/api";
 import { identity } from "@/lib/client/identity";
 import { no } from "@/lib/locale/no";
 import { RoundTimer } from "@/lib/client/RoundTimer";
+import { useCountdown } from "@/lib/client/useCountdown";
 import { JoinChip } from "@/lib/client/JoinChip";
 import { OverrideModal } from "./OverrideModal";
 import { CodesModal } from "./CodesModal";
@@ -69,6 +70,26 @@ export function LeagueView({
   const allResolved = roundGames.length > 0 && liveCount === 0;
   const isLastRound = tournament.currentRound >= tournament.config.leagueRounds;
 
+  const timerSec = tournament.config.roundTimerSec;
+  const timerEndMs =
+    timerSec && currentRound?.startedAt
+      ? new Date(currentRound.startedAt).getTime() + timerSec * 1000
+      : null;
+  const { expired: timeUp } = useCountdown(timerEndMs);
+
+  async function addMinute() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.extendRound(tournament.id, hostCode ?? "");
+      onChanged();
+    } catch {
+      setError(no.common.error);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function advance() {
     setBusy(true);
     setError(null);
@@ -105,11 +126,18 @@ export function LeagueView({
         <span className="badge badge-live">
           {no.host.round} {tournament.currentRound} / {tournament.config.leagueRounds}
         </span>
-        {tournament.config.roundTimerSec && currentRound && (
-          <RoundTimer
-            startedAt={currentRound.startedAt}
-            durationSec={tournament.config.roundTimerSec}
-          />
+        {timerSec && currentRound && (
+          <div className="row" style={{ gap: 10 }}>
+            <RoundTimer startedAt={currentRound.startedAt} durationSec={timerSec} />
+            <button
+              className="btn btn-ghost"
+              style={{ padding: "8px 12px" }}
+              disabled={busy}
+              onClick={addMinute}
+            >
+              {no.host.addMinute}
+            </button>
+          </div>
         )}
         <span className="grow" />
         <JoinChip pin={tournament.joinPin} />
@@ -192,6 +220,27 @@ export function LeagueView({
               </button>
             ))}
           </div>
+
+          {timeUp && liveCount > 0 && (
+            <div
+              className="banner"
+              style={{
+                marginTop: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                background: "color-mix(in srgb, var(--warn) 18%, var(--ink-2))",
+                border: "1px solid color-mix(in srgb, var(--warn) 50%, transparent)",
+                color: "#f3d9c4",
+              }}
+            >
+              <span>⏰ {no.host.timeUpSuggestion}</span>
+              <button className="btn btn-danger" disabled={busy} onClick={force} style={{ flexShrink: 0 }}>
+                {no.host.endRound}
+              </button>
+            </div>
+          )}
 
           <div className="row" style={{ marginTop: 18 }}>
             <button

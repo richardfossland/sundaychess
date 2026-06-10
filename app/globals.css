@@ -572,12 +572,54 @@ button {
   border: 1px solid rgba(235, 184, 75, 0.25);
   pointer-events: none;
 }
-/* player board — grows with the viewport on bigger screens */
+/* player board — a comfortably large centre on every screen */
 .board-shell {
-  width: min(92vw, 66vh, 600px);
+  width: min(94vw, 78vh, 720px);
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
+}
+
+/* responsive game layout: board centre, player info stacked (narrow) or on the
+   sides (wide), so no screen wastes space */
+.game-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+.game-grid .game-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+.game-side {
+  width: 100%;
+  max-width: min(94vw, 600px);
+}
+@media (min-width: 1000px) {
+  .game-grid {
+    display: grid;
+    grid-template-columns: minmax(190px, 1fr) auto minmax(190px, 1fr);
+    align-items: center;
+    gap: 30px;
+    max-width: 1320px;
+  }
+  .game-grid .panel-opp {
+    justify-self: end;
+  }
+  .game-grid .panel-me {
+    justify-self: start;
+  }
+  .game-grid .game-side {
+    max-width: 330px;
+  }
+  .game-grid .game-center {
+    width: auto;
+  }
 }
 /* spectator/projector board — much larger on a big screen */
 .board-shell-lg {

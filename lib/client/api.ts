@@ -125,6 +125,9 @@ export const api = {
   forceResolve: (tournamentId: string, hostCode: string) =>
     post<{ ok: boolean }>("/api/round/force", { tournamentId, hostCode }),
 
+  extendRound: (tournamentId: string, hostCode: string) =>
+    post<{ startedAt: string }>("/api/round/extend", { tournamentId, hostCode }),
+
   override: (gameId: string, hostCode: string, result: GameStatus) =>
     post<{ status: GameStatus }>("/api/game/override", {
       gameId,

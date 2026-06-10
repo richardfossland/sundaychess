@@ -218,6 +218,14 @@ export async function setRoundStatus(
   await db.from("rounds").update({ status }).eq("id", roundId);
 }
 
+export async function setRoundStartedAt(
+  roundId: string,
+  startedAt: string,
+): Promise<void> {
+  const db = createServiceClient();
+  await db.from("rounds").update({ started_at: startedAt }).eq("id", roundId);
+}
+
 export async function listGamesForRound(roundId: string): Promise<Game[]> {
   const db = createServiceClient();
   const { data } = await db

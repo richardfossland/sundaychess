@@ -1,33 +1,49 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCountdown, fmt } from "@/lib/client/useCountdown";
 import { no } from "@/lib/locale/no";
 
-/** Teacher-screen-only round countdown (one per round, not per player — spec
- * §0.3). Counts down from `startedAt + durationSec`. Display only: when it hits
- * zero the teacher decides socially; nothing is enforced. */
+/** Round countdown. On the board it's large; on a player's screen (`compact`)
+ * it's a small chip. Counts down from `startedAt + durationSec`. */
 export function RoundTimer({
   startedAt,
   durationSec,
+  compact = false,
 }: {
   startedAt: string | null;
   durationSec: number;
+  compact?: boolean;
 }) {
   const endMs = startedAt ? new Date(startedAt).getTime() + durationSec * 1000 : null;
-  const [now, setNow] = useState(() => Date.now());
+  const { remainingMs, expired } = useCountdown(endMs);
+  if (remainingMs == null) return null;
 
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+  const low = !expired && remainingMs < 60_000;
+  const cls = `timer ${expired ? "up" : low ? "low" : ""}`;
+  const text = expired ? no.host.timeUp : fmt(remainingMs);
 
-  if (!endMs) return null;
-  const remainingMs = Math.max(0, endMs - now);
-  const totalSec = Math.ceil(remainingMs / 1000);
-  const mm = Math.floor(totalSec / 60);
-  const ss = totalSec % 60;
-  const up = remainingMs === 0;
-  const low = !up && remainingMs < 60_000;
+  if (compact) {
+    return (
+      <span
+        className={`badge ${expired ? "" : low ? "" : ""}`}
+        style={{
+          fontFamily: "var(--mono)",
+          fontSize: 15,
+          fontWeight: 800,
+          color: expired ? "var(--danger)" : low ? "var(--warn)" : "var(--txt)",
+          borderColor: expired
+            ? "color-mix(in srgb, var(--danger) 50%, transparent)"
+            : low
+              ? "color-mix(in srgb, var(--warn) 50%, transparent)"
+              : "var(--ink-line)",
+        }}
+        role="timer"
+        aria-live="off"
+      >
+        ⏱ {text}
+      </span>
+    );
+  }
 
   return (
     <div
@@ -37,12 +53,10 @@ export function RoundTimer({
       aria-live="polite"
       aria-label={no.host.timer}
     >
-      <span className="eyebrow" style={{ color: "var(--txt-on-ink-dim)" }}>
+      <span className="eyebrow" style={{ color: "var(--txt-dim)" }}>
         {no.host.timer}
       </span>
-      <span className={`timer ${up ? "up" : low ? "low" : ""}`}>
-        {up ? no.host.timeUp : `${mm}:${String(ss).padStart(2, "0")}`}
-      </span>
+      <span className={cls}>{text}</span>
     </div>
   );
 }
