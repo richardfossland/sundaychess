@@ -16,6 +16,7 @@ import { afterGameResolved } from "@/lib/server/gameEvents";
 import { broadcast } from "@/lib/server/broadcast";
 import { channels, events } from "@/lib/realtime";
 import { pair, type PairablePlayer } from "@/lib/tournament/pair";
+import { variantStartFen } from "@/lib/chess/variants";
 import {
   colorCounts,
   computeStandings,
@@ -55,12 +56,14 @@ async function pairLeagueRound(
 
   const round = await createRound(tournament.id, roundNumber, "league", "live");
 
+  const startFen = variantStartFen(tournament.config.variant);
   for (const p of pairings) {
     await createGame({
       tournamentId: tournament.id,
       roundId: round.id,
       whitePlayerId: p.whiteId,
       blackPlayerId: p.blackId,
+      startFen,
     });
   }
   // Byes immediately award a point.

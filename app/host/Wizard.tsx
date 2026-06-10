@@ -10,16 +10,20 @@ import type { TournamentConfig } from "@/lib/types";
 type StepKey =
   | "title"
   | "rounds"
+  | "variant"
   | "playoff"
   | "size"
   | "timer"
   | "reactions"
   | "review";
 
+type VariantKey = "standard" | "no_queens" | "pawn_war";
+
 export function Wizard({ onExit }: { onExit?: () => void }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [leagueRounds, setLeagueRounds] = useState(5);
+  const [variant, setVariant] = useState<VariantKey>("standard");
   const [playoff, setPlayoff] = useState(false);
   const [playoffSize, setPlayoffSize] = useState<4 | 8 | 16>(8);
   const [timerMin, setTimerMin] = useState<0 | 5 | 10 | 15>(0);
@@ -32,8 +36,8 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
   const steps = useMemo<StepKey[]>(
     () =>
       playoff
-        ? ["title", "rounds", "playoff", "size", "timer", "reactions", "review"]
-        : ["title", "rounds", "playoff", "timer", "reactions", "review"],
+        ? ["title", "rounds", "variant", "playoff", "size", "timer", "reactions", "review"]
+        : ["title", "rounds", "variant", "playoff", "timer", "reactions", "review"],
     [playoff],
   );
   const key = steps[Math.min(step, steps.length - 1)];
@@ -58,6 +62,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
       playoffSize: playoff ? playoffSize : 0,
       roundTimerSec: timerMin === 0 ? null : timerMin * 60,
       reactions,
+      variant,
     };
     try {
       const t = await api.createTournament({ title: title.trim(), config });
@@ -141,6 +146,34 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
           />
           <span className="muted text-center" style={{ fontSize: 13 }}>
             {no.wizard.roundsHint}
+          </span>
+        </div>
+      )}
+
+      {key === "variant" && (
+        <div className="stack">
+          <p className="field" style={{ gap: 4 }}>
+            {no.wizard.variantStep}
+          </p>
+          <div className="stack" style={{ gap: 8 }}>
+            {(["standard", "no_queens", "pawn_war"] as const).map((v) => (
+              <button
+                key={v}
+                className={`btn btn-block ${variant === v ? "btn-primary" : "btn-ghost"}`}
+                style={{ textAlign: "left", padding: "12px 16px" }}
+                onClick={() => setVariant(v)}
+              >
+                <b>{no.wizard.variants[v]}</b>
+                <span
+                  style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}
+                >
+                  {no.wizard.variants[`${v}Sub`]}
+                </span>
+              </button>
+            ))}
+          </div>
+          <span className="muted text-center" style={{ fontSize: 13 }}>
+            {no.wizard.variantHint}
           </span>
         </div>
       )}
@@ -249,6 +282,12 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
             <span className="muted">{no.wizard.reviewRounds}</span>
             <b>{leagueRounds}</b>
           </div>
+          {variant !== "standard" && (
+            <div className="spread">
+              <span className="muted">{no.wizard.reviewVariant}</span>
+              <b>{no.wizard.variants[variant]}</b>
+            </div>
+          )}
           <div className="spread">
             <span className="muted">{no.wizard.reviewPlayoff}</span>
             <b>{playoff ? `${playoffSize}` : no.wizard.none}</b>

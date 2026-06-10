@@ -1,5 +1,6 @@
 import { createTournament, DEFAULT_CONFIG } from "@/lib/server/store";
 import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
+import { isVariant } from "@/lib/chess/variants";
 import type { TournamentConfig } from "@/lib/types";
 
 // POST /api/tournament — create a tournament. In Phase 1 the config is the
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
     config.roundTimerSec = null;
   }
   config.reactions = config.reactions === true;
+  if (!isVariant(config.variant)) config.variant = "standard";
 
   const title = body?.title?.toString().slice(0, 80).trim() || null;
 

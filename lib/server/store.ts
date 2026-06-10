@@ -243,6 +243,8 @@ interface NewGame {
   blackPlayerId: string | null;
   status?: Game["status"];
   resultSource?: Game["result_source"];
+  /** Variant start position; defaults to the standard one. */
+  startFen?: string;
 }
 
 /** Create a game (or a bye when blackPlayerId is null). */
@@ -256,7 +258,7 @@ export async function createGame(g: NewGame): Promise<Game> {
       round_id: g.roundId,
       white_player_id: g.whitePlayerId,
       black_player_id: g.blackPlayerId,
-      fen: START_FEN,
+      fen: g.startFen ?? START_FEN,
       pgn: "",
       status: g.status ?? (isBye ? "bye" : "live"),
       result_source: g.resultSource ?? (isBye ? "bye" : null),

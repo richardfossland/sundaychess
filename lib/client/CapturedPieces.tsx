@@ -3,15 +3,18 @@
 import { capturedFromFen, glyph } from "@/lib/chess/captured";
 
 /** Pieces `side` has captured (its opponent's removed pieces) + a material
- * advantage badge. Derived from the FEN. */
+ * advantage badge. Derived from the FEN. Pass `baselineFen` for theme
+ * variants so never-existing pieces aren't shown as captured. */
 export function CapturedPieces({
   fen,
   side,
+  baselineFen,
 }: {
   fen: string;
   side: "white" | "black";
+  baselineFen?: string;
 }) {
-  const cap = capturedFromFen(fen);
+  const cap = capturedFromFen(fen, baselineFen);
   const pieces = side === "white" ? cap.byWhite : cap.byBlack;
   const adv = side === "white" ? cap.materialDiff : -cap.materialDiff;
   // captured pieces belong to the opponent's colour

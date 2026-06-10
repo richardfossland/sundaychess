@@ -6,6 +6,7 @@ import type { BoardState } from "@/lib/dto";
 import { channels } from "@/lib/realtime";
 import { useChannel } from "@/lib/client/useChannel";
 import { no } from "@/lib/locale/no";
+import { variantStartFen } from "@/lib/chess/variants";
 import { SpectateGame } from "./SpectateGame";
 
 const Chessboard = dynamic(
@@ -65,6 +66,7 @@ export function LiveGamesView({ state }: { state: BoardState }) {
         <SpectateGame
           gameId={g.id}
           fen={fenMap[g.id] ?? g.fen}
+          baselineFen={variantStartFen(tournament.config.variant)}
           white={nameById(g.whitePlayerId)}
           black={nameById(g.blackPlayerId)}
           onClose={() => setOpenId(null)}

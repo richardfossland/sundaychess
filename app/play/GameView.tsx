@@ -59,6 +59,7 @@ function SidePanel({
   capSide,
   isMe,
   active,
+  baselineFen,
 }: {
   name: string;
   color: "white" | "black";
@@ -67,6 +68,7 @@ function SidePanel({
   capSide: "white" | "black";
   isMe: boolean;
   active: boolean;
+  baselineFen?: string;
 }) {
   return (
     <div className={`card player-card player-card-${color}`} style={{ padding: 15 }}>
@@ -105,7 +107,7 @@ function SidePanel({
         )}
       </div>
       <div style={{ marginTop: 8 }}>
-        <CapturedPieces fen={fen} side={capSide} />
+        <CapturedPieces fen={fen} side={capSide} baselineFen={baselineFen} />
       </div>
     </div>
   );
@@ -125,12 +127,15 @@ export function GameView({
   onFinished,
   timer,
   reactionsEnabled = false,
+  variantFen,
 }: {
   me: StoredPlayer;
   gameId: string;
   onFinished: () => void;
   timer?: { startedAt: string | null; durationSec: number } | null;
   reactionsEnabled?: boolean;
+  /** the tournament's variant start position (for captured-piece baselines) */
+  variantFen?: string;
 }) {
   const [detail, setDetail] = useState<GameDetail | null>(null);
   const [fen, setFen] = useState<string>("");
@@ -392,6 +397,7 @@ export function GameView({
             capSide={oppColor}
             isMe={false}
             active={!ended && !isMyTurn}
+            baselineFen={variantFen}
           />
         </div>
 
@@ -518,6 +524,7 @@ export function GameView({
             capSide={myColor}
             isMe
             active={!ended && isMyTurn}
+            baselineFen={variantFen}
           />
         </div>
       </div>

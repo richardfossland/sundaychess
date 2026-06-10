@@ -15,7 +15,10 @@ export interface Captured {
   materialDiff: number;
 }
 
-export function capturedFromFen(fen: string): Captured {
+function countPieces(fen: string): {
+  white: Record<PieceType, number>;
+  black: Record<PieceType, number>;
+} {
   const board = fen.split(" ")[0] ?? "";
   const white: Record<PieceType, number> = { p: 0, n: 0, b: 0, r: 0, q: 0 };
   const black: Record<PieceType, number> = { p: 0, n: 0, b: 0, r: 0, q: 0 };
@@ -26,13 +29,23 @@ export function capturedFromFen(fen: string): Captured {
       else black[lower as PieceType]++;
     }
   }
+  return { white, black };
+}
+
+/** `baselineFen` is the game's start position — pass it for theme variants so
+ * pieces that never existed aren't shown as captured. Standard if omitted. */
+export function capturedFromFen(fen: string, baselineFen?: string): Captured {
+  const { white, black } = countPieces(fen);
+  const base = baselineFen
+    ? countPieces(baselineFen)
+    : { white: START, black: START };
 
   const byWhite: PieceType[] = [];
   const byBlack: PieceType[] = [];
   let diff = 0;
   for (const t of ORDER) {
-    const blackTaken = Math.max(0, START[t] - black[t]); // black pieces gone → White captured
-    const whiteTaken = Math.max(0, START[t] - white[t]);
+    const blackTaken = Math.max(0, base.black[t] - black[t]); // black pieces gone → White captured
+    const whiteTaken = Math.max(0, base.white[t] - white[t]);
     for (let i = 0; i < blackTaken; i++) byWhite.push(t);
     for (let i = 0; i < whiteTaken; i++) byBlack.push(t);
     diff += (white[t] - black[t]) * VALUE[t];

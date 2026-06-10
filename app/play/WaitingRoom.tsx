@@ -7,6 +7,7 @@ import { identity, type StoredPlayer } from "@/lib/client/identity";
 import { initials } from "@/lib/client/Confetti";
 import { PuzzleCard } from "@/lib/client/PuzzleCard";
 import { PredictPanel } from "@/lib/client/PredictPanel";
+import { variantStartFen } from "@/lib/chess/variants";
 import { no } from "@/lib/locale/no";
 import { GameView } from "./GameView";
 
@@ -59,6 +60,7 @@ export function WaitingRoom({
         gameId={activeGameId}
         timer={timer}
         reactionsEnabled={state?.tournament.config.reactions === true}
+        variantFen={variantStartFen(state?.tournament.config.variant)}
         onFinished={() => {
           setActiveGameId(null);
           refresh();

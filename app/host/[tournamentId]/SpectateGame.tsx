@@ -22,10 +22,12 @@ function SpectatePlayer({
   name,
   side,
   fen,
+  baselineFen,
 }: {
   name: string;
   side: "white" | "black";
   fen: string;
+  baselineFen?: string;
 }) {
   return (
     <div className="spread" style={{ width: "min(92vw, 520px)" }}>
@@ -46,7 +48,7 @@ function SpectatePlayer({
         </span>
         <b style={{ fontSize: 18 }}>{name}</b>
       </div>
-      <CapturedPieces fen={fen} side={side} />
+      <CapturedPieces fen={fen} side={side} baselineFen={baselineFen} />
     </div>
   );
 }
@@ -61,12 +63,14 @@ export function SpectateGame({
   white,
   black,
   onClose,
+  baselineFen,
 }: {
   gameId: string;
   fen: string;
   white: string;
   black: string;
   onClose: () => void;
+  baselineFen?: string;
 }) {
   const [floats, setFloats] = useState<FloatingReaction[]>([]);
   const floatSeq = useRef(0);
@@ -97,7 +101,7 @@ export function SpectateGame({
           ← {no.host.liveToggle}
         </button>
 
-        <SpectatePlayer name={black} side="black" fen={fen} />
+        <SpectatePlayer name={black} side="black" fen={fen} baselineFen={baselineFen} />
 
         <div className="row" style={{ gap: 12, alignItems: "stretch" }}>
           <EvalBar fen={fen} />
@@ -119,7 +123,7 @@ export function SpectateGame({
           </div>
         </div>
 
-        <SpectatePlayer name={white} side="white" fen={fen} />
+        <SpectatePlayer name={white} side="white" fen={fen} baselineFen={baselineFen} />
       </div>
 
       <SoundToggle />

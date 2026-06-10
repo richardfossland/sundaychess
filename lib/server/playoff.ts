@@ -19,6 +19,7 @@ import {
   effectivePlayoffSize,
   type SeededPlayer,
 } from "@/lib/tournament/bracket";
+import { variantStartFen } from "@/lib/chess/variants";
 import type { Game, Tournament } from "@/lib/types";
 
 /** Winner of a resolved game, or null if it has no decisive winner (draw /
@@ -59,6 +60,7 @@ export async function maybeStartPlayoff(
 
   const matches = buildFirstRound(seeded);
   const round = await createRound(tournament.id, 1, "playoff", "live");
+  const startFen = variantStartFen(tournament.config.variant);
   for (const m of matches) {
     if (!m.topPlayerId || !m.bottomPlayerId) continue;
     await createGame({
@@ -66,6 +68,7 @@ export async function maybeStartPlayoff(
       roundId: round.id,
       whitePlayerId: m.topPlayerId,
       blackPlayerId: m.bottomPlayerId,
+      startFen,
     });
   }
 
@@ -117,12 +120,14 @@ export async function advancePlayoff(
   // Pair adjacent winners (preserves bracket structure from seedOrder).
   const nextNumber = tournament.current_round + 1;
   const round = await createRound(tournament.id, nextNumber, "playoff", "live");
+  const startFen = variantStartFen(tournament.config.variant);
   for (let i = 0; i < winners.length; i += 2) {
     await createGame({
       tournamentId: tournament.id,
       roundId: round.id,
       whitePlayerId: winners[i],
       blackPlayerId: winners[i + 1],
+      startFen,
     });
   }
   await updateTournament(tournament.id, { current_round: nextNumber });

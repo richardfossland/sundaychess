@@ -10,18 +10,16 @@ const Chessboard = dynamic(
   { ssr: false },
 );
 
-const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-interface Ply {
-  fen: string;
-  san: string;
-  from: string;
-  to: string;
+interface ParsedGame {
+  /** start position (variant-aware: read from the first move, so PGNs with a
+   * [FEN] header replay from the right board) */
+  startFen: string;
+  plies: { fen: string; san: string; from: string; to: string }[];
 }
 
 /** Parse a PGN into per-ply positions. Returns null if the PGN is empty or
  * unparseable (e.g. an overridden game with no moves). */
-function parsePgn(pgn: string): Ply[] | null {
+function parsePgn(pgn: string): ParsedGame | null {
   if (!pgn.trim()) return null;
   const chess = new Chess();
   try {
@@ -31,7 +29,10 @@ function parsePgn(pgn: string): Ply[] | null {
   }
   const hist = chess.history({ verbose: true });
   if (hist.length === 0) return null;
-  return hist.map((m) => ({ fen: m.after, san: m.san, from: m.from, to: m.to }));
+  return {
+    startFen: hist[0].before,
+    plies: hist.map((m) => ({ fen: m.after, san: m.san, from: m.from, to: m.to })),
+  };
 }
 
 /** Step-through replay of a finished game. `idx` 0 = start position,
@@ -49,7 +50,8 @@ export function ReplayBoard({
   blackName: string;
   onClose: () => void;
 }) {
-  const plies = useMemo(() => parsePgn(pgn), [pgn]);
+  const parsed = useMemo(() => parsePgn(pgn), [pgn]);
+  const plies = parsed?.plies ?? null;
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
   const total = plies?.length ?? 0;
@@ -98,7 +100,7 @@ export function ReplayBoard({
     );
   }
 
-  const fen = idx === 0 ? START_FEN : plies[idx - 1].fen;
+  const fen = idx === 0 ? parsed!.startFen : plies[idx - 1].fen;
   const last = idx > 0 ? plies[idx - 1] : null;
   const squareStyles: Record<string, React.CSSProperties> = {};
   if (last) {

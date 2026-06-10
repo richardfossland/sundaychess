@@ -30,6 +30,9 @@ export interface TournamentConfig {
   /** Players can send emoji reactions in-game. Optional (older rows lack it);
    * default OFF — the organizer opts in. */
   reactions?: boolean;
+  /** Theme variant: alternative start position, standard rules. Optional;
+   * missing/unknown ⇒ standard. */
+  variant?: "standard" | "no_queens" | "pawn_war";
 }
 
 export interface Tournament {
