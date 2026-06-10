@@ -153,6 +153,11 @@ export function GameView({
     return () => clearInterval(id);
   }, [status, isMyTurn, pending, load]);
 
+  const flash = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2200);
+  };
+
   // Authoritative updates from the game channel.
   useChannel(channels.game(gameId), (event, payload) => {
     if (event === "position") {
@@ -187,11 +192,6 @@ export function GameView({
       }
     }
   });
-
-  const flash = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2200);
-  };
 
   // Attempt a move: optimistic render, then server reconcile / rollback.
   const tryMove = useCallback(
