@@ -11,8 +11,20 @@ import type {
   Turn,
 } from "@/lib/types";
 import type { StandingRow } from "@/lib/tournament/score";
+import type { AnnotatedMove } from "@/lib/chess/analysis";
+import type { ReviewFacts } from "@/lib/chess/reviewSummary";
 
 export type { StandingRow };
+
+/** Coached post-game review payload (POST /api/review). The summary is either
+ * AI-narrated (aiNarrated true) or the templated Norwegian fallback; `facts`
+ * and `moves` are always engine-derived. */
+export interface ReviewResult {
+  summary: string;
+  aiNarrated: boolean;
+  facts: ReviewFacts;
+  moves: AnnotatedMove[];
+}
 
 export interface PublicPlayer {
   id: string;

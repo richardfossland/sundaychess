@@ -3,7 +3,7 @@
 // Thin typed fetch wrappers around the server API. All mutations go through
 // these; the browser never touches the database directly.
 
-import type { BoardState, GameDetail } from "@/lib/dto";
+import type { BoardState, GameDetail, ReviewResult } from "@/lib/dto";
 import type { GameStatus, Turn } from "@/lib/types";
 
 export class ApiError extends Error {
@@ -87,6 +87,9 @@ export const api = {
   board: (id: string) => getJson<BoardState>(`/api/tournament/${id}`, "board_failed"),
 
   game: (id: string) => getJson<GameDetail>(`/api/game/${id}`, "game_failed"),
+
+  review: (gameId: string, playerId: string, resumeCode: string) =>
+    post<ReviewResult>("/api/review", { gameId, playerId, resumeCode }),
 
   move: (args: {
     gameId: string;

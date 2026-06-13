@@ -153,6 +153,22 @@ export const no = {
     empty: "Ingen trekk å vise for dette partiet.",
   },
 
+  review: {
+    cta: "📋 Få trener-tilbakemelding",
+    title: "Trenerens gjennomgang",
+    loading: "Analyserer partiet …",
+    error: "Kunne ikke lage gjennomgangen akkurat nå.",
+    aiBadge: "✨ Skrevet av trener-AI",
+    templateBadge: "Motoranalyse",
+    accuracy: "Nøyaktighet",
+    good: "Gode trekk",
+    inaccuracies: "Unøyaktigheter",
+    mistakes: "Feil",
+    blunders: "Tabber",
+    worstMove: "Trekk å se nærmere på",
+    close: "Lukk",
+  },
+
   awards: {
     title: "Utmerkelser",
     fastest_mate: "Lyn-matt",

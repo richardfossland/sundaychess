@@ -24,6 +24,7 @@ import {
   type FloatingReaction,
 } from "@/lib/client/Reactions";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
+import { ReviewView } from "./ReviewView";
 import { no } from "@/lib/locale/no";
 
 /** Piece count from a FEN board field — a drop between positions = capture. */
@@ -174,6 +175,7 @@ export function GameView({
   const [drawSent, setDrawSent] = useState(false);
   const [floats, setFloats] = useState<FloatingReaction[]>([]);
   const [replayPgn, setReplayPgn] = useState<string | null>(null);
+  const [showReview, setShowReview] = useState(false);
   const [clock, setClock] = useState<ClockState | null>(null);
   const floatSeq = useRef(0);
 
@@ -654,6 +656,8 @@ export function GameView({
                 onClose={() => setReplayPgn(null)}
               />
             </div>
+          ) : showReview ? (
+            <ReviewView me={me} gameId={gameId} onClose={() => setShowReview(false)} />
           ) : (
             <div className="result-card stack" style={{ alignItems: "center", gap: 12 }}>
               <div className="result-emoji">
@@ -681,6 +685,9 @@ export function GameView({
                 }
               >
                 ♟ {no.replay.cta}
+              </button>
+              <button className="btn btn-ghost" onClick={() => setShowReview(true)}>
+                {no.review.cta}
               </button>
             </div>
           )}
