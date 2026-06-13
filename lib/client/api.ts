@@ -81,6 +81,23 @@ export const api = {
   join: (pin: string, displayName: string) =>
     post<JoinResult>("/api/join", { pin, displayName }),
 
+  createDuel: (body: {
+    name: string;
+    bestOf: number;
+    clockSec: number | null;
+    variant: string;
+  }) =>
+    post<{
+      tournamentId: string;
+      joinPin: string;
+      playerId: string;
+      resumeCode: string;
+      displayName: string;
+    }>("/api/duel", body),
+
+  joinDuel: (pin: string, name: string) =>
+    post<JoinResult>("/api/duel/join", { pin, name }),
+
   resume: (resumeCode: string, ref: { pin?: string; tournamentId?: string }) =>
     post<ResumeResult>("/api/resume", { resumeCode, ...ref }),
 

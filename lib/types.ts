@@ -24,8 +24,13 @@ export type Turn = "w" | "b";
 /** playoffSize 0 = no playoff. */
 export interface TournamentConfig {
   /** "league" (default): Swiss rounds, optional playoff. "cup": straight to
-   * the knockout bracket with everyone in (byes fill a non-power-of-two). */
-  format?: "league" | "cup";
+   * the knockout bracket with everyone in (byes fill a non-power-of-two).
+   * "duel": a 1v1 head-to-head match between exactly two players (lobby via
+   * QR/PIN); colours alternate each game, first to clinch the match wins. */
+  format?: "league" | "cup" | "duel";
+  /** Duel only: match length. The match is a race to ⌊bestOf/2⌋+1 points
+   * (win 1, draw ½), colours alternating each game. 1 | 3 | 5. */
+  bestOf?: number;
   leagueRounds: number; // 3..7
   playoff: boolean;
   playoffSize: 0 | 4 | 8 | 16;
