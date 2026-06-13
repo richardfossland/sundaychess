@@ -1,9 +1,14 @@
 // Client-side chess bot for single-player mode. Negamax + alpha-beta over
 // chess.js move generation, with a material + piece-square-table evaluation.
-// Pure (RNG injectable) so it can be unit-tested. Three difficulty levels.
+// Pure (RNG injectable) so it can be unit-tested.
+//
+// Strength is driven by a continuous `skill` value via `bestMoveBySkill`
+// (see lib/chess/skill.ts). The legacy fixed easy/medium/hard `bestMove` is
+// kept as a thin wrapper for callers/tests that still pass a BotLevel.
 
 import { Chess } from "chess.js";
 import type { MoveIntent } from "@/lib/chess/validateMove";
+import { skillToParams, type BotParams } from "@/lib/chess/skill";
 
 export type BotLevel = "easy" | "medium" | "hard";
 
@@ -143,13 +148,24 @@ function negamax(chess: Chess, depth: number, alpha: number, beta: number): numb
   return best;
 }
 
-const DEPTH: Record<BotLevel, number> = { easy: 1, medium: 2, hard: 3 };
+function toIntent(m: VMove): MoveIntent {
+  return { from: m.from, to: m.to, promotion: (m.promotion as MoveIntent["promotion"]) ?? "q" };
+}
 
-/** Choose the bot's move for `fen` at the given level. Returns null if there is
- * no legal move (game already over). */
-export function bestMove(
+/**
+ * Core move chooser shared by every difficulty entry point. Given concrete
+ * search knobs, picks a move for `fen`. Returns null if the game is over.
+ *
+ * - `randomMoveProb`: chance of an outright blunder (uniform random legal move).
+ * - `depth`: negamax search depth in plies (clamped to ≥ 1).
+ * - `noise`: centipawns of uniform random slop added per candidate, so the bot
+ *   sometimes prefers a slightly worse move (weaker, more human play).
+ *
+ * Pure given `rng` (defaults to Math.random) so it is unit-testable.
+ */
+export function chooseMove(
   fen: string,
-  level: BotLevel,
+  params: BotParams,
   rng: () => number = Math.random,
 ): MoveIntent | null {
   let chess: Chess;
@@ -161,15 +177,13 @@ export function bestMove(
   const moves = ordered(chess.moves({ verbose: true }) as unknown as VMove[]);
   if (moves.length === 0) return null;
 
-  // Easy: often just play a reasonable-but-random move so it's beatable.
-  if (level === "easy" && rng() < 0.4) {
-    const m = moves[Math.floor(rng() * moves.length)];
-    return { from: m.from, to: m.to, promotion: (m.promotion as MoveIntent["promotion"]) ?? "q" };
+  // Outright blunder: ignore the search and play a random legal move.
+  if (params.randomMoveProb > 0 && rng() < params.randomMoveProb) {
+    return toIntent(moves[Math.floor(rng() * moves.length) % moves.length]);
   }
 
-  const depth = DEPTH[level];
-  // Random noise breaks ties and adds variety; larger on easier levels.
-  const noise = level === "easy" ? 90 : level === "medium" ? 30 : 10;
+  const depth = Math.max(1, Math.floor(params.depth));
+  const noise = Math.max(0, params.noise);
 
   let best = moves[0];
   let bestScore = -Infinity;
@@ -182,11 +196,35 @@ export function bestMove(
       best = m;
     }
   }
-  return {
-    from: best.from,
-    to: best.to,
-    promotion: (best.promotion as MoveIntent["promotion"]) ?? "q",
-  };
+  return toIntent(best);
+}
+
+/**
+ * Adaptive bot: choose a move for `fen` at the given continuous `skill`
+ * (≈ an Elo rating). The skill→knobs mapping lives in lib/chess/skill.ts and
+ * is the single thing that varies strength. Returns null if no legal move.
+ */
+export function bestMoveBySkill(
+  fen: string,
+  skill: number,
+  rng: () => number = Math.random,
+): MoveIntent | null {
+  return chooseMove(fen, skillToParams(skill), rng);
+}
+
+// Legacy fixed levels, expressed as skill points, kept for back-compat.
+const LEVEL_SKILL: Record<BotLevel, number> = { easy: 550, medium: 950, hard: 1700 };
+
+/**
+ * Legacy entry point: choose the bot's move for `fen` at a fixed level.
+ * Thin wrapper over the adaptive path. Returns null if no legal move.
+ */
+export function bestMove(
+  fen: string,
+  level: BotLevel,
+  rng: () => number = Math.random,
+): MoveIntent | null {
+  return bestMoveBySkill(fen, LEVEL_SKILL[level], rng);
 }
 
 /** Position evaluation for the spectator eval bar. Returns centipawns from

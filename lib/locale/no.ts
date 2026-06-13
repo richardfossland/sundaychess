@@ -276,6 +276,12 @@ export const no = {
     wonSub: "Sterkt spilt mot maskinen!",
     lostSub: "Prøv igjen – du klarer det!",
     drawSub: "Jevnt parti.",
+    adaptive: "Tilpasset",
+    adaptiveHint: "Maskinen justerer seg til ditt nivå",
+    yourLevel: "Ditt nivå",
+    levelUp: "Nivået ditt steg!",
+    levelDown: "Nivået ditt sank litt",
+    levelSame: "Nivået ditt holdt seg",
   },
 } as const;
 
