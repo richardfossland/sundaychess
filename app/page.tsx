@@ -27,7 +27,7 @@ export default function Landing() {
           blir med med en PIN — akkurat som Kahoot, men med konger og bønder.
         </p>
 
-        {/* two entrances */}
+        {/* entrances */}
         <div
           className="reveal"
           style={r(5, {
@@ -53,11 +53,12 @@ export default function Landing() {
             <b style={{ fontSize: 19 }}>{no.duel.cta}</b>
             <span className="faint" style={{ fontSize: 13 }}>{no.duel.ctaSub}</span>
           </Link>
+          <Link href="/solo" className="card stack entrance" style={{ padding: 26, alignItems: "center", gap: 8, textAlign: "center" }}>
+            <span className="entrance-glyph">🤖</span>
+            <b style={{ fontSize: 19 }}>{no.solo.title}</b>
+            <span className="faint" style={{ fontSize: 13 }}>{no.solo.subtitle}</span>
+          </Link>
         </div>
-
-        <Link href="/solo" className="btn btn-ghost reveal" style={r(6, { marginTop: 2 })}>
-          ♟ {no.solo.cta}
-        </Link>
       </div>
     </main>
   );
