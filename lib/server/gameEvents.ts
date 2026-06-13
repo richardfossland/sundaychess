@@ -1,6 +1,7 @@
 import "server-only";
 
 import { recomputeScores, scorePredictions } from "@/lib/server/store";
+import { advanceDuel } from "@/lib/server/duel";
 import { broadcast } from "@/lib/server/broadcast";
 import { channels, events } from "@/lib/realtime";
 import type { Game, GameStatus, ResultSource, Turn } from "@/lib/types";
@@ -56,6 +57,9 @@ export async function afterGameResolved(
   await recomputeScores(game.tournament_id);
   // settle the tipping points; no-op until the predictions table exists
   await scorePredictions(game.id, status).catch(() => {});
+  // duel: create the next game (colours swapped) or finish the match. No-op
+  // for league/cup tournaments; self-guards so it never breaks the move path.
+  await advanceDuel(game.tournament_id);
   await Promise.all([
     broadcast(channels.game(game.id), events.result, {
       gameId: game.id,

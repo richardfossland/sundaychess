@@ -1271,3 +1271,88 @@ button {
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+/* ============ duel (1v1) mode ============ */
+/* Floating score HUD over the board during a duel game. */
+.duel-hud {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--txt);
+  background: color-mix(in srgb, var(--ink-soft) 88%, transparent);
+  border: 1px solid var(--ink-line-strong);
+  box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  max-width: calc(100vw - 24px);
+  white-space: nowrap;
+}
+.duel-hud-name {
+  color: var(--txt-dim);
+  font-weight: 600;
+  max-width: 28vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.duel-hud-score {
+  font-size: 17px;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.duel-hud-sep { color: var(--txt-faint); }
+.duel-hud-target {
+  margin-left: 6px;
+  padding-left: 10px;
+  border-left: 1px solid var(--ink-line);
+  color: var(--txt-faint);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+/* Final / interlude score row. */
+.duel-final-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.duel-final-score b { font-size: 40px; color: var(--gold); line-height: 1; }
+.duel-final-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.duel-final-side .faint { font-size: 12px; }
+
+/* Per-game outcome dots (player's own perspective). */
+.duel-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid var(--ink-line-strong);
+  background: rgba(0, 0, 0, 0.25);
+}
+.duel-dot[data-result="win"] {
+  color: #0e1116;
+  background: var(--gold-grad, var(--gold));
+  border-color: var(--gold-deep, var(--gold));
+}
+.duel-dot[data-result="loss"] {
+  color: var(--txt-faint);
+  background: rgba(0, 0, 0, 0.3);
+}
+.duel-dot[data-result="draw"] { color: var(--txt-dim); }

@@ -48,6 +48,11 @@ export default function Landing() {
             <b style={{ fontSize: 19 }}>{no.landing.student}</b>
             <span className="faint" style={{ fontSize: 13 }}>{no.landing.studentSub}</span>
           </Link>
+          <Link href="/duel" className="card stack entrance" style={{ padding: 26, alignItems: "center", gap: 8, textAlign: "center" }}>
+            <span className="entrance-glyph">⚔️</span>
+            <b style={{ fontSize: 19 }}>{no.duel.cta}</b>
+            <span className="faint" style={{ fontSize: 13 }}>{no.duel.ctaSub}</span>
+          </Link>
         </div>
 
         <Link href="/solo" className="btn btn-ghost reveal" style={r(6, { marginTop: 2 })}>
