@@ -8,6 +8,7 @@ import type { GameDetail } from "@/lib/dto";
 import type { GameStatus, Turn } from "@/lib/types";
 import { api, ApiError } from "@/lib/client/api";
 import { applyMove, legalDestinations } from "@/lib/chess/validateMove";
+import { resolvePremove, pieceColorAt } from "@/lib/chess/premove";
 import { drawReasonFromFen } from "@/lib/chess/drawReason";
 import { plyOf } from "@/lib/chess/ply";
 import { channels } from "@/lib/realtime";
@@ -176,6 +177,9 @@ export function GameView({
   const [selected, setSelected] = useState<string | null>(null);
   const [legal, setLegal] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
+  // Single pre-move: a move queued while it's the opponent's turn, fired the
+  // instant it becomes mine (blitz / online multiplayer). null = none.
+  const [preMove, setPreMove] = useState<{ from: string; to: string } | null>(null);
   const [acting, setActing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -450,24 +454,63 @@ export function GameView({
     [fen, gameId, isMyTurn, load, me.playerId, me.resumeCode, pending, takeClock],
   );
 
+  // Fire a queued pre-move the instant it becomes my turn: resolve it against
+  // the (opponent-moved) position; play it if still legal, else discard with a
+  // gentle note. Runs once per turn-flip (it clears the queue immediately).
+  useEffect(() => {
+    if (!isMyTurn || !preMove || pending) return;
+    const resolved = resolvePremove(fen, preMove);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPreMove(null);
+    if (resolved) void tryMove(resolved.from, resolved.to);
+    else flash(no.player.premoveCancelled);
+  }, [isMyTurn, preMove, fen, pending, tryMove]);
+
+  /** True if `square` holds one of my pieces (for pre-move selection while it
+   * isn't my turn — chess.js can't generate moves for the side not to move). */
+  const myPieceAt = (square: string) => pieceColorAt(fen, square) === myTurnLetter;
+
   function onDrop({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean {
     if (!targetSquare) return false;
-    void tryMove(sourceSquare, targetSquare);
-    return true;
+    if (isMyTurn) {
+      void tryMove(sourceSquare, targetSquare);
+      return true;
+    }
+    // Not my turn yet → queue a pre-move (only my own pieces). Reject the visual
+    // move (false) and show it as a highlight instead; it fires on my turn.
+    if (status === "live" && myPieceAt(sourceSquare)) {
+      setPreMove({ from: sourceSquare, to: targetSquare });
+    }
+    return false;
   }
 
   function onSquareClick({ square, piece }: SquareHandlerArgs) {
-    if (!isMyTurn) return;
-    if (selected && legal.includes(square)) {
-      void tryMove(selected, square);
+    if (isMyTurn) {
+      if (selected && legal.includes(square)) {
+        void tryMove(selected, square);
+        return;
+      }
+      if (piece) {
+        setSelected(square);
+        setLegal(legalDestinations(fen, square));
+      } else {
+        setSelected(null);
+        setLegal([]);
+      }
       return;
     }
-    if (piece) {
-      setSelected(square);
-      setLegal(legalDestinations(fen, square));
-    } else {
+    // Not my turn → pre-move selection (no legal-dot hints; legality is checked
+    // when the move actually fires).
+    if (status !== "live") return;
+    if (selected) {
+      if (square !== selected) setPreMove({ from: selected, to: square });
       setSelected(null);
       setLegal([]);
+    } else if (myPieceAt(square)) {
+      setSelected(square);
+      setLegal([]);
+    } else {
+      setPreMove(null); // tap empty/opponent square to cancel a queued pre-move
     }
   }
 
@@ -487,6 +530,12 @@ export function GameView({
       backgroundImage:
         "radial-gradient(circle, rgba(86,192,106,0.7) 22%, transparent 24%)",
     };
+  }
+  // Queued pre-move — distinct orange so it reads differently from a real move.
+  if (preMove && status === "live") {
+    const pm = { background: "rgba(235,140,60,0.55)" };
+    squareStyles[preMove.from] = { ...pm };
+    squareStyles[preMove.to] = { ...pm };
   }
 
   if (!detail) {
@@ -586,13 +635,20 @@ export function GameView({
             </div>
           )}
 
+          {!ended && !isMyTurn && preMove && (
+            <div className="banner" style={{ width: "100%", borderColor: "rgba(235,140,60,0.6)" }} role="status">
+              ⏩ {no.player.premoveSet}
+            </div>
+          )}
+
           <div className="board-frame">
             <div className="board-shell">
               <Chessboard
                 options={{
                   position: fen || undefined,
                   boardOrientation: myColor,
-                  allowDragging: isMyTurn,
+                  // Draggable on my turn AND the opponent's (to queue a pre-move).
+                  allowDragging: !ended,
                   onPieceDrop: onDrop,
                   onSquareClick,
                   squareStyles,
