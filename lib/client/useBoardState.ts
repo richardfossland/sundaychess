@@ -31,9 +31,16 @@ export function useBoardState(tournamentId: string | null) {
     refresh();
   }, [refresh]);
 
-  useChannel(tournamentId ? channels.lobby(tournamentId) : null, () => {
-    refresh();
-  });
+  useChannel(
+    tournamentId ? channels.lobby(tournamentId) : null,
+    () => {
+      refresh();
+    },
+    (s) => {
+      // Lobby broadcasts silently stopped → refetch the board immediately.
+      if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") refresh();
+    },
+  );
 
   // Reconnect hardening: re-sync when the tab regains focus or the network
   // comes back (a missed broadcast is recovered here).
