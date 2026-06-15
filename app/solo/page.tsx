@@ -6,7 +6,14 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Chess } from "chess.js";
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
-import { bestMove, type BotLevel } from "@/lib/chess/bot";
+import { bestMove, bestMoveBySkill, type BotLevel } from "@/lib/chess/bot";
+import {
+  botSkillForPlayer,
+  outcomeToScore,
+  updateRating,
+  type RatingState,
+} from "@/lib/chess/skill";
+import { identity } from "@/lib/client/identity";
 import { legalDestinations } from "@/lib/chess/validateMove";
 import { Confetti } from "@/lib/client/Confetti";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
@@ -28,9 +35,13 @@ type Phase = "setup" | "game";
 type Color = "white" | "black";
 type Outcome = "win" | "loss" | "draw";
 
+// "adaptive" tunes the bot to the player's rating; the others are fixed levels.
+type Difficulty = "adaptive" | BotLevel;
+
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-const LEVELS: { key: BotLevel; label: string }[] = [
+const LEVELS: { key: Difficulty; label: string }[] = [
+  { key: "adaptive", label: no.solo.adaptive },
   { key: "easy", label: no.solo.easy },
   { key: "medium", label: no.solo.medium },
   { key: "hard", label: no.solo.hard },
@@ -39,8 +50,17 @@ const LEVELS: { key: BotLevel; label: string }[] = [
 export default function Solo() {
   const [phase, setPhase] = useState<Phase>("setup");
   const [colorPref, setColorPref] = useState<"white" | "black" | "random">("white");
-  const [level, setLevel] = useState<BotLevel>("medium");
+  const [level, setLevel] = useState<Difficulty>("adaptive");
   const [playerColor, setPlayerColor] = useState<Color>("white");
+
+  // Adaptive rating (client-only, persisted per device). `botSkill` is locked
+  // in at the start of each game; `ratingDelta` reports the post-game change.
+  // Lazy initializer: localStorage is read once, on the client, on first
+  // render (identity.soloRating() returns the initial rating if unavailable,
+  // e.g. during SSR, so there is no hydration mismatch on a fresh device).
+  const [rating, setRating] = useState<RatingState>(() => identity.soloRating());
+  const botSkill = useRef(0);
+  const [ratingDelta, setRatingDelta] = useState<number | null>(null);
 
   const chess = useRef(new Chess());
   const [fen, setFen] = useState(START);
@@ -58,6 +78,17 @@ export default function Solo() {
 
   const refresh = () => setFen(chess.current.fen());
 
+  // After an adaptive game, move the device rating toward/away from the bot's
+  // rating (auto-tune toward a ~50% win rate) and persist it. Pure update lives
+  // in lib/chess/skill.ts; this only handles state + storage side effects.
+  function recordAdaptiveResult(result: Outcome) {
+    if (level !== "adaptive") return;
+    const next = updateRating(rating, botSkill.current, outcomeToScore(result));
+    setRatingDelta(next.rating - rating.rating);
+    setRating(next);
+    identity.saveSoloRating(next);
+  }
+
   function settle(forColor: Color): boolean {
     const c = chess.current;
     if (!c.isGameOver()) return false;
@@ -65,9 +96,11 @@ export default function Solo() {
       const loserIsMe = c.turn() === (forColor === "white" ? "w" : "b");
       setOutcome(loserIsMe ? "loss" : "win");
       sound.play(loserIsMe ? "lose" : "win");
+      recordAdaptiveResult(loserIsMe ? "loss" : "win");
     } else {
       setOutcome("draw");
       sound.play("draw");
+      recordAdaptiveResult("draw");
     }
     return true;
   }
@@ -78,7 +111,10 @@ export default function Solo() {
     setLegal([]);
     // Defer so the "thinking" state paints before the (synchronous) search.
     setTimeout(() => {
-      const m = bestMove(chess.current.fen(), level);
+      const m =
+        level === "adaptive"
+          ? bestMoveBySkill(chess.current.fen(), botSkill.current)
+          : bestMove(chess.current.fen(), level);
       if (m) {
         const mv = chess.current.move({ from: m.from, to: m.to, promotion: m.promotion ?? "q" });
         setLastMove({ from: m.from, to: m.to });
@@ -121,6 +157,10 @@ export default function Solo() {
     setSelected(null);
     setLegal([]);
     setReplayPgn(null);
+    setRatingDelta(null);
+    // Lock the bot's strength for this game to the player's current rating, so
+    // the matchup is an even ~50% (it re-tunes from the post-game rating).
+    botSkill.current = botSkillForPlayer(rating);
     setPhase("game");
     sound.play("start");
     if (color === "black") botMove(color); // computer (white) opens
@@ -199,6 +239,12 @@ export default function Solo() {
                 </button>
               ))}
             </div>
+            {level === "adaptive" && (
+              <p className="faint" style={{ fontSize: 12, marginTop: 6 }}>
+                {no.solo.adaptiveHint}
+                {` · ${no.solo.yourLevel}: ${rating.rating}`}
+              </p>
+            )}
           </div>
 
           <button className="btn btn-primary btn-block btn-lg" onClick={start}>
@@ -314,6 +360,17 @@ export default function Solo() {
               </div>
               <h1 style={{ fontSize: "clamp(34px,8vw,60px)" }}>{outText}</h1>
               <p className="muted">{outSub}</p>
+              {level === "adaptive" && ratingDelta !== null && (
+                <p className="faint" style={{ fontSize: 13 }}>
+                  {ratingDelta > 0
+                    ? no.solo.levelUp
+                    : ratingDelta < 0
+                      ? no.solo.levelDown
+                      : no.solo.levelSame}{" "}
+                  · {no.solo.yourLevel}: {rating.rating}
+                  {ratingDelta !== 0 ? ` (${ratingDelta > 0 ? "+" : ""}${ratingDelta})` : ""}
+                </p>
+              )}
               <div className="row" style={{ marginTop: 6 }}>
                 <button className="btn btn-primary btn-lg" onClick={start}>
                   {no.solo.newGame}
