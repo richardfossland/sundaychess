@@ -92,7 +92,9 @@ export async function currentRoundResolved(
   );
   if (!cur) return false;
   const games = await listGamesForRound(cur.id);
-  return games.every((g) => g.status !== "live");
+  // length>0: an empty (0-game) round is NOT "resolved" — treating it as resolved
+  // let advance wedge on a round that can never be force-resolved or advanced.
+  return games.length > 0 && games.every((g) => g.status !== "live");
 }
 
 /** Force-resolve: set every still-live game in the current round to a draw
@@ -127,6 +129,18 @@ export async function advanceRound(
   const next = tournament.current_round + 1;
 
   if (next <= tournament.config.leagueRounds) {
+    // If everyone has left, pairing would create an empty, un-advanceable round
+    // that wedges the tournament. Finish instead.
+    const active = (await listPlayers(tournament.id)).filter(
+      (p) => p.status === "active",
+    );
+    if (active.length < 2) {
+      await updateTournament(tournament.id, { status: "finished" });
+      await broadcast(channels.lobby(tournament.id), events.tournament, {
+        finished: true,
+      });
+      return "finished";
+    }
     await pairLeagueRound(tournament, next);
     await updateTournament(tournament.id, { current_round: next });
     await broadcast(channels.lobby(tournament.id), events.tournament, {
