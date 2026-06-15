@@ -21,6 +21,7 @@ import {
   advancePlayoff,
   maybeStartPlayoff,
   playoffRoundResolved,
+  startCup,
 } from "@/lib/server/playoff";
 
 function tournament(over: Partial<Tournament> = {}): Tournament {
@@ -115,6 +116,34 @@ describe("maybeStartPlayoff", () => {
     store.listGames.mockResolvedValue([]);
     await maybeStartPlayoff(tournament());
     expect(store.createGame).toHaveBeenCalledTimes(2); // 4-player bracket
+  });
+});
+
+describe("startCup", () => {
+  it("seeds all active players and builds round 1 (8 → 4 games)", async () => {
+    store.listPlayers.mockResolvedValue(players(8));
+    await startCup(tournament({ status: "lobby", current_round: 0 }));
+    expect(store.setPlayerSeed).toHaveBeenCalledTimes(8);
+    expect(store.createRound).toHaveBeenCalledWith("t", 1, "playoff", "live");
+    expect(store.createGame).toHaveBeenCalledTimes(4);
+    expect(store.updateTournament).toHaveBeenCalledWith("t", {
+      status: "playoff",
+      current_round: 1,
+    });
+  });
+
+  it("pads a non-power-of-two field with byes (6 → 8-bracket)", async () => {
+    store.listPlayers.mockResolvedValue(players(6));
+    await startCup(tournament({ status: "lobby", current_round: 0 }));
+    expect(store.setPlayerSeed).toHaveBeenCalledTimes(6); // only real players seeded
+    expect(store.createGame).toHaveBeenCalledTimes(4); // 8-slot bracket → 4 matches
+    const byes = store.createGame.mock.calls.filter((c) => c[0].blackPlayerId === null);
+    expect(byes.length).toBe(2); // 8 − 6 = 2 first-round byes
+  });
+
+  it("throws when there are too few players", async () => {
+    store.listPlayers.mockResolvedValue(players(1));
+    await expect(startCup(tournament())).rejects.toThrow("not_enough_players");
   });
 });
 
