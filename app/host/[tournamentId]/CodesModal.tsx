@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client/api";
 import { no } from "@/lib/locale/no";
 
@@ -18,12 +18,19 @@ export function CodesModal({
   const [rows, setRows] = useState<{ playerId: string; name: string; resumeCode: string }[] | null>(null);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setError(false);
+    setRows(null);
     api
       .codes(tournamentId, hostCode)
       .then((r) => setRows(r.players))
       .catch(() => setError(true));
   }, [tournamentId, hostCode]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
 
   return (
     <div
@@ -48,7 +55,12 @@ export function CodesModal({
         <p className="muted" style={{ fontSize: 13 }}>{no.host.codesHint}</p>
         <hr className="thread" />
         {error ? (
-          <div className="banner banner-error">{no.common.error}</div>
+          <div className="stack" style={{ gap: 10 }}>
+            <div className="banner banner-error">{no.common.error}</div>
+            <button className="btn btn-primary" onClick={load}>
+              {no.common.retry}
+            </button>
+          </div>
         ) : !rows ? (
           <span className="spin" />
         ) : (

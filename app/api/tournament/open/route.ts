@@ -4,6 +4,15 @@ import { normalizeResumeCode } from "@/lib/codes";
 
 // POST /api/tournament/open — reopen a tournament board with the host code.
 export async function POST(req: Request) {
+  try {
+    return await handlePost(req);
+  } catch (err) {
+    console.error("[tournament/open]", err);
+    return fail(503, "server_error");
+  }
+}
+
+async function handlePost(req: Request): Promise<Response> {
   if (!rateLimit(`open:${clientIp(req)}`, 20, 60_000)) {
     return fail(429, "rate_limited");
   }

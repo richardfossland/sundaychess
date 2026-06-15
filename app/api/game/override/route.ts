@@ -8,6 +8,15 @@ const ALLOWED: GameStatus[] = ["white_win", "black_win", "draw", "aborted"];
 
 // POST /api/game/override — teacher sets a game result from the board (spec §3).
 export async function POST(req: Request) {
+  try {
+    return await handlePost(req);
+  } catch (err) {
+    console.error("[override]", err);
+    return fail(503, "server_error");
+  }
+}
+
+async function handlePost(req: Request): Promise<Response> {
   const body = await readJson<{
     gameId?: string;
     hostCode?: string;

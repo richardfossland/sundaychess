@@ -6,6 +6,15 @@ import type { GameStatus } from "@/lib/types";
 
 // POST /api/game/resign — the resigning player loses; opponent wins.
 export async function POST(req: Request) {
+  try {
+    return await handlePost(req);
+  } catch (err) {
+    console.error("[resign]", err);
+    return fail(503, "server_error");
+  }
+}
+
+async function handlePost(req: Request): Promise<Response> {
   const body = await readJson<{
     gameId?: string;
     playerId?: string;

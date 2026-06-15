@@ -12,6 +12,15 @@ import type { GameStatus } from "@/lib/types";
 // POST /api/game/claim — "krev seier på tid": a player claims the win when the
 // OPPONENT's chess clock has run out. Server-verified against move timestamps.
 export async function POST(req: Request) {
+  try {
+    return await handlePost(req);
+  } catch (err) {
+    console.error("[claim]", err);
+    return fail(503, "server_error");
+  }
+}
+
+async function handlePost(req: Request): Promise<Response> {
   const body = await readJson<{
     gameId?: string;
     playerId?: string;

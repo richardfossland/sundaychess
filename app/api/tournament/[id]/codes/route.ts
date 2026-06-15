@@ -8,8 +8,20 @@ import { fail, ok, readJson } from "@/lib/server/http";
 // in the public board state.
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ id: string }> },
+  ctx: { params: Promise<{ id: string }> },
 ) {
+  try {
+    return await handlePost(req, ctx);
+  } catch (err) {
+    console.error("[codes]", err);
+    return fail(503, "server_error");
+  }
+}
+
+async function handlePost(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<Response> {
   const { id } = await params;
   const body = await readJson<{ hostCode?: string }>(req);
 
