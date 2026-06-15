@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import type { BoardState, PublicGame } from "@/lib/dto";
 import { useBoardState } from "@/lib/client/useBoardState";
+import { usePresence } from "@/lib/client/usePresence";
+import { channels } from "@/lib/realtime";
 import { identity, type StoredPlayer } from "@/lib/client/identity";
 import { initials } from "@/lib/client/Confetti";
 import { PuzzleCard } from "@/lib/client/PuzzleCard";
@@ -77,6 +79,10 @@ export function WaitingRoom({
   // the student dismisses it.
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const { state, refresh } = useBoardState(me.tournamentId);
+  // Advertise that this student is connected (keyed by playerId) so the host can
+  // see who's online in the lobby and drop ghosts. Stays active across the
+  // waiting view and the in-game child below (this component remains mounted).
+  usePresence(channels.presence(me.tournamentId), me.playerId);
 
   const game = state ? myGame(state, me.playerId) : null;
   const status = state?.tournament.status ?? "lobby";

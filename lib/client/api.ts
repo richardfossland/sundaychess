@@ -227,4 +227,7 @@ export const api = {
       `/api/tournament/${tournamentId}/codes`,
       { hostCode },
     ),
+
+  kick: (tournamentId: string, hostCode: string, playerId: string) =>
+    post<{ ok: boolean }>("/api/lobby/kick", { tournamentId, hostCode, playerId }),
 };
