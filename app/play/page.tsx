@@ -43,6 +43,8 @@ export default function Play() {
       })
       .catch(() => {
         identity.clearPlayer();
+        // Init-from-storage failure → explain rather than silently dropping to join.
+        setError(no.player.sessionExpired);
         setScreen("join");
       });
   }, []);

@@ -7,20 +7,13 @@ import { channels } from "@/lib/realtime";
 import { useChannel } from "@/lib/client/useChannel";
 import { no } from "@/lib/locale/no";
 import { variantStartFen } from "@/lib/chess/variants";
+import { plyOf } from "@/lib/chess/ply";
 import { SpectateGame } from "./SpectateGame";
 
 const Chessboard = dynamic(
   () => import("react-chessboard").then((m) => m.Chessboard),
   { ssr: false },
 );
-
-/** Approx half-move count from a FEN — lets us merge poll vs realtime updates
- * without ever regressing to an older position. */
-function plyOf(fen: string): number {
-  const parts = fen.split(" ");
-  const full = parseInt(parts[5] ?? "1", 10) || 1;
-  return (full - 1) * 2 + (parts[1] === "b" ? 1 : 0);
-}
 
 export function LiveGamesView({ state }: { state: BoardState }) {
   const { tournament, players, games } = state;

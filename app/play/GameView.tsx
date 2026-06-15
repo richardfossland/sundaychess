@@ -9,6 +9,7 @@ import type { GameStatus, Turn } from "@/lib/types";
 import { api, ApiError } from "@/lib/client/api";
 import { applyMove, legalDestinations } from "@/lib/chess/validateMove";
 import { drawReasonFromFen } from "@/lib/chess/drawReason";
+import { plyOf } from "@/lib/chess/ply";
 import { channels } from "@/lib/realtime";
 import { useChannel } from "@/lib/client/useChannel";
 import type { StoredPlayer } from "@/lib/client/identity";
@@ -169,7 +170,9 @@ export function GameView({
   const [selected, setSelected] = useState<string | null>(null);
   const [legal, setLegal] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
+  const [acting, setActing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [incomingDraw, setIncomingDraw] = useState(false);
   const [drawSent, setDrawSent] = useState(false);
   const [floats, setFloats] = useState<FloatingReaction[]>([]);
@@ -221,7 +224,9 @@ export function GameView({
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    load().catch(() => setToast(no.common.error));
+    load()
+      .then(() => setLoadError(false))
+      .catch(() => setLoadError(true));
   }, [load]);
 
   // Reconnect hardening: re-sync the authoritative position when the tab
@@ -253,6 +258,21 @@ export function GameView({
   const flash = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2200);
+  };
+
+  // Run a one-shot meta action (offer/accept/decline draw, resign): guard against
+  // double-fire, and on failure reconcile to authoritative state via load() so no
+  // optimistic banner can get stuck (the server may already have resolved it).
+  const runMeta = (action: Promise<unknown>, onOk?: () => void) => {
+    if (acting) return;
+    setActing(true);
+    action
+      .then(() => onOk?.())
+      .catch(() => {
+        flash(no.common.error);
+        load().catch(() => {});
+      })
+      .finally(() => setActing(false));
   };
 
   // Result sound — fires once when the game flips from live to a result.
@@ -290,18 +310,25 @@ export function GameView({
         lastMove?: { from: string; to: string } | null;
         clock?: { whiteMs: number; blackMs: number; turn: Turn; running: boolean } | null;
       };
-      // The opponent moved (self-broadcasts are off) — audible cue.
-      if (p.fen !== fen) sound.play(moveCue(fen, p.fen));
-      setFen(p.fen);
-      setTurn(p.turn);
-      setStatus(p.status);
-      takeClock(p.clock);
-      confirmedFen.current = p.fen;
-      if (p.lastMove) setLastMove({ from: p.lastMove.from, to: p.lastMove.to });
-      setSelected(null);
-      setLegal([]);
-      setIncomingDraw(false); // a move supersedes any pending draw offer
-      setDrawSent(false);
+      // Ignore a delayed / out-of-order broadcast that would roll the board back
+      // to an older position (the ref tracks the freshest confirmed FEN).
+      const fresh = plyOf(p.fen) >= plyOf(confirmedFen.current || fen);
+      if (fresh) {
+        // The opponent moved (self-broadcasts are off) — audible cue.
+        if (p.fen !== fen) sound.play(moveCue(fen, p.fen));
+        setFen(p.fen);
+        setTurn(p.turn);
+        takeClock(p.clock);
+        confirmedFen.current = p.fen;
+        if (p.lastMove) setLastMove({ from: p.lastMove.from, to: p.lastMove.to });
+        setSelected(null);
+        setLegal([]);
+        setIncomingDraw(false); // a move supersedes any pending draw offer
+        setDrawSent(false);
+      }
+      // A terminal status can arrive with (or just behind) the final position —
+      // honour it regardless of ply, but a stale "live" must never un-end a game.
+      if (fresh || p.status !== "live") setStatus(p.status);
     } else if (event === "reaction") {
       const p = payload as { emoji?: string };
       if (typeof p.emoji === "string" && p.emoji.length <= 8) addFloat(p.emoji);
@@ -424,6 +451,31 @@ export function GameView({
   }
 
   if (!detail) {
+    if (loadError) {
+      return (
+        <main className="center-screen">
+          <div className="card card-narrow stack text-center">
+            <h2>{no.common.error}</h2>
+            <p className="muted">{no.player.gameLoadFailed}</p>
+            <div className="row">
+              <button
+                className="btn btn-primary grow"
+                onClick={() =>
+                  load()
+                    .then(() => setLoadError(false))
+                    .catch(() => setLoadError(true))
+                }
+              >
+                {no.common.retry}
+              </button>
+              <button className="btn grow" onClick={onFinished}>
+                {no.common.back}
+              </button>
+            </div>
+          </div>
+        </main>
+      );
+    }
     return (
       <main className="center-screen">
         <span className="spin" />
@@ -528,24 +580,22 @@ export function GameView({
             <div className="row">
               <button
                 className="btn btn-ghost"
-                disabled={pending || drawSent}
+                disabled={pending || drawSent || acting}
                 onClick={() =>
-                  api.draw(gameId, me.playerId, me.resumeCode, "offer")
-                    .then(() => setDrawSent(true))
-                    .catch(() => flash(no.common.error))
+                  runMeta(
+                    api.draw(gameId, me.playerId, me.resumeCode, "offer"),
+                    () => setDrawSent(true),
+                  )
                 }
               >
                 ½ {no.player.offerDraw}
               </button>
               <button
                 className="btn btn-danger"
-                disabled={pending}
+                disabled={pending || acting}
                 onClick={() => {
                   if (!confirm(no.player.resignConfirm)) return;
-                  api.resign(gameId, me.playerId, me.resumeCode).catch(() => {
-                    flash(no.common.error);
-                    load().catch(() => {}); // maybe it DID resolve — resync
-                  });
+                  runMeta(api.resign(gameId, me.playerId, me.resumeCode));
                 }}
               >
                 {no.player.resign}
@@ -591,22 +641,24 @@ export function GameView({
               <div className="row">
                 <button
                   className="btn btn-primary grow"
+                  disabled={acting}
                   onClick={() =>
-                    api
-                      .draw(gameId, me.playerId, me.resumeCode, "accept")
-                      .then(() => setIncomingDraw(false))
-                      .catch(() => flash(no.common.error))
+                    runMeta(
+                      api.draw(gameId, me.playerId, me.resumeCode, "accept"),
+                      () => setIncomingDraw(false),
+                    )
                   }
                 >
                   {no.player.accept}
                 </button>
                 <button
                   className="btn grow"
+                  disabled={acting}
                   onClick={() =>
-                    api
-                      .draw(gameId, me.playerId, me.resumeCode, "decline")
-                      .then(() => setIncomingDraw(false))
-                      .catch(() => {})
+                    runMeta(
+                      api.draw(gameId, me.playerId, me.resumeCode, "decline"),
+                      () => setIncomingDraw(false),
+                    )
                   }
                 >
                   {no.player.decline}

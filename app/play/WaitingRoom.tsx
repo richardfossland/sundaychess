@@ -88,6 +88,15 @@ export function WaitingRoom({
     }
   }, [game, activeGameId]);
 
+  // If the latched game vanished from a loaded state (host reset the tournament),
+  // drop back to the waiting view instead of rendering a board that can't load.
+  useEffect(() => {
+    if (state && activeGameId && !state.games.some((g) => g.id === activeGameId)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveGameId(null);
+    }
+  }, [state, activeGameId]);
+
   if (activeGameId) {
     // Round timer (league rounds only) — fed to the player's board.
     const activeGame = state?.games.find((g) => g.id === activeGameId);
