@@ -8,6 +8,7 @@ import { Chess } from "chess.js";
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import type { BotLevel } from "@/lib/chess/bot";
 import { requestBotMove } from "@/lib/client/engine";
+import { moveAdvice, type AdviceKind } from "@/lib/chess/coach";
 import {
   botSkillForPlayer,
   outcomeToScore,
@@ -17,10 +18,13 @@ import {
 import { identity } from "@/lib/client/identity";
 import { legalDestinations } from "@/lib/chess/validateMove";
 import { Confetti } from "@/lib/client/Confetti";
+import { EvalBar } from "@/lib/client/EvalBar";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
 import { SoundToggle } from "@/lib/client/SoundToggle";
 import { sound } from "@/lib/client/sound";
 import { no } from "@/lib/locale/no";
+import { SoloReview } from "./SoloReview";
+import { Lessons } from "./Lessons";
 
 /** Audible cue for the move just played on `c`. */
 function playMoveCue(c: Chess, captured: boolean) {
@@ -39,6 +43,25 @@ type Outcome = "win" | "loss" | "draw";
 // "adaptive" tunes the bot to the player's rating; the others are fixed levels.
 type Difficulty = "adaptive" | BotLevel;
 
+// Solo can be played plain, with a coach, or as guided lessons.
+type Mode = "normal" | "coach";
+type CoachLevel = "laer" | "ovning" | "mester";
+
+/** What each coach level turns on: the bot it plays, whether to warn before a
+ * blunder, show the eval bar, tag moves (+ offer a do-over), and review after. */
+interface CoachCfg {
+  bot: Difficulty;
+  warn: boolean;
+  evalBar: boolean;
+  tag: boolean;
+  review: boolean;
+}
+const COACH: Record<CoachLevel, CoachCfg> = {
+  laer: { bot: "easy", warn: true, evalBar: false, tag: false, review: false },
+  ovning: { bot: "adaptive", warn: false, evalBar: true, tag: true, review: true },
+  mester: { bot: "impossible", warn: false, evalBar: true, tag: false, review: true },
+};
+
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 const LEVELS: { key: Difficulty; label: string }[] = [
@@ -47,6 +70,12 @@ const LEVELS: { key: Difficulty; label: string }[] = [
   { key: "medium", label: no.solo.medium },
   { key: "hard", label: no.solo.hard },
   { key: "impossible", label: no.solo.impossible },
+];
+
+const COACH_LEVELS: { key: CoachLevel; label: string; sub: string }[] = [
+  { key: "laer", label: no.coach.laer, sub: no.coach.laerSub },
+  { key: "ovning", label: no.coach.ovning, sub: no.coach.ovningSub },
+  { key: "mester", label: no.coach.mester, sub: no.coach.mesterSub },
 ];
 
 export default function Solo() {
@@ -73,10 +102,19 @@ export default function Solo() {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [replayPgn, setReplayPgn] = useState<string | null>(null);
 
+  // Coach mode + lessons.
+  const [mode, setMode] = useState<Mode>("normal");
+  const [coachLevel, setCoachLevel] = useState<CoachLevel>("laer");
+  const [showLessons, setShowLessons] = useState(false);
+  const [coachTag, setCoachTag] = useState<AdviceKind | null>(null);
+  const [awaitRetry, setAwaitRetry] = useState(false); // "bli bedre" blunder pause
+  const [reviewPgn, setReviewPgn] = useState<string | null>(null);
+  const coachCfg: CoachCfg | null = mode === "coach" ? COACH[coachLevel] : null;
+
   const myLetter = playerColor === "white" ? "w" : "b";
   // Whose turn it is is derived from the rendered fen (not the mutable ref).
   const turn = fen.split(" ")[1] === "b" ? "b" : "w";
-  const isMyTurn = !thinking && !outcome && turn === myLetter;
+  const isMyTurn = !thinking && !outcome && !awaitRetry && turn === myLetter;
 
   const refresh = () => setFen(chess.current.fen());
 
@@ -126,6 +164,7 @@ export default function Solo() {
         refresh();
         playMoveCue(chess.current, Boolean(mv?.captured));
       }
+      setCoachTag(null); // my next turn starts fresh
       setThinking(false);
       settle(forColor);
     });
@@ -133,6 +172,13 @@ export default function Solo() {
 
   function tryMove(from: string, to: string): boolean {
     if (!isMyTurn) return false;
+    const fenBefore = chess.current.fen();
+
+    // Beginner coach: warn BEFORE committing an obvious blunder.
+    if (coachCfg?.warn && moveAdvice(fenBefore, { from, to }).kind === "blunder") {
+      if (!confirm(no.coach.warn)) return false;
+    }
+
     let captured = false;
     try {
       const mv = chess.current.move({ from, to, promotion: "q" });
@@ -146,9 +192,37 @@ export default function Solo() {
     setLegal([]);
     refresh();
     playMoveCue(chess.current, captured);
+
+    // "Bli bedre" coach: tag the move; on a blunder, PAUSE before the bot
+    // replies and offer a do-over.
+    if (coachCfg?.tag) {
+      const adv = moveAdvice(fenBefore, { from, to });
+      setCoachTag(adv.kind);
+      if (adv.kind === "blunder" && !chess.current.isGameOver()) {
+        setAwaitRetry(true);
+        return true; // wait for retry / keep-playing choice
+      }
+    }
+
     if (settle(playerColor)) return true;
     botMove(playerColor);
     return true;
+  }
+
+  /** Take back the just-played (blundering) move and let the player try again. */
+  function retryBlunder() {
+    chess.current.undo();
+    setAwaitRetry(false);
+    setCoachTag(null);
+    setLastMove(null);
+    refresh();
+  }
+
+  /** Keep the move despite the warning and let the bot reply. */
+  function keepBlunder() {
+    setAwaitRetry(false);
+    if (settle(playerColor)) return;
+    botMove(playerColor);
   }
 
   function start() {
@@ -163,6 +237,9 @@ export default function Solo() {
     setLegal([]);
     setReplayPgn(null);
     setRatingDelta(null);
+    setCoachTag(null);
+    setAwaitRetry(false);
+    setReviewPgn(null);
     // Lock the bot's strength for this game to the player's current rating, so
     // the matchup is an even ~50% (it re-tunes from the post-game rating).
     botSkill.current = botSkillForPlayer(rating);
@@ -203,6 +280,11 @@ export default function Solo() {
     }
   }
 
+  // ---------- lessons ----------
+  if (showLessons) {
+    return <Lessons onExit={() => setShowLessons(false)} />;
+  }
+
   // ---------- setup ----------
   if (phase === "setup") {
     return (
@@ -214,6 +296,25 @@ export default function Solo() {
           <div className="text-center stack" style={{ gap: 4 }}>
             <p className="eyebrow">{no.solo.title}</p>
             <p className="faint" style={{ fontSize: 13 }}>{no.solo.subtitle}</p>
+          </div>
+
+          {/* play with or without a coach */}
+          <div className="row">
+            <button
+              className={`btn grow ${mode === "normal" ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => setMode("normal")}
+            >
+              {no.coach.modeNormal}
+            </button>
+            <button
+              className={`btn grow ${mode === "coach" ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => {
+                setMode("coach");
+                setLevel(COACH[coachLevel].bot);
+              }}
+            >
+              {no.coach.modeCoach}
+            </button>
           </div>
 
           <div className="field">
@@ -231,29 +332,54 @@ export default function Solo() {
             </div>
           </div>
 
-          <div className="field">
-            <label>{no.solo.difficulty}</label>
-            <div className="row">
-              {LEVELS.map((l) => (
-                <button
-                  key={l.key}
-                  className={`btn grow ${level === l.key ? "btn-primary" : "btn-ghost"}`}
-                  onClick={() => setLevel(l.key)}
-                >
-                  {l.label}
-                </button>
-              ))}
+          {mode === "normal" ? (
+            <div className="field">
+              <label>{no.solo.difficulty}</label>
+              <div className="row">
+                {LEVELS.map((l) => (
+                  <button
+                    key={l.key}
+                    className={`btn grow ${level === l.key ? "btn-primary" : "btn-ghost"}`}
+                    onClick={() => setLevel(l.key)}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+              {level === "adaptive" && (
+                <p className="faint" style={{ fontSize: 12, marginTop: 6 }}>
+                  {no.solo.adaptiveHint}
+                  {` · ${no.solo.yourLevel}: ${rating.rating}`}
+                </p>
+              )}
             </div>
-            {level === "adaptive" && (
-              <p className="faint" style={{ fontSize: 12, marginTop: 6 }}>
-                {no.solo.adaptiveHint}
-                {` · ${no.solo.yourLevel}: ${rating.rating}`}
-              </p>
-            )}
-          </div>
+          ) : (
+            <div className="field">
+              <label>{no.coach.level}</label>
+              <div className="stack" style={{ gap: 8 }}>
+                {COACH_LEVELS.map((l) => (
+                  <button
+                    key={l.key}
+                    className={`btn ${coachLevel === l.key ? "btn-primary" : "btn-ghost"}`}
+                    style={{ flexDirection: "column", alignItems: "flex-start", gap: 2, padding: "10px 14px", textAlign: "left" }}
+                    onClick={() => {
+                      setCoachLevel(l.key);
+                      setLevel(COACH[l.key].bot);
+                    }}
+                  >
+                    <b>{l.label}</b>
+                    <span className="faint" style={{ fontSize: 12 }}>{l.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <button className="btn btn-primary btn-block btn-lg" onClick={start}>
             {no.solo.start} →
+          </button>
+          <button className="btn btn-ghost btn-block" onClick={() => setShowLessons(true)}>
+            {no.coach.lessons}
           </button>
           <Link href="/" className="btn btn-ghost btn-block">
             {no.solo.back}
@@ -314,27 +440,59 @@ export default function Solo() {
           </div>
         )}
 
-        <div className="board-frame">
-          <div className="board-shell">
-            <Chessboard
-              options={{
-                position: fen,
-                boardOrientation: playerColor,
-                allowDragging: isMyTurn,
-                onPieceDrop: onDrop,
-                onSquareClick,
-                squareStyles,
-                darkSquareStyle: { backgroundColor: "var(--board-dark)" },
-                lightSquareStyle: { backgroundColor: "var(--board-light)" },
-                animationDurationInMs: 180,
-                id: "solo-board",
-              }}
-            />
+        <div className="row" style={{ gap: 12, alignItems: "stretch", justifyContent: "center" }}>
+          {coachCfg?.evalBar && <EvalBar fen={fen} />}
+          <div className="board-frame">
+            <div className="board-shell">
+              <Chessboard
+                options={{
+                  position: fen,
+                  boardOrientation: playerColor,
+                  allowDragging: isMyTurn,
+                  onPieceDrop: onDrop,
+                  onSquareClick,
+                  squareStyles,
+                  darkSquareStyle: { backgroundColor: "var(--board-dark)" },
+                  lightSquareStyle: { backgroundColor: "var(--board-light)" },
+                  animationDurationInMs: 180,
+                  id: "solo-board",
+                }}
+              />
+            </div>
           </div>
         </div>
 
+        {/* coach: tag the move just played, and pause for a do-over on a blunder */}
+        {coachTag && !awaitRetry && !outcome && (
+          <div
+            className={`banner ${coachTag === "blunder" ? "banner-error" : coachTag === "inaccuracy" ? "banner-wait" : "banner-turn"}`}
+            style={{ width: "min(92vw,560px)" }}
+            role="status"
+            aria-live="polite"
+          >
+            {coachTag === "blunder"
+              ? no.coach.tagBlunder
+              : coachTag === "inaccuracy"
+                ? no.coach.tagInaccuracy
+                : no.coach.tagGood}
+          </div>
+        )}
+        {awaitRetry && (
+          <div className="card stack" style={{ padding: 14, width: "min(92vw,560px)", gap: 8 }}>
+            <p>{no.coach.tagBlunder}</p>
+            <div className="row">
+              <button className="btn btn-primary grow" onClick={retryBlunder}>
+                {no.coach.retry}
+              </button>
+              <button className="btn grow" onClick={keepBlunder}>
+                {no.coach.keep}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="row">
-          <button className="btn btn-ghost" onClick={undo} disabled={thinking}>
+          <button className="btn btn-ghost" onClick={undo} disabled={thinking || awaitRetry}>
             ↶ {no.solo.undo}
           </button>
           <button className="btn" onClick={start} disabled={thinking}>
@@ -348,7 +506,13 @@ export default function Solo() {
 
       {outcome && (
         <div className="result-overlay">
-          {replayPgn !== null ? (
+          {reviewPgn !== null ? (
+            <SoloReview
+              pgn={reviewPgn}
+              playerColor={playerColor}
+              onClose={() => setReviewPgn(null)}
+            />
+          ) : replayPgn !== null ? (
             <div className="result-card" style={{ maxWidth: 680, width: "100%" }}>
               <ReplayBoard
                 pgn={replayPgn}
@@ -390,6 +554,11 @@ export default function Solo() {
               >
                 ♟ {no.replay.cta}
               </button>
+              {coachCfg?.review && (
+                <button className="btn btn-ghost" onClick={() => setReviewPgn(chess.current.pgn())}>
+                  {no.coach.review}
+                </button>
+              )}
             </div>
           )}
         </div>

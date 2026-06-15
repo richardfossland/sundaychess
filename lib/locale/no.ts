@@ -342,6 +342,33 @@ export const no = {
     levelDown: "Nivået ditt sank litt",
     levelSame: "Nivået ditt holdt seg",
   },
+
+  coach: {
+    modeNormal: "♟ Vanlig spill",
+    modeCoach: "🎓 Med coach",
+    lessons: "📚 Lær sjakk",
+    level: "Hva vil du?",
+    laer: "Lære å spille",
+    ovning: "Bli bedre",
+    mester: "Bli verdensmester",
+    laerSub: "Hjelp til å unngå tabber underveis",
+    ovningSub: "Tilbakemelding + angre og prøv igjen",
+    mesterSub: "Sterkeste motstander + full analyse etterpå",
+    warn: "Pass på – dette trekket ser ut til å tape materiell. Vil du flytte likevel?",
+    tagGood: "👍 Godt trekk!",
+    tagInaccuracy: "🤔 Litt unøyaktig",
+    tagBlunder: "⚠️ Tabbe – du taper noe her",
+    retry: "↶ Angre og prøv igjen",
+    keep: "Spill videre",
+    review: "🎓 Trenerens gjennomgang",
+    lessonsTitle: "Lær sjakk",
+    lessonsIntro: "Små oppgaver – gjør trekket som løser hver av dem.",
+    hint: "Hint",
+    lessonDone: "Riktig! 🎉",
+    lessonRetry: "Ikke helt – prøv igjen.",
+    next: "Neste oppgave →",
+    backToList: "← Oppgavene",
+  },
 } as const;
 
 export type Locale = typeof no;
