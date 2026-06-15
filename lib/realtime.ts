@@ -8,6 +8,9 @@ export const channels = {
   // tournament-wide move feed for the teacher's live-games view (one channel,
   // scales to many games)
   spectate: (tournamentId: string) => `spectate:${tournamentId}`,
+  // presence: students advertise they're connected (keyed by playerId) so the
+  // host can see who's online in the lobby and drop ghosts.
+  presence: (tournamentId: string) => `presence:${tournamentId}`,
 };
 
 export const events = {
