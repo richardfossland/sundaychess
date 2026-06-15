@@ -62,11 +62,21 @@ contrast (#8), back-buttons (#9/#10).
 
 ---
 
+## Batch 6 — P3 polish  ✅
+- [x] Even bye distribution: `byeCounts` (`score.ts`) + min-byes selection (`pair.ts`,
+  wired in `league.ts`) — a repeat bye goes to the player with the FEWEST byes, not a second
+  free point to the same one. Backward-compatible (`hadBye` still accepted).
+- [x] Override of a **bye** game rejected (`cannot_override_bye`) — no longer mis-scores the
+  bye player.
+- [x] Team standings use the **league** score (board route surfaces `PublicPlayer.score` as the
+  league-filtered score), so playoff games don't inflate a team's total — no migration needed.
+
 ## Status
-Batches 1–5 done & deployed (tests no-deploy). No P0 remained after the criticals were fixed
-earlier. Remaining = a P3 polish tail (repeat-bye, override-of-bye, team-standings SQL filter,
-tiebreak idempotency index, casual retention) + the empirical bits only the rig/CF can settle
-(confirm any residual 1102 in CF observability; real multi-device Chromebook stress-test).
+Batches 1–6 done & deployed. No P0 remained after the criticals were fixed earlier. Remaining
+is ONLY: DB-migration items (tiebreak idempotency partial-unique-index + careful createGame
+handling; casual-game retention tightening — each needs a Docker-tested migration + a prod run
+like 0008), and the empirical bits only the rig/CF can settle (confirm any residual 1102 in CF
+observability; the real multi-device Chromebook stress-test).
 
 ## Deferred — decisions / rig
 - Teacher **override on an already-finished game**: NOT auto-changed — correcting a finished

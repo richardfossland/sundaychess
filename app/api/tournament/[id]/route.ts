@@ -5,7 +5,7 @@ import {
   listRounds,
   predictionPoints,
 } from "@/lib/server/store";
-import { computeStandings } from "@/lib/tournament/score";
+import { computeScores, computeStandings } from "@/lib/tournament/score";
 import { fail, ok } from "@/lib/server/http";
 import {
   toBoardTournament,
@@ -53,9 +53,18 @@ async function handleGet(
       ? games.filter((g) => leagueRoundIds.has(g.round_id))
       : games;
 
+  // Surface each player's LEAGUE score so team standings (which sum member
+  // scores client-side) aren't inflated by playoff games. Individual standings
+  // are computed from games below; the raw DB players.score (all phases) is no
+  // longer read by any UI.
+  const leagueScore = computeScores(standingsGames);
+
   const state: BoardState = {
     tournament: toBoardTournament(t),
-    players: players.map(toPublicPlayer),
+    players: players.map((p) => ({
+      ...toPublicPlayer(p),
+      score: leagueScore.get(p.id) ?? 0,
+    })),
     games: games.map(toPublicGame),
     standings: computeStandings(players, standingsGames),
     rounds: rounds.map((r) => ({
