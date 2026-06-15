@@ -10,6 +10,7 @@ export const no = {
     back: "Tilbake",
     create: "Opprett",
     cancel: "Avbryt",
+    close: "Lukk",
     confirm: "Bekreft",
     loading: "Laster …",
     copy: "Kopier",

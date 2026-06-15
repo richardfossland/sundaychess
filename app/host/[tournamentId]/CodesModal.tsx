@@ -78,7 +78,7 @@ export function CodesModal({
           </table>
         )}
         <button className="btn btn-ghost btn-block" onClick={onClose}>
-          {no.common.cancel}
+          {no.common.close}
         </button>
       </div>
     </div>
