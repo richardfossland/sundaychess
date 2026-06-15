@@ -206,7 +206,7 @@ export default function Versus() {
               style={{ padding: 20, alignItems: "center", gap: 6, cursor: "pointer" }}
               onClick={() => setScreen("online")}
             >
-              <span className="entrance-glyph">📱</span>
+              <span className="entrance-glyph">⧉</span>
               <b style={{ fontSize: 17 }}>{no.versus.online}</b>
               <span className="faint" style={{ fontSize: 13 }}>{no.versus.onlineSub}</span>
             </button>

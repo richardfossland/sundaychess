@@ -28,7 +28,9 @@
 
   --txt: #f3efe6;
   --txt-dim: #9aa0ad;
-  --txt-faint: #6b7280;
+  /* lifted from #6b7280 (~3.8:1, failed AA on small text) to ~5.5:1 on the dark
+     cards while staying dimmer than --txt-dim, preserving the hierarchy. */
+  --txt-faint: #868e9c;
 
   /* chess / status accents */
   --board-light: #ecd9b0;
@@ -121,6 +123,9 @@ h3 {
 }
 button {
   font-family: inherit;
+  /* Inherit the light theme text colour so bare <button>s (e.g. card-style
+     entrances) don't fall back to the dark browser default → unreadable. */
+  color: inherit;
 }
 @media (prefers-reduced-motion: reduce) {
   *,
