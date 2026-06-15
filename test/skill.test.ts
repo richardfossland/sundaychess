@@ -63,7 +63,7 @@ describe("skillToParams", () => {
     const p = skillToParams(MAX_SKILL);
     expect(p.randomMoveProb).toBe(0);
     expect(p.noise).toBeLessThan(15);
-    expect(p.depth).toBeGreaterThanOrEqual(4);
+    expect(p.depth).toBeGreaterThanOrEqual(3);
   });
 });
 

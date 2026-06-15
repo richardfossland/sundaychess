@@ -50,14 +50,17 @@ export function skillToParams(skill: number): BotParams {
   // 0 at MIN_SKILL → 1 at MAX_SKILL.
   const t = (s - MIN_SKILL) / (MAX_SKILL - MIN_SKILL);
 
-  // Depth: 1 ply at the bottom up to 4 plies at the top, in integer steps.
+  // Depth: 1 ply at the bottom up to 3 plies at the top, in integer steps.
   // Thresholds picked so beginners face a 1-ply bot and only strong players
-  // face the (slower) deep search.
+  // face the deeper search. Capped at 3: a 4-ply negamax at the opening can
+  // take >5s on a low-power Chromebook tab (it ran the CI runner over its 5s
+  // budget), which would freeze the student's browser — exactly the failure
+  // mode we are hardening against. Strength above ~1300 is shaped by lower
+  // noise/blunder-rate, not extra depth.
   let depth: number;
-  if (s < 700) depth = 1;
-  else if (s < 1100) depth = 2;
-  else if (s < 1600) depth = 3;
-  else depth = 4;
+  if (s < 800) depth = 1;
+  else if (s < 1300) depth = 2;
+  else depth = 3;
 
   // Noise: ~120 cp of slop for a rank beginner fading toward ~6 cp (just
   // enough to vary play) for the strongest setting.
