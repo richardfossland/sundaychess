@@ -242,25 +242,29 @@ export function GameView({
     };
     window.addEventListener("focus", resync);
     window.addEventListener("online", resync);
+    document.addEventListener("visibilitychange", resync);
     return () => {
       window.removeEventListener("focus", resync);
       window.removeEventListener("online", resync);
+      document.removeEventListener("visibilitychange", resync);
     };
   }, [load]);
 
-  // Poll backstop: realtime broadcasts are best-effort, so re-sync while it's not
-  // my turn. Runs even while `pending` is set (deliberately NOT in the guard): a
-  // wedged in-flight request must not also disable recovery — load() only adopts
-  // authoritative server state and confirmedFen ply-guards stale broadcasts, so
-  // it can't undo my own optimistic move. Guarantees the board un-freezes within
-  // ~3 s no matter how state got stuck.
+  // Poll backstop: realtime broadcasts are best-effort, so re-sync on a timer
+  // whenever the game is live — on EITHER turn, and even while `pending` is set
+  // (both deliberately kept OUT of the guard). A game-end on MY turn (opponent
+  // resign / teacher resolve emits only a "result" event, no position broadcast)
+  // would otherwise leave me stuck thinking it's still my move if that event is
+  // lost. load() only adopts authoritative server state and confirmedFen
+  // ply-guards stale broadcasts, so it can't undo my own optimistic move.
+  // Guarantees the board un-freezes within ~3 s no matter how state got stuck.
   useEffect(() => {
-    if (status !== "live" || isMyTurn) return;
+    if (status !== "live") return;
     const id = setInterval(() => {
       if (document.visibilityState === "visible") load().catch(() => {});
     }, 3000);
     return () => clearInterval(id);
-  }, [status, isMyTurn, load]);
+  }, [status, load]);
 
   // Pending watchdog: an absolute ceiling so the optimistic-move lock can NEVER
   // freeze the board permanently. If `pending` somehow outlives the API timeout
@@ -645,11 +649,8 @@ export function GameView({
               <button
                 className="btn btn-primary"
                 style={{ flexShrink: 0 }}
-                onClick={() =>
-                  api
-                    .claimTime(gameId, me.playerId, me.resumeCode)
-                    .catch(() => load().catch(() => {}))
-                }
+                disabled={acting}
+                onClick={() => runMeta(api.claimTime(gameId, me.playerId, me.resumeCode))}
               >
                 ⏱ {no.player.claimWin}
               </button>
