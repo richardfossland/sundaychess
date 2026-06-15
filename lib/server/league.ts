@@ -18,9 +18,9 @@ import { channels, events } from "@/lib/realtime";
 import { pair, type PairablePlayer } from "@/lib/tournament/pair";
 import { variantStartFen } from "@/lib/chess/variants";
 import {
+  byeCounts,
   colorCounts,
   computeStandings,
-  hadByeSet,
   metBeforeSet,
 } from "@/lib/tournament/score";
 import { maybeStartPlayoff } from "@/lib/server/playoff";
@@ -50,7 +50,7 @@ async function pairLeagueRound(
     players: pairable,
     round: roundNumber,
     metBefore: metBeforeSet(games),
-    hadBye: hadByeSet(games),
+    byeCounts: byeCounts(games),
     colors: colorCounts(games),
   });
 

@@ -32,6 +32,10 @@ async function handlePost(req: Request): Promise<Response> {
   const t = await authHost(game.tournament_id, body.hostCode);
   if (!t) return fail(401, "unauthorized");
 
+  // A bye isn't a played game — overriding it would mis-score the bye player
+  // (the absent route guards byes too). Reject rather than corrupt standings.
+  if (game.status === "bye") return fail(409, "cannot_override_bye");
+
   const result = await resolveGameRpc(game.id, body.result, "teacher_override");
   if (!result.ok) return fail(409, result.conflict ?? "conflict");
 

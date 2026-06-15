@@ -25,8 +25,10 @@ export interface PairInput {
   round: number;
   /** Unordered keys of pairs that already played — see pairKey(). */
   metBefore?: ReadonlySet<string>;
-  /** Player ids who already received a bye. */
+  /** Player ids who already received a bye (legacy; superseded by byeCounts). */
   hadBye?: ReadonlySet<string>;
+  /** Per-player bye counts — preferred over hadBye, for even distribution. */
+  byeCounts?: ReadonlyMap<string, number>;
   /** Per-player colour history for balancing white/black. */
   colors?: ReadonlyMap<string, ColorCount>;
   rng?: Rng;
@@ -78,7 +80,9 @@ function assignColors(
 export function pair(input: PairInput): Pairing[] {
   const rng = input.rng ?? Math.random;
   const metBefore = input.metBefore ?? new Set<string>();
-  const hadBye = input.hadBye ?? new Set<string>();
+  // Unified bye counts: prefer explicit counts, else treat each hadBye id as 1.
+  const byeCounts: ReadonlyMap<string, number> =
+    input.byeCounts ?? new Map([...(input.hadBye ?? [])].map((id) => [id, 1]));
   const colors = input.colors;
 
   if (input.players.length === 0) return [];
@@ -97,14 +101,17 @@ export function pair(input: PairInput): Pairing[] {
       // Round 1: the last shuffled player gets the bye.
       byeId = pool[pool.length - 1].id;
     } else {
-      // Lowest-ranked player who has not had a bye; fall back to lowest overall.
+      // Fewest byes so far, then lowest-ranked among them (pool is sorted by
+      // standings, so iterate from the end). Spreads repeat byes evenly instead
+      // of handing the same player a second free point.
+      let min = Infinity;
+      for (const p of pool) min = Math.min(min, byeCounts.get(p.id) ?? 0);
       for (let i = pool.length - 1; i >= 0; i--) {
-        if (!hadBye.has(pool[i].id)) {
+        if ((byeCounts.get(pool[i].id) ?? 0) === min) {
           byeId = pool[i].id;
           break;
         }
       }
-      if (byeId === null) byeId = pool[pool.length - 1].id;
     }
   }
 

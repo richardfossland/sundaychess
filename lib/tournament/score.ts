@@ -130,6 +130,18 @@ export function hadByeSet(games: Game[]): Set<string> {
   return set;
 }
 
+/** How many byes each player has had — for even bye distribution (a second/third
+ * bye is a second/third free point, so spread them). */
+export function byeCounts(games: Game[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const g of games) {
+    if (g.status === "bye") {
+      counts.set(g.white_player_id, (counts.get(g.white_player_id) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
 /** White/black counts per player, for colour balancing in pairing. */
 export function colorCounts(
   games: Game[],
