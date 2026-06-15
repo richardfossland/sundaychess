@@ -129,6 +129,18 @@ export async function listPlayers(tournamentId: string): Promise<Player[]> {
   return (data as Player[]) ?? [];
 }
 
+/** The currently smallest team (ties → declared order). JS mirror of the SQL in
+ * join_team_player, used as the fallback when migration 0008 isn't applied. */
+function smallestTeam(existing: Player[], teams: string[]): string {
+  const counts = new Map(teams.map((name) => [name, 0]));
+  for (const p of existing) {
+    if (p.team && counts.has(p.team)) counts.set(p.team, counts.get(p.team)! + 1);
+  }
+  return teams.reduce((min, name) =>
+    counts.get(name)! < counts.get(min)! ? name : min,
+  );
+}
+
 export async function addPlayer(
   tournamentId: string,
   displayName: string,
@@ -137,49 +149,50 @@ export async function addPlayer(
   const db = createServiceClient();
   const existing = await listPlayers(tournamentId);
   const taken = new Set(existing.map((p) => p.resume_code));
+  const name = displayName.slice(0, 40);
+  const useTeams = teams.length >= 2;
+  // Once the RPC proves unavailable (pre-0008), don't keep retrying it.
+  let rpcAvailable = useTeams;
 
-  // Lagturnering: auto-assign to the currently smallest team so they stay
-  // balanced regardless of join order.
-  let team: string | null = null;
-  if (teams.length >= 2) {
-    const counts = new Map(teams.map((name) => [name, 0]));
-    for (const p of existing) {
-      if (p.team && counts.has(p.team)) counts.set(p.team, counts.get(p.team)! + 1);
-    }
-    team = teams.reduce((min, name) =>
-      counts.get(name)! < counts.get(min)! ? name : min,
-    );
-  }
-
-  const row: {
-    tournament_id: string;
-    display_name: string;
-    resume_code: string;
-    team?: string;
-  } = {
-    tournament_id: tournamentId,
-    display_name: displayName.slice(0, 40),
-    resume_code: "",
-  };
-  if (team) row.team = team;
-
-  // Two failure modes, handled separately:
-  //  * 23505 (concurrent join picked the same resume code) → regenerate + retry
-  //  * anything else with team set (players.team not migrated, 0006) → drop team
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 3; attempt++) {
-    row.resume_code = generateUnique(generateResumeCode, taken);
-    taken.add(row.resume_code);
+    const resumeCode = generateUnique(generateResumeCode, taken);
+    taken.add(resumeCode);
+
+    // Preferred path for team tournaments: atomic, race-free balanced assignment.
+    if (rpcAvailable) {
+      const { data, error } = await db.rpc("join_team_player", {
+        p_tournament_id: tournamentId,
+        p_display_name: name,
+        p_resume_code: resumeCode,
+        p_teams: teams,
+      });
+      if (!error) return data as Player;
+      lastError = error;
+      if (isUniqueViolation(error)) continue; // code collision → new code
+      rpcAvailable = false; // RPC missing/older DB → fall back to JS below
+    }
+
+    // Fallback (no teams, or RPC not yet migrated): JS balance + plain insert.
+    const row: {
+      tournament_id: string;
+      display_name: string;
+      resume_code: string;
+      team?: string;
+    } = { tournament_id: tournamentId, display_name: name, resume_code: resumeCode };
+    if (useTeams) row.team = smallestTeam(existing, teams);
+
     const { data, error } = await db.from("players").insert(row).select("*").single();
     if (!error) return data as Player;
     lastError = error;
     if (isUniqueViolation(error)) continue; // new code next loop
     if (row.team) {
+      // players.team not migrated (pre-0006) → drop team and retry once.
       delete row.team;
       const retry = await db.from("players").insert(row).select("*").single();
       if (!retry.error) return retry.data as Player;
       lastError = retry.error;
-      if (isUniqueViolation(retry.error)) continue; // teamless + new code
+      if (isUniqueViolation(retry.error)) continue;
     }
     break; // non-retryable
   }
