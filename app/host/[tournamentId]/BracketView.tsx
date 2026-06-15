@@ -58,7 +58,12 @@ export function BracketView({
   const liveCount = currentCol?.games.filter((g) => g.status === "live").length ?? 0;
   const allResolved =
     (currentCol?.games.length ?? 0) > 0 && liveCount === 0;
-  const isFinal = (currentCol?.games.length ?? 0) === 1;
+  // The final is the round with a single matchup. Count distinct bracket slots,
+  // not games, so a drawn final that spawned a tiebreak rematch still counts.
+  const isFinal =
+    currentCol != null &&
+    currentCol.games.length > 0 &&
+    new Set(currentCol.games.map((g) => g.slot ?? 0)).size === 1;
 
   const timerSec = tournament.config.roundTimerSec;
 
@@ -139,25 +144,42 @@ export function BracketView({
       </header>
 
       <div className="bracket">
-        {columns.map((col) => (
-          <div className="bracket-col" key={col.round.id}>
-            <h3>
-              {col.games.length === 1
-                ? "Finale"
-                : `${no.host.round} ${col.round.number}`}
-            </h3>
-            {col.games.map((g) => (
-              <div
-                className="bracket-match"
-                key={g.id}
-                onClick={() => g.status !== "bye" && setOverrideGame(g)}
-              >
-                {slot(g, "white")}
-                {slot(g, "black")}
-              </div>
-            ))}
-          </div>
-        ))}
+        {columns.map((col) => {
+          // Games sharing a slot in a column = an original draw + its tiebreak
+          // rematch. Count by slot so the header and badges read correctly.
+          const slotCounts = new Map<number, number>();
+          for (const g of col.games) {
+            const s = g.slot ?? 0;
+            slotCounts.set(s, (slotCounts.get(s) ?? 0) + 1);
+          }
+          return (
+            <div className="bracket-col" key={col.round.id}>
+              <h3>
+                {slotCounts.size === 1
+                  ? "Finale"
+                  : `${no.host.round} ${col.round.number}`}
+              </h3>
+              {col.games.map((g) => {
+                const isTiebreak = (slotCounts.get(g.slot ?? 0) ?? 0) > 1;
+                return (
+                  <div
+                    className="bracket-match"
+                    key={g.id}
+                    onClick={() => g.status !== "bye" && setOverrideGame(g)}
+                  >
+                    {isTiebreak && (
+                      <span className="badge" style={{ fontSize: 10 }}>
+                        ⚔︎ {no.host.replay}
+                      </span>
+                    )}
+                    {slot(g, "white")}
+                    {slot(g, "black")}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
 
       <div className="row" style={{ marginTop: 24, maxWidth: 480 }}>

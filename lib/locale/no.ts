@@ -47,6 +47,7 @@ export const no = {
     round: "Runde",
     games: "Partier",
     nextRound: "Neste runde",
+    replay: "Omspill",
     forceResolve: "Tving fullføring",
     forceResolveConfirm:
       "Sette alle uavgjorte partier til remis (½–½)? Dette kan ikke angres.",
