@@ -125,7 +125,11 @@ export const api = {
   resume: (resumeCode: string, ref: { pin?: string; tournamentId?: string }) =>
     post<ResumeResult>("/api/resume", { resumeCode, ...ref }),
 
-  board: (id: string) => getJson<BoardState>(`/api/tournament/${id}`, "board_failed"),
+  board: (id: string, withClocks = false) =>
+    getJson<BoardState>(
+      `/api/tournament/${id}${withClocks ? "?clocks=1" : ""}`,
+      "board_failed",
+    ),
 
   game: (id: string) => getJson<GameDetail>(`/api/game/${id}`, "game_failed"),
 

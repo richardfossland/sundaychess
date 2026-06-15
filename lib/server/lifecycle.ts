@@ -1,6 +1,6 @@
 import "server-only";
 
-import { listGames, updateTournament } from "@/lib/server/store";
+import { finishIfActive, listGames } from "@/lib/server/store";
 import { broadcast } from "@/lib/server/broadcast";
 import { channels, events } from "@/lib/realtime";
 import type { Game, Tournament } from "@/lib/types";
@@ -50,7 +50,10 @@ export async function maybeAutoFinishStale(
   const gs = games ?? (await listGames(tournament.id));
   if (!isStale(lastActivityMs(tournament, gs))) return tournament;
 
-  const updated = await updateTournament(tournament.id, { status: "finished" });
+  // Atomic: only the FIRST caller (of a whole class resuming at once) actually
+  // transitions the row and broadcasts; the rest get null and stay quiet.
+  const updated = await finishIfActive(tournament.id);
+  if (!updated) return { ...tournament, status: "finished" };
   try {
     await broadcast(channels.lobby(tournament.id), events.tournament, {
       finished: true,

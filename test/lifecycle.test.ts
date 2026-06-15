@@ -4,7 +4,7 @@ import type { Game, Tournament } from "@/lib/types";
 const { store } = vi.hoisted(() => ({
   store: {
     listGames: vi.fn(),
-    updateTournament: vi.fn(),
+    finishIfActive: vi.fn(),
   },
 }));
 vi.mock("@/lib/server/store", () => store);
@@ -91,14 +91,22 @@ describe("autoFinishEligible", () => {
 describe("maybeAutoFinishStale", () => {
   beforeEach(() => {
     store.listGames.mockReset();
-    store.updateTournament.mockReset();
+    store.finishIfActive.mockReset();
   });
 
   it("finishes a stale league tournament and returns the updated row", async () => {
     const t = tournament({ status: "league", created_at: "2020-01-01T00:00:00.000Z" });
-    store.updateTournament.mockResolvedValue({ ...t, status: "finished" });
+    store.finishIfActive.mockResolvedValue({ ...t, status: "finished" });
     const res = await maybeAutoFinishStale(t, [game("2020-01-01T00:10:00.000Z")]);
-    expect(store.updateTournament).toHaveBeenCalledWith("t", { status: "finished" });
+    expect(store.finishIfActive).toHaveBeenCalledWith("t");
+    expect(res.status).toBe("finished");
+  });
+
+  it("stays quiet (returns finished view) when a concurrent caller already finished it", async () => {
+    const t = tournament({ status: "league", created_at: "2020-01-01T00:00:00.000Z" });
+    store.finishIfActive.mockResolvedValue(null); // someone else won the race
+    const res = await maybeAutoFinishStale(t, [game("2020-01-01T00:10:00.000Z")]);
+    expect(store.finishIfActive).toHaveBeenCalledWith("t");
     expect(res.status).toBe("finished");
   });
 
@@ -106,7 +114,7 @@ describe("maybeAutoFinishStale", () => {
     const fresh = new Date().toISOString();
     const t = tournament({ status: "playoff", created_at: fresh });
     const res = await maybeAutoFinishStale(t, [game(fresh)]);
-    expect(store.updateTournament).not.toHaveBeenCalled();
+    expect(store.finishIfActive).not.toHaveBeenCalled();
     expect(res).toBe(t);
   });
 
@@ -114,14 +122,14 @@ describe("maybeAutoFinishStale", () => {
     const t = tournament({ status: "lobby", created_at: "2020-01-01T00:00:00.000Z" });
     const res = await maybeAutoFinishStale(t, []);
     expect(store.listGames).not.toHaveBeenCalled();
-    expect(store.updateTournament).not.toHaveBeenCalled();
+    expect(store.finishIfActive).not.toHaveBeenCalled();
     expect(res).toBe(t);
   });
 
   it("fetches games itself when not supplied", async () => {
     const t = tournament({ status: "league", created_at: "2020-01-01T00:00:00.000Z" });
     store.listGames.mockResolvedValue([game("2020-01-01T00:10:00.000Z")]);
-    store.updateTournament.mockResolvedValue({ ...t, status: "finished" });
+    store.finishIfActive.mockResolvedValue({ ...t, status: "finished" });
     const res = await maybeAutoFinishStale(t);
     expect(store.listGames).toHaveBeenCalledWith("t");
     expect(res.status).toBe("finished");

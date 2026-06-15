@@ -84,6 +84,20 @@ export function LiveGamesView({
       }
       return next;
     });
+    // Self-heal the "finished" veto: the authoritative poll wins. Drop any id the
+    // poll now reports as live again (so a stale/duplicate result event or a
+    // re-activated slot can't permanently hide a live board), and prune the rest
+    // so the set can't grow for a whole projector session.
+    setFinished((s) => {
+      if (s.size === 0) return s;
+      const liveNow = new Set(games.filter((g) => g.status === "live").map((g) => g.id));
+      const present = new Set(games.map((g) => g.id));
+      // Keep only ids the poll still reports as present-and-NOT-live (a transient
+      // hide). Drop ids the poll says are live again (un-hide) or that vanished.
+      const next = new Set<string>();
+      for (const id of s) if (present.has(id) && !liveNow.has(id)) next.add(id);
+      return next.size === s.size ? s : next;
+    });
     setClockMap((m) => {
       const next: Record<string, ClockSnap> = {};
       const at = Date.now();
@@ -185,7 +199,7 @@ export function LiveGamesView({
     return (
       <main className="wrap" style={{ padding: "12px 24px 48px", maxWidth: "min(96vw, 1100px)" }}>
         <button
-          onClick={() => setOpenId(g.id)}
+          onClick={() => { setOpenId(g.id); setOpenResult(null); }}
           className="card reveal"
           style={{ padding: 16, cursor: "pointer", textAlign: "left", color: "inherit", width: "100%" }}
         >
@@ -227,7 +241,7 @@ export function LiveGamesView({
           {live.map((g) => (
             <button
               key={g.id}
-              onClick={() => setOpenId(g.id)}
+              onClick={() => { setOpenId(g.id); setOpenResult(null); }}
               className="card reveal"
               style={{ padding: 12, cursor: "pointer", textAlign: "left", color: "inherit" }}
             >

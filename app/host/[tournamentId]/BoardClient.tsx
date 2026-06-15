@@ -10,7 +10,8 @@ import { FinishedView } from "./FinishedView";
 import { LiveGamesView } from "./LiveGamesView";
 
 export function BoardClient({ tournamentId }: { tournamentId: string }) {
-  const { state, error, refresh } = useBoardState(tournamentId);
+  // Host projector renders the live-games grid → ask for per-game clocks.
+  const { state, error, refresh } = useBoardState(tournamentId, true);
   const [mode, setMode] = useState<"board" | "live">("board");
 
   // Only blank the projector when we have NOTHING to show. A transient fetch

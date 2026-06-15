@@ -107,8 +107,12 @@ export function searchBestMove(
     let localBest = best;
     let bestScore = -Infinity;
     let alpha = -Infinity;
+    let completed = true;
     for (const m of rootMoves) {
-      if (budget.n <= 0) break;
+      if (budget.n <= 0) {
+        completed = false;
+        break;
+      }
       budget.n--;
       chess.move({ from: m.from, to: m.to, promotion: (m.promotion ?? "q") as "q" });
       const score = -negamax(chess, depth - 1, -Infinity, -alpha, budget);
@@ -119,8 +123,10 @@ export function searchBestMove(
         if (score > alpha) alpha = score;
       }
     }
-    // Keep the best move from the deepest iteration we actually completed work on.
-    best = localBest;
+    // Only adopt this depth's result if it examined ALL root moves — a partial
+    // (budget-exhausted) iteration could otherwise discard a better move the
+    // previous full depth already found.
+    if (completed) best = localBest;
     if (budget.n <= 0) break;
   }
 
