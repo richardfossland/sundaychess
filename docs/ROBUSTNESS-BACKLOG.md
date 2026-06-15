@@ -51,10 +51,22 @@ contrast (#8), back-buttons (#9/#10).
   idempotency partial-unique-index (needs careful createGame handling). Casual double-join is
   already guarded by the rounds unique constraint.
 
-## Batch 5 — test coverage (headless)
-- [ ] auto-draw classification (only checkmate tested), `forceResolveRound`/
-  `currentRoundResolved`, `startCup`, round-advance guards/double-fire, `afterGameResolved`
-  side-effects asserted, an e2e league sim through `pairLeagueRound`.
+## Batch 5 — test coverage (headless)  ✅ (our logic; thin wrappers left)
+- [x] `startCup` (seeding, byes for non-power-of-two, too-few guard) — `playoff.test`.
+- [x] Round-advance route: 401 / round_unresolved / normal advance / **double-fire (23505)
+  recovery** — new `roundAdvanceRoute.test`.
+- [x] `currentRoundResolved` empty/resolved + zero-active advance (added in Batch 3).
+- [ ] Low value, left: auto-draw classification (thin wrapper over chess.js
+  isStalemate/isThreefold/…), `forceResolveRound`, `afterGameResolved` side-effect
+  assertions, a full e2e league sim. (167 → 174 tests this batch.)
+
+---
+
+## Status
+Batches 1–5 done & deployed (tests no-deploy). No P0 remained after the criticals were fixed
+earlier. Remaining = a P3 polish tail (repeat-bye, override-of-bye, team-standings SQL filter,
+tiebreak idempotency index, casual retention) + the empirical bits only the rig/CF can settle
+(confirm any residual 1102 in CF observability; real multi-device Chromebook stress-test).
 
 ## Deferred — decisions / rig
 - Teacher **override on an already-finished game**: NOT auto-changed — correcting a finished
