@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Link from "next/link";
 import { no } from "@/lib/locale/no";
 import { api, ApiError } from "@/lib/client/api";
 import { Wizard } from "./Wizard";
@@ -57,6 +58,9 @@ export default function HostEntry() {
             >
               {no.host.enterTitle}
             </button>
+            <Link href="/" className="btn btn-ghost btn-block">
+              ← {no.common.back}
+            </Link>
           </div>
         )}
 
