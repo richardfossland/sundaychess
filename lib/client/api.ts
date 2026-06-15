@@ -18,37 +18,56 @@ export class ApiError extends Error {
 
 const DEFAULT_TIMEOUT = 8000;
 
-/** fetch with a hard timeout — a hung request must never freeze the UI. On
- * timeout/abort or a network failure it throws ApiError(0, "timeout"|"network")
- * so callers always settle (releases optimistic locks, falls back gracefully). */
-async function timedFetch(url: string, init: RequestInit, timeoutMs = DEFAULT_TIMEOUT): Promise<Response> {
+/** fetch + JSON parse under ONE hard timeout — a hung request must never freeze
+ * the UI. CRUCIAL: the timeout spans BOTH the fetch AND reading the response
+ * body, because a flaky/slow network can deliver headers and then stall the body
+ * stream — leaving `await res.json()` hung forever (which previously wedged the
+ * optimistic-move `pending` flag and froze the board). On timeout/abort or a
+ * network failure this throws ApiError(0, "timeout"|"network") so every caller
+ * settles. Exported for tests. */
+export async function timedJson(
+  url: string,
+  init: RequestInit,
+  timeoutMs = DEFAULT_TIMEOUT,
+): Promise<{ ok: boolean; status: number; data: unknown }> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...init, signal: ctrl.signal });
+    const res = await fetch(url, { ...init, signal: ctrl.signal });
+    // Body read is still covered by `ctrl`: aborting cancels an in-flight
+    // res.json() too. Tolerate an empty/non-JSON body (→ {}), but a timeout/abort
+    // during the body read MUST propagate so it surfaces as ApiError("timeout")
+    // rather than a fake-empty success.
+    const data = await res.json().catch((e) => {
+      if (e instanceof DOMException && e.name === "AbortError") throw e;
+      return {};
+    });
+    return { ok: res.ok, status: res.status, data };
   } catch (e) {
     const aborted = e instanceof DOMException && e.name === "AbortError";
     throw new ApiError(0, aborted ? "timeout" : "network", null);
   } finally {
-    clearTimeout(t);
+    clearTimeout(t); // only after the body is read (or aborted) — never earlier
   }
 }
 
 async function post<T>(url: string, body: unknown): Promise<T> {
-  const res = await timedFetch(url, {
+  const { ok, status, data } = await timedJson(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(res.status, data?.error ?? "error", data);
+  if (!ok) {
+    const code = (data as { error?: string } | null)?.error ?? "error";
+    throw new ApiError(status, code, data);
+  }
   return data as T;
 }
 
 async function getJson<T>(url: string, code: string): Promise<T> {
-  const res = await timedFetch(url, { cache: "no-store" });
-  if (!res.ok) throw new ApiError(res.status, code, null);
-  return (await res.json()) as T;
+  const { ok, status, data } = await timedJson(url, { cache: "no-store" });
+  if (!ok) throw new ApiError(status, code, null);
+  return data as T;
 }
 
 export interface CreatedTournament {

@@ -27,6 +27,11 @@ import {
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
 import { no } from "@/lib/locale/no";
 
+/** Hard ceiling on how long the optimistic-move `pending` lock may stay set.
+ * Must exceed the API timeout (8 s) so the normal timeout/catch always wins
+ * first; this only fires if something truly wedges the request. */
+const PENDING_CEILING_MS = 11000;
+
 /** Piece count from a FEN board field — a drop between positions = capture. */
 function pieceCount(fen: string): number {
   return (fen.split(" ")[0].match(/[a-zA-Z]/g) ?? []).length;
@@ -243,17 +248,32 @@ export function GameView({
     };
   }, [load]);
 
-  // Poll backstop: realtime broadcasts are best-effort, so re-sync while waiting
-  // for the opponent (and nothing in flight). Guarantees the board un-freezes
-  // within ~3 s even if a "position" event was dropped — without disrupting my
-  // own selection / optimistic move.
+  // Poll backstop: realtime broadcasts are best-effort, so re-sync while it's not
+  // my turn. Runs even while `pending` is set (deliberately NOT in the guard): a
+  // wedged in-flight request must not also disable recovery — load() only adopts
+  // authoritative server state and confirmedFen ply-guards stale broadcasts, so
+  // it can't undo my own optimistic move. Guarantees the board un-freezes within
+  // ~3 s no matter how state got stuck.
   useEffect(() => {
-    if (status !== "live" || isMyTurn || pending) return;
+    if (status !== "live" || isMyTurn) return;
     const id = setInterval(() => {
       if (document.visibilityState === "visible") load().catch(() => {});
     }, 3000);
     return () => clearInterval(id);
-  }, [status, isMyTurn, pending, load]);
+  }, [status, isMyTurn, load]);
+
+  // Pending watchdog: an absolute ceiling so the optimistic-move lock can NEVER
+  // freeze the board permanently. If `pending` somehow outlives the API timeout
+  // (e.g. a stalled response body), force-release it and re-sync. The cleanup
+  // resets the timer on every toggle, so a normal fast move never trips it.
+  useEffect(() => {
+    if (!pending) return;
+    const t = setTimeout(() => {
+      setPending(false);
+      load().catch(() => {});
+    }, PENDING_CEILING_MS);
+    return () => clearTimeout(t);
+  }, [pending, load]);
 
   const flash = (msg: string) => {
     setToast(msg);
@@ -347,6 +367,10 @@ export function GameView({
         flash(no.player.drawDeclined);
       }
     }
+  }, (s) => {
+    // Broadcasts silently stopped (channel error/timeout) → refetch truth now;
+    // the ~3 s poll then keeps it fresh until the socket re-joins.
+    if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") load().catch(() => {});
   });
 
   // Attempt a move: optimistic render, then server reconcile / rollback.

@@ -7,18 +7,26 @@ import { createClient } from "@/lib/supabase/client";
 type Handler = (event: string, payload: Record<string, unknown>) => void;
 
 /** Subscribe to a Supabase Realtime channel and invoke `onEvent` for every
- * broadcast event on it. Resubscribes when the topic changes. The handler is
- * kept in a ref so consumers don't need to memoise it.
+ * broadcast event on it. Resubscribes when the topic changes. Handlers are kept
+ * in refs so consumers don't need to memoise them.
+ *
+ * `onStatus` (optional) receives the subscribe lifecycle status. Without it, a
+ * silently-failed (re)join after a socket blip would stop broadcasts with no
+ * signal at all; consumers use it to refetch authoritative state on
+ * CHANNEL_ERROR / TIMED_OUT (the poll backstops then keep state fresh).
  *
  * Returns a stable `send(event, payload)` for ephemeral client broadcasts
  * (e.g. emoji reactions) on the same channel — a no-op until subscribed. */
 export function useChannel(
   topic: string | null,
   onEvent: Handler,
+  onStatus?: (status: string) => void,
 ): (event: string, payload: Record<string, unknown>) => void {
   const handlerRef = useRef(onEvent);
+  const statusRef = useRef(onStatus);
   useEffect(() => {
     handlerRef.current = onEvent;
+    statusRef.current = onStatus;
   });
 
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -39,7 +47,7 @@ export function useChannel(
         (msg.payload as Record<string, unknown>) ?? {},
       );
     });
-    channel.subscribe();
+    channel.subscribe((status) => statusRef.current?.(status));
     channelRef.current = channel;
 
     return () => {
