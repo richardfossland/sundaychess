@@ -103,6 +103,8 @@ export const no = {
     join: "Bli med",
     liveToggle: "Live",
     boardToggle: "Tavle",
+    spectateWon: "vant!",
+    spectateDraw: "Remis",
     podium: "Vinnere",
     champion: "Mester",
     newTournament: "Ny turnering",
