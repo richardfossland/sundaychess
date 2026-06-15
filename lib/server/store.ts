@@ -343,14 +343,28 @@ export async function createGame(g: NewGame): Promise<Game> {
     slot: g.slot ?? 0,
   };
   const { data, error } = await db.from("games").insert(row).select("*").single();
-  if (error) {
-    // games.slot may not be migrated yet (0007) — retry without it
-    delete row.slot;
-    const retry = await db.from("games").insert(row).select("*").single();
-    if (retry.error) throw error; // surface the ORIGINAL error
-    return retry.data as Game;
+  if (!error) return data as Game;
+
+  // Idempotency hit (migration 0009: at most one live game per round+slot). A
+  // double-fired playoff advance / tiebreak-rematch creation lost the race —
+  // return the live game that already exists at this slot instead of duplicating.
+  if (isUniqueViolation(error)) {
+    const existing = await db
+      .from("games")
+      .select("*")
+      .eq("round_id", g.roundId)
+      .eq("slot", g.slot ?? 0)
+      .eq("status", "live")
+      .maybeSingle();
+    if (existing.data) return existing.data as Game;
+    throw error;
   }
-  return data as Game;
+
+  // games.slot may not be migrated yet (0007) — retry without it
+  delete row.slot;
+  const retry = await db.from("games").insert(row).select("*").single();
+  if (retry.error) throw error; // surface the ORIGINAL error
+  return retry.data as Game;
 }
 
 // ---------------- atomic RPCs (migration 0002) ----------------
