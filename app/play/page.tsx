@@ -115,8 +115,14 @@ export default function Play() {
       identity.savePlayer(stored);
       setMe(stored);
       setScreen("playing");
-    } catch {
-      setError(no.player.invalidCode);
+    } catch (e) {
+      const status = e instanceof ApiError ? e.status : 0;
+      // A transient server/network blip must not read as a wrong code (dead-end).
+      setError(
+        status >= 500 || status === 0 || status === 429
+          ? no.player.connection
+          : no.player.invalidCode,
+      );
       setBusy(false);
     }
   }
