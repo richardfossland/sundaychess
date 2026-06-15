@@ -414,19 +414,28 @@ export function GameView({
         setFen(confirmed);
         setTurn(confirmed.split(" ")[1] === "b" ? "b" : "w");
         const code = e instanceof ApiError ? e.code : "";
+        const httpStatus = e instanceof ApiError ? e.status : 0;
         if (code === "not_your_turn") flash(no.player.notYourTurn);
         else if (code === "flagged") {
           // My time ran out — the server resolved the game; sync the result.
-          load().catch(() => {});
         } else if (code === "timeout" || code === "network") {
-          // Request hung/dropped — re-sync authoritative state so the board
-          // can't get stuck on a stale turn.
+          // Request hung/dropped.
           flash(no.player.connection);
-          load().catch(() => {});
-        } else if (code === "stale" || code === "not_live") {
+        } else if (httpStatus === 400) {
+          // The server genuinely rejected the move's legality (rare — the client
+          // pre-validates with applyMove before POSTing). This is the ONLY path
+          // that may say "illegal move".
+          flash(no.player.illegalMove);
+        } else if (httpStatus >= 500 || httpStatus === 0) {
+          // 5xx / 503 / a Cloudflare 1102 (HTML) / unknown transport error — a
+          // SERVER problem, NOT an illegal move. Don't accuse the student.
+          flash(no.player.connection);
+        } else {
+          // 403/404/409 (stale / not_live / conflict / no_game): just resync.
           flash(no.common.error);
-          load().catch(() => {});
-        } else flash(no.player.illegalMove);
+        }
+        // Always re-sync to authoritative state so the board can't get stuck.
+        load().catch(() => {});
       } finally {
         setPending(false);
       }

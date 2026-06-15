@@ -43,16 +43,19 @@ export async function createTournament(
 ): Promise<Tournament> {
   const db = createServiceClient();
 
-  // PIN must be globally unique. The pre-read avoids most collisions; the DB
-  // constraint backstops races — on 23505 we regenerate and retry.
-  const { data: existing } = await db.from("tournaments").select("join_pin");
-  const takenPins = new Set((existing ?? []).map((r) => r.join_pin as string));
+  // PIN uniqueness is enforced by the DB unique constraint; on a 23505 collision
+  // we regenerate and retry. We deliberately do NOT pre-read existing pins:
+  // PostgREST's max_rows caps that SELECT at 1000 rows, so once the tournaments
+  // table grows (the casual 1v1 feature creates one per game) the pre-read both
+  // wastes work AND samples an INCOMPLETE set → it stops preventing collisions
+  // and starts causing them. Generate-and-retry against the constraint is correct
+  // and O(1). 6-digit space (1e6) makes a collision rare; 8 retries make exhaustion
+  // astronomically unlikely.
   const host_code = generateHostCode();
 
   let lastError: unknown = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const join_pin = generateUnique(generatePin, takenPins);
-    takenPins.add(join_pin); // don't re-pick it on the next attempt
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const join_pin = generatePin();
     const { data, error } = await db
       .from("tournaments")
       .insert({

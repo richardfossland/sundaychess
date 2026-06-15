@@ -24,7 +24,26 @@ export async function readJson<T = Record<string, unknown>>(
 // Per-process, best-effort. Good enough for a single-classroom deployment; the
 // real backstop for abuse is server-side validation + the unique constraints.
 // Documented in docs/RIG-TEST.md for a hardening pass (Upstash/edge KV) later.
+//
+// SELF-BOUNDING (critical on Cloudflare Workers): keys are high-cardinality
+// (move:${ip}:${playerId} etc.) and the casual 1v1 feature mints endless new
+// player ids, so without eviction this Map would grow for the whole isolate
+// lifetime → memory pressure → Error 1102. Background timers don't run between
+// Worker requests, so eviction must happen ON ACCESS: when the map gets large we
+// sweep expired entries (and, as a last resort, evict the soonest-expiring) so
+// it can never approach the 128 MB cliff.
 const buckets = new Map<string, { count: number; resetAt: number }>();
+const MAX_BUCKETS = 10_000;
+
+function sweep(now: number): void {
+  for (const [k, v] of buckets) if (now > v.resetAt) buckets.delete(k);
+  if (buckets.size > MAX_BUCKETS) {
+    // Still over cap with all entries live → drop the soonest-to-expire.
+    const live = [...buckets.entries()].sort((a, b) => a[1].resetAt - b[1].resetAt);
+    const drop = buckets.size - MAX_BUCKETS;
+    for (let i = 0; i < drop; i++) buckets.delete(live[i][0]);
+  }
+}
 
 export function rateLimit(
   key: string,
@@ -32,6 +51,7 @@ export function rateLimit(
   windowMs: number,
 ): boolean {
   const now = Date.now();
+  if (buckets.size > MAX_BUCKETS) sweep(now);
   const b = buckets.get(key);
   if (!b || now > b.resetAt) {
     buckets.set(key, { count: 1, resetAt: now + windowMs });
@@ -40,6 +60,16 @@ export function rateLimit(
   if (b.count >= limit) return false;
   b.count++;
   return true;
+}
+
+/** Test-only: reset limiter state between tests. */
+export function __resetRateLimiter(): void {
+  buckets.clear();
+}
+
+/** Test-only: current number of tracked buckets. */
+export function __bucketCount(): number {
+  return buckets.size;
 }
 
 export function clientIp(req: Request): string {

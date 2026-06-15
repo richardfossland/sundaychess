@@ -17,6 +17,18 @@ import type { GameStatus, Turn } from "@/lib/types";
 
 // POST /api/move — THE server-authoritative move path (spec §4).
 export async function POST(req: Request) {
+  try {
+    return await handleMove(req);
+  } catch (err) {
+    // Never let an unexpected throw become a platform 500/1102 HTML page: the
+    // client maps an unknown move error to a (false) "Ulovlig trekk". Return a
+    // structured transient error so the client shows reconnecting + resyncs.
+    console.error("[move]", err);
+    return fail(503, "server_error");
+  }
+}
+
+async function handleMove(req: Request): Promise<Response> {
   const body = await readJson<{
     gameId?: string;
     from?: string;

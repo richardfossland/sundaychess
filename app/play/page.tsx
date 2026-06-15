@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { no } from "@/lib/locale/no";
 import { api, ApiError } from "@/lib/client/api";
@@ -18,16 +18,20 @@ export default function Play() {
   const [me, setMe] = useState<StoredPlayer | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resumeError, setResumeError] = useState(false);
 
-  // On mount, try to restore a stored session.
-  useEffect(() => {
+  // Restore a stored session. A TRANSIENT failure (5xx/503, a Cloudflare 1102,
+  // network, rate-limit) must NOT wipe the session and kick the student to the
+  // join screen — keep it and let them retry. Only a genuine invalid/expired
+  // session (400/404) clears the stored identity.
+  const attemptResume = useCallback(() => {
     const stored = identity.player();
     if (!stored) {
-      // Init from localStorage on mount — intended one-time setup.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setScreen("join");
       return;
     }
+    setResumeError(false);
+    setScreen("init");
     api
       .resume(stored.resumeCode, { tournamentId: stored.tournamentId })
       .then((r) => {
@@ -41,13 +45,22 @@ export default function Play() {
         setMe(next);
         setScreen("playing");
       })
-      .catch(() => {
-        identity.clearPlayer();
-        // Init-from-storage failure → explain rather than silently dropping to join.
-        setError(no.player.sessionExpired);
-        setScreen("join");
+      .catch((e) => {
+        const status = e instanceof ApiError ? e.status : 0;
+        if (status >= 500 || status === 0 || status === 429) {
+          setResumeError(true); // keep session; show retry
+        } else {
+          identity.clearPlayer();
+          setError(no.player.sessionExpired);
+          setScreen("join");
+        }
       });
   }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    attemptResume();
+  }, [attemptResume]);
 
   function goName() {
     setError(null);
@@ -111,7 +124,17 @@ export default function Play() {
   if (screen === "init") {
     return (
       <main className="center-screen">
-        <span className="spin" />
+        {resumeError ? (
+          <div className="card card-narrow stack text-center">
+            <h2>{no.common.error}</h2>
+            <p className="muted">{no.player.connection}</p>
+            <button className="btn btn-primary btn-lg" onClick={attemptResume}>
+              {no.common.retry}
+            </button>
+          </div>
+        ) : (
+          <span className="spin" />
+        )}
       </main>
     );
   }
