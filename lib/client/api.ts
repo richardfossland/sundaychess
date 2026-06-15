@@ -71,6 +71,22 @@ export interface ResumeResult {
   tournamentStatus: string;
 }
 
+export interface CasualCreated {
+  tournamentId: string;
+  joinPin: string;
+  playerId: string;
+  resumeCode: string;
+  displayName: string;
+}
+
+export interface CasualJoined {
+  tournamentId: string;
+  playerId: string;
+  resumeCode: string;
+  displayName: string;
+  gameId: string;
+}
+
 export const api = {
   createTournament: (body: { title?: string; config?: unknown }) =>
     post<CreatedTournament>("/api/tournament", body),
@@ -80,6 +96,12 @@ export const api = {
 
   join: (pin: string, displayName: string) =>
     post<JoinResult>("/api/join", { pin, displayName }),
+
+  createCasual: (name: string) =>
+    post<CasualCreated>("/api/casual", { name }),
+
+  joinCasual: (pin: string, name: string) =>
+    post<CasualJoined>("/api/casual/join", { pin, name }),
 
   resume: (resumeCode: string, ref: { pin?: string; tournamentId?: string }) =>
     post<ResumeResult>("/api/resume", { resumeCode, ...ref }),

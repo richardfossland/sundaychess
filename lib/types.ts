@@ -41,6 +41,9 @@ export interface TournamentConfig {
   /** Team names (lagturnering). Players are auto-assigned at join to keep the
    * teams balanced. Empty/absent = individual tournament. */
   teams?: string[];
+  /** Casual 1v1: a throwaway two-player session created via /api/casual (not a
+   * real tournament). The second join auto-starts the single game. */
+  casual?: boolean;
 }
 
 export interface Tournament {
