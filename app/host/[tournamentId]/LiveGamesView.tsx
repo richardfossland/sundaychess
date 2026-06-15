@@ -15,7 +15,13 @@ const Chessboard = dynamic(
   { ssr: false },
 );
 
-export function LiveGamesView({ state }: { state: BoardState }) {
+export function LiveGamesView({
+  state,
+  onStale,
+}: {
+  state: BoardState;
+  onStale?: () => void;
+}) {
   const { tournament, players, games } = state;
   const nameById = useMemo(() => {
     const m = new Map(players.map((p) => [p.id, p.displayName]));
@@ -46,15 +52,23 @@ export function LiveGamesView({ state }: { state: BoardState }) {
     });
   }, [games]);
 
-  useChannel(channels.spectate(tournament.id), (event, payload) => {
-    if (event !== "position") return;
-    const p = payload as { gameId: string; fen: string };
-    setFenMap((m) =>
-      !m[p.gameId] || plyOf(p.fen) >= plyOf(m[p.gameId])
-        ? { ...m, [p.gameId]: p.fen }
-        : m,
-    );
-  });
+  useChannel(
+    channels.spectate(tournament.id),
+    (event, payload) => {
+      if (event !== "position") return;
+      const p = payload as { gameId: string; fen: string };
+      setFenMap((m) =>
+        !m[p.gameId] || plyOf(p.fen) >= plyOf(m[p.gameId])
+          ? { ...m, [p.gameId]: p.fen }
+          : m,
+      );
+    },
+    (s) => {
+      // Spectate broadcasts silently stopped → refetch the board so the live
+      // grid recovers instead of freezing on stale positions.
+      if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") onStale?.();
+    },
+  );
 
   const live = games.filter((g) => g.status === "live" && g.blackPlayerId);
 

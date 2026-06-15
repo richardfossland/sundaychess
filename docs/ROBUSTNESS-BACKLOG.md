@@ -16,13 +16,14 @@ contrast (#8), back-buttons (#9/#10).
 - [x] Claim-win button: in-flight guard + reconcile (via `runMeta`).
 - [x] `doResume`: a transient blip no longer shows "invalid code" (dead-end).
 
-## Batch 2 — finish the route-resilience sweep (P2/P3, headless)
-- [ ] Wrap remaining routes in try/catch → structured 503 (not platform 500/1102 HTML):
-  `game/resign`, `game/draw`, `game/claim`, `game/override`, `game/absent`,
-  GET `game/[id]` + `tournament/[id]`, `round/*` (move authHost/list inside try),
-  `casual/join`, `tournament/open`. (move + resume already done.)
-- [ ] `LiveGamesView` spectate channel: add `onStatus` refetch (parity with GameView).
-- [ ] `CodesModal`: retry on fetch failure.
+## Batch 2 — finish the route-resilience sweep (P2/P3, headless)  ✅
+- [x] Wrapped 11 remaining routes (thin POST/GET → handler) → structured 503 (no
+  platform 500/1102 HTML): `game/resign`, `game/draw`, `game/claim`, `game/override`,
+  `game/absent`, GET `game/[id]` + `tournament/[id]`, `tournament/[id]/codes`,
+  `predict`, `casual/join`, `tournament/open`. (move/resume/join/create/round-*/casual
+  already had try.)
+- [x] `LiveGamesView` spectate channel: `onStatus` → `onStale()` refetch (parity).
+- [x] `CodesModal`: retry button on fetch failure.
 
 ## Batch 3 — engine correctness (P2/P3, headless)
 - [ ] League standings/podium/team scores filter to **league-phase** games (playoff games

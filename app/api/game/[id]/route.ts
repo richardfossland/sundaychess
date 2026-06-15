@@ -7,9 +7,21 @@ import type { GameDetail } from "@/lib/dto";
 // GET /api/game/[id] — authoritative game state for reconnect/resume (spec §4).
 // Public: contains no secrets (no resume codes).
 export async function GET(
+  req: Request,
+  ctx: { params: Promise<{ id: string }> },
+) {
+  try {
+    return await handleGet(req, ctx);
+  } catch (err) {
+    console.error("[game/[id]]", err);
+    return fail(503, "server_error");
+  }
+}
+
+async function handleGet(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
-) {
+): Promise<Response> {
   const { id } = await params;
   const game = await getGame(id);
   if (!game) return fail(404, "no_game");

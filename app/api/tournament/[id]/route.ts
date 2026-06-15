@@ -16,9 +16,21 @@ import {
 
 // GET /api/tournament/[id] — authoritative board state (no secrets).
 export async function GET(
+  req: Request,
+  ctx: { params: Promise<{ id: string }> },
+) {
+  try {
+    return await handleGet(req, ctx);
+  } catch (err) {
+    console.error("[tournament/[id]]", err);
+    return fail(503, "server_error");
+  }
+}
+
+async function handleGet(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
-) {
+): Promise<Response> {
   const { id } = await params;
   const t = await getTournament(id);
   if (!t) return fail(404, "not_found");

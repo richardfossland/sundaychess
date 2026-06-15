@@ -12,6 +12,15 @@ import { clientIp, fail, ok, rateLimit, readJson } from "@/lib/server/http";
 // before the game ends overwrites. GETting own predictions also goes through
 // POST (action 'list') so the resume-code bearer auth stays in the body.
 export async function POST(req: Request) {
+  try {
+    return await handlePost(req);
+  } catch (err) {
+    console.error("[predict]", err);
+    return fail(503, "server_error");
+  }
+}
+
+async function handlePost(req: Request): Promise<Response> {
   const body = await readJson<{
     playerId?: string;
     resumeCode?: string;
