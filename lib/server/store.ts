@@ -120,6 +120,22 @@ export async function updateTournament(
   return data as Tournament;
 }
 
+/** Atomically finish a tournament ONLY if it's still active. Returns the updated
+ * row if THIS call did the transition, or null if it was already finished (a
+ * concurrent writer won). Lets the auto-finish path collapse a whole class
+ * resuming at once into a single effective write + broadcast. */
+export async function finishIfActive(id: string): Promise<Tournament | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("tournaments")
+    .update({ status: "finished" })
+    .eq("id", id)
+    .in("status", ["league", "playoff"])
+    .select("*")
+    .maybeSingle();
+  return (data as Tournament) ?? null;
+}
+
 // ---------------- players ----------------
 
 export async function listPlayers(tournamentId: string): Promise<Player[]> {
@@ -467,6 +483,28 @@ export async function listMoveStamps(
     ply: m.ply,
     createdAt: m.created_at,
   }));
+}
+
+/** Move stamps for MANY games in ONE query, grouped by game id. Used by the
+ * board route's live-clock computation so it costs a single round-trip instead
+ * of one per live game. */
+export async function listMoveStampsForGames(
+  gameIds: string[],
+): Promise<Map<string, { ply: number; createdAt: string }[]>> {
+  const out = new Map<string, { ply: number; createdAt: string }[]>();
+  if (gameIds.length === 0) return out;
+  const db = createServiceClient();
+  const { data } = await db
+    .from("moves")
+    .select("game_id, ply, created_at")
+    .in("game_id", gameIds)
+    .order("ply", { ascending: true });
+  for (const m of (data as { game_id: string; ply: number; created_at: string }[]) ?? []) {
+    const list = out.get(m.game_id) ?? [];
+    list.push({ ply: m.ply, createdAt: m.created_at });
+    out.set(m.game_id, list);
+  }
+  return out;
 }
 
 // ---------------- predictions (tippemodus, migration 0005) ----------------

@@ -25,9 +25,19 @@ let worker: Worker | null | undefined;
 function getWorker(): Worker | null {
   if (worker !== undefined) return worker;
   try {
-    worker = new Worker(new URL("../chess/engine.worker.ts", import.meta.url), {
+    const w = new Worker(new URL("../chess/engine.worker.ts", import.meta.url), {
       type: "module",
     });
+    // If the worker module fails to load or errors, demote permanently to the
+    // synchronous fallback — otherwise every later move would post to a dead
+    // worker and eat the full timeout before falling back.
+    w.onerror = () => {
+      worker = null;
+    };
+    w.onmessageerror = () => {
+      worker = null;
+    };
+    worker = w;
   } catch {
     worker = null;
   }
@@ -63,8 +73,10 @@ export function requestBotMove(req: BotRequest): Promise<MoveIntent | null> {
       const d = e.data as { id?: number; move?: MoveIntent | null };
       if (d && d.id === id) finish(d.move ?? null);
     };
-    // If the worker dies or never replies, compute on the main thread.
+    // If the worker dies or never replies, demote it (so the NEXT move skips it
+    // instead of waiting another 5s) and compute on the main thread now.
     const timer = setTimeout(() => {
+      worker = null;
       void fallback(req).then(finish);
     }, 5000);
     w.addEventListener("message", onMsg);

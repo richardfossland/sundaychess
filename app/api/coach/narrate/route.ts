@@ -20,11 +20,19 @@ async function handlePost(req: Request): Promise<Response> {
   if (!rateLimit(`coach:${clientIp(req)}`, 30, 60_000)) {
     return fail(429, "rate_limited");
   }
-  const body = await readJson<{ facts?: ReviewFacts }>(req);
-  const facts = body?.facts;
+  const facts = (await readJson<{ facts?: ReviewFacts }>(req))?.facts;
   if (!facts || typeof facts !== "object" || typeof facts.accuracy !== "number") {
     return fail(400, "bad_request");
   }
-  const narrated = await narrateReview(facts);
+  // Clamp the only free-text fields so a client can't bloat the LLM prompt.
+  const safe: ReviewFacts = {
+    ...facts,
+    name: String(facts.name ?? "").slice(0, 40),
+    colorNo: String(facts.colorNo ?? "").slice(0, 12),
+    worstMove: facts.worstMove
+      ? { ...facts.worstMove, san: String(facts.worstMove.san ?? "").slice(0, 12) }
+      : facts.worstMove,
+  };
+  const narrated = await narrateReview(safe);
   return ok({ summary: narrated, aiNarrated: narrated != null });
 }

@@ -1,12 +1,11 @@
 import {
   getTournament,
   listGames,
-  listMoveStamps,
+  listMoveStampsForGames,
   listPlayers,
   listRounds,
   predictionPoints,
 } from "@/lib/server/store";
-import { maybeAutoFinishStale } from "@/lib/server/lifecycle";
 import { computeClocks } from "@/lib/chess/clock";
 import { computeScores, computeStandings } from "@/lib/tournament/score";
 import { fail, ok } from "@/lib/server/http";
@@ -32,12 +31,19 @@ export async function GET(
 }
 
 async function handleGet(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const { id } = await params;
-  const t0 = await getTournament(id);
-  if (!t0) return fail(404, "not_found");
+  // Live-grid clocks are only rendered by the host projector, which asks for
+  // them with ?clocks=1. Students poll this same endpoint every 5s and don't
+  // show grid clocks, so we skip the per-game move-stamp read for them. (Auto-
+  // finish of a stale tournament happens in /api/resume — the student entry
+  // point — plus the nightly cron, so it's NOT on this hot poll path.)
+  const wantClocks = new URL(req.url).searchParams.get("clocks") === "1";
+
+  const t = await getTournament(id);
+  if (!t) return fail(404, "not_found");
 
   const [players, games, rounds, tipping] = await Promise.all([
     listPlayers(id),
@@ -45,11 +51,6 @@ async function handleGet(
     listRounds(id),
     predictionPoints(id).catch(() => []), // empty until 0005 is migrated
   ]);
-
-  // Auto-close a tournament left running and then abandoned (e.g. overnight) so
-  // it can't be re-entered as a zombie live board. Reuses the games we just
-  // fetched; no-op for lobby/finished or still-active tournaments.
-  const t = await maybeAutoFinishStale(t0, games);
 
   // Standings = the LEAGUE table. Once the playoff starts, knockout games must
   // not pollute league scores/Buchholz/podium (the bracket is shown separately).
@@ -68,22 +69,23 @@ async function handleGet(
   // longer read by any UI.
   const leagueScore = computeScores(standingsGames);
 
-  // Clocks for the live-games grid: only for a timed (lyn/blitz) tournament, and
-  // only the LIVE games. Reuses the rounds we already fetched; one move-stamp
-  // query per live game (skipped entirely when no clock is configured).
+  // Clocks for the live-games grid: only when the host asks (?clocks=1), only
+  // for a timed (lyn/blitz) tournament, and only LIVE games. ONE batched
+  // move-stamp query for all live games (not one per game). The live spectate
+  // channel keeps these ticking between polls.
   const clockByGame = new Map<string, NonNullable<PublicGame["clock"]>>();
   const clockSec = t.config.clockSec ?? null;
-  if (clockSec) {
+  if (wantClocks && clockSec) {
     const roundById = new Map(rounds.map((r) => [r.id, r]));
     const liveTimed = games.filter((g) => g.status === "live");
-    const stamps = await Promise.all(liveTimed.map((g) => listMoveStamps(g.id)));
-    liveTimed.forEach((g, i) => {
+    const stampsByGame = await listMoveStampsForGames(liveTimed.map((g) => g.id));
+    for (const g of liveTimed) {
       const round = roundById.get(g.round_id);
-      if (!round?.started_at) return;
+      if (!round?.started_at) continue;
       const snap = computeClocks({
         clockSec,
         startedAt: round.started_at,
-        moves: stamps[i],
+        moves: stampsByGame.get(g.id) ?? [],
         turn: g.turn,
         now: new Date(),
         running: true,
@@ -94,7 +96,7 @@ async function handleGet(
         turn: g.turn,
         running: true,
       });
-    });
+    }
   }
 
   const state: BoardState = {

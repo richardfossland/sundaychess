@@ -157,17 +157,23 @@ export default function Solo() {
       level === "adaptive"
         ? ({ mode: "skill", fen: fenNow, skill: botSkill.current } as const)
         : ({ mode: "level", fen: fenNow, level } as const);
-    requestBotMove(req).then((m) => {
-      if (m) {
-        const mv = chess.current.move({ from: m.from, to: m.to, promotion: m.promotion ?? "q" });
-        setLastMove({ from: m.from, to: m.to });
-        refresh();
-        playMoveCue(chess.current, Boolean(mv?.captured));
-      }
-      setCoachTag(null); // my next turn starts fresh
-      setThinking(false);
-      settle(forColor);
-    });
+    requestBotMove(req)
+      .then((m) => {
+        try {
+          if (m) {
+            const mv = chess.current.move({ from: m.from, to: m.to, promotion: m.promotion ?? "q" });
+            setLastMove({ from: m.from, to: m.to });
+            refresh();
+            playMoveCue(chess.current, Boolean(mv?.captured));
+          }
+          setCoachTag(null); // my next turn starts fresh
+          settle(forColor);
+        } finally {
+          // Solo has no poll/watchdog — guarantee we never get stuck on "tenker…".
+          setThinking(false);
+        }
+      })
+      .catch(() => setThinking(false));
   }
 
   function tryMove(from: string, to: string): boolean {
@@ -335,11 +341,14 @@ export default function Solo() {
           {mode === "normal" ? (
             <div className="field">
               <label>{no.solo.difficulty}</label>
-              <div className="row">
+              {/* grid (not a row) so 5 levels wrap cleanly on mobile and labels
+                  never clip against .btn's overflow:hidden */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(92px, 1fr))", gap: 8 }}>
                 {LEVELS.map((l) => (
                   <button
                     key={l.key}
-                    className={`btn grow ${level === l.key ? "btn-primary" : "btn-ghost"}`}
+                    className={`btn ${level === l.key ? "btn-primary" : "btn-ghost"}`}
+                    style={{ padding: "10px 8px" }}
                     onClick={() => setLevel(l.key)}
                   >
                     {l.label}
@@ -361,14 +370,27 @@ export default function Solo() {
                   <button
                     key={l.key}
                     className={`btn ${coachLevel === l.key ? "btn-primary" : "btn-ghost"}`}
-                    style={{ flexDirection: "column", alignItems: "flex-start", gap: 2, padding: "10px 14px", textAlign: "left" }}
+                    // .btn is inline-block, so set display:flex explicitly to make
+                    // the label + sub-text stack (instead of running together).
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      gap: 3,
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      whiteSpace: "normal",
+                      width: "100%",
+                    }}
                     onClick={() => {
                       setCoachLevel(l.key);
                       setLevel(COACH[l.key].bot);
                     }}
                   >
-                    <b>{l.label}</b>
-                    <span className="faint" style={{ fontSize: 12 }}>{l.sub}</span>
+                    <b style={{ fontSize: 15 }}>{l.label}</b>
+                    <span className="faint" style={{ fontSize: 12, fontWeight: 400, lineHeight: 1.3 }}>
+                      {l.sub}
+                    </span>
                   </button>
                 ))}
               </div>
