@@ -38,14 +38,18 @@ contrast (#8), back-buttons (#9/#10).
 - [ ] → B6 (P3 polish): repeat-bye double point (`pair.ts`), override-of-bye mis-score,
   team-standings phase filter (SQL), cup block-and-warn UI when >256.
 
-## Batch 4 — scale / Worker-pressure (P2/P3, headless; some DB)
-- [ ] Board payload: stop shipping decided-game **PGN** on the 5s poll (add a `pgn` flag the
-  finished screen requests). `dto.ts` + `tournament/[id]`. (Live games already omit it.)
-- [ ] Game-detail: avoid full PGN replay on every 3s poll where possible.
-- [ ] Server-side fetch timeout for Supabase reads + `broadcast()` (a hung DB pins a Worker).
-- [ ] Explicit `.limit()` on list queries (PostgREST max_rows=1000 truncation safety).
-- [ ] `gameClock` does 3 serial DB round-trips/move — collapse.
-- [ ] Casual tournaments: tighten retention (they evade the 2-day empty-lobby rule).
+## Batch 4 — scale / Worker-pressure  ✅ (the real wins; rest refuted/deferred)
+- [x] **Server-side fetch timeout** on the service-role Supabase client (`service.ts`): every
+  PostgREST call now aborts at 12 s, so a hung DB can't pin a Worker request (→ 1102) — it
+  surfaces as a clean 503 via the route try/catch. The highest-value scale fix.
+- [x] `gameClock` parallelises `getRound` + `listMoveStamps` (saves a serial round-trip on the
+  hot move path for clock games).
+- [~] Board decided-game PGN on the 5s poll: **left as-is** — the audit verifier refuted it as a
+  1102 cause (per-tournament bounded, GC'd) AND `FinishedView`/`awards.ts` consume it.
+- [ ] Deferred (low value / need migrations): explicit `.limit()` on lists (per-tournament
+  bounded), `broadcast()` timeout, casual-game retention tightening (DB migration), tiebreak
+  idempotency partial-unique-index (needs careful createGame handling). Casual double-join is
+  already guarded by the rounds unique constraint.
 
 ## Batch 5 — test coverage (headless)
 - [ ] auto-draw classification (only checkmate tested), `forceResolveRound`/
