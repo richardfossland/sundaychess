@@ -289,6 +289,8 @@ export const no = {
     illegalMove: "Ulovlig trekk",
     notYourTurn: "Det er ikke din tur",
     connection: "Tilkobling ustabil – synkroniserer …",
+    premoveSet: "Forhåndstrekk klart – spilles automatisk når det blir din tur (trykk et tomt felt for å avbryte)",
+    premoveCancelled: "Forhåndstrekket ble forkastet",
     gameLoadFailed: "Fant ikke partiet. Prøv igjen eller gå tilbake.",
     sessionExpired: "Den forrige økten din er utløpt. Bli med på nytt.",
     oppOutOfTime: "Motstanderens tid er ute!",
