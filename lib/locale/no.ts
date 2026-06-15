@@ -308,8 +308,8 @@ export const no = {
   },
 
   solo: {
-    cta: "Spill mot datamaskinen",
-    title: "Mot datamaskinen",
+    cta: "Solo-spill",
+    title: "Solo-spill",
     subtitle: "Øv deg når som helst – ingen PIN nødvendig",
     chooseColor: "Velg farge",
     white: "Hvit",
@@ -319,6 +319,7 @@ export const no = {
     easy: "Lett",
     medium: "Middels",
     hard: "Vanskelig",
+    impossible: "Umulig",
     start: "Start parti",
     thinking: "Datamaskinen tenker …",
     yourTurn: "Din tur",

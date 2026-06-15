@@ -10,11 +10,11 @@ import { Chess } from "chess.js";
 import type { MoveIntent } from "@/lib/chess/validateMove";
 import { skillToParams, type BotParams } from "@/lib/chess/skill";
 
-export type BotLevel = "easy" | "medium" | "hard";
+export type BotLevel = "easy" | "medium" | "hard" | "impossible";
 
-type PieceType = "p" | "n" | "b" | "r" | "q" | "k";
+export type PieceType = "p" | "n" | "b" | "r" | "q" | "k";
 
-const VALUE: Record<PieceType, number> = {
+export const VALUE: Record<PieceType, number> = {
   p: 100,
   n: 320,
   b: 330,
@@ -91,8 +91,9 @@ const PST: Record<PieceType, number[]> = {
 
 const MATE = 1_000_000;
 
-/** Static evaluation from the side-to-move's perspective. */
-function evaluate(chess: Chess): number {
+/** Static evaluation from the side-to-move's perspective. Exported so the
+ * stronger iterative-deepening search (lib/chess/search.ts) shares one eval. */
+export function evaluate(chess: Chess): number {
   const board = chess.board();
   let white = 0;
   for (let r = 0; r < 8; r++) {
@@ -212,18 +213,51 @@ export function bestMoveBySkill(
   return chooseMove(fen, skillToParams(skill), rng);
 }
 
-// Legacy fixed levels, expressed as skill points, kept for back-compat.
-const LEVEL_SKILL: Record<BotLevel, number> = { easy: 550, medium: 950, hard: 1700 };
+// Fixed levels expressed as skill points. "medium" was eased (950 → 700) so the
+// ladder is gentler; "impossible" is NOT a skill point — it uses the dedicated
+// strong search (iterative deepening + quiescence + opening book) below.
+const LEVEL_SKILL: Record<Exclude<BotLevel, "impossible">, number> = {
+  easy: 450,
+  medium: 700,
+  hard: 1700,
+};
+
+/**
+ * The strongest bot: an opening book for principled early play, then an
+ * iterative-deepening + quiescence search. It is deliberately NOT noisy — it
+ * just tries to play the best move it can within a node budget. Off-thread in a
+ * Web Worker for solo play, so its longer think never freezes the tab; the
+ * `nodeBudget` keeps even a synchronous fallback bounded. Returns null if no
+ * legal move.
+ *
+ * Imported lazily (inside the function) to avoid a static import cycle with
+ * lib/chess/search.ts, which imports the shared `evaluate`/`VALUE` from here.
+ */
+export async function bestMoveStrong(
+  fen: string,
+  rng: () => number = Math.random,
+  nodeBudget?: number,
+): Promise<MoveIntent | null> {
+  const { bookMove } = await import("@/lib/chess/openings");
+  const book = bookMove(fen, rng);
+  if (book) return book;
+  const { searchBestMove } = await import("@/lib/chess/search");
+  return searchBestMove(fen, { maxDepth: 5, nodeBudget });
+}
 
 /**
  * Legacy entry point: choose the bot's move for `fen` at a fixed level.
  * Thin wrapper over the adaptive path. Returns null if no legal move.
+ * NOTE: "impossible" is async (uses bestMoveStrong); use bestMoveStrong directly
+ * for that level. This sync wrapper falls back to the strongest skill point for
+ * "impossible" so existing synchronous callers/tests still get a strong move.
  */
 export function bestMove(
   fen: string,
   level: BotLevel,
   rng: () => number = Math.random,
 ): MoveIntent | null {
+  if (level === "impossible") return bestMoveBySkill(fen, 2000, rng);
   return bestMoveBySkill(fen, LEVEL_SKILL[level], rng);
 }
 

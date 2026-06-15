@@ -6,7 +6,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Chess } from "chess.js";
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
-import { bestMove, bestMoveBySkill, type BotLevel } from "@/lib/chess/bot";
+import type { BotLevel } from "@/lib/chess/bot";
+import { requestBotMove } from "@/lib/client/engine";
 import {
   botSkillForPlayer,
   outcomeToScore,
@@ -45,6 +46,7 @@ const LEVELS: { key: Difficulty; label: string }[] = [
   { key: "easy", label: no.solo.easy },
   { key: "medium", label: no.solo.medium },
   { key: "hard", label: no.solo.hard },
+  { key: "impossible", label: no.solo.impossible },
 ];
 
 export default function Solo() {
@@ -109,12 +111,15 @@ export default function Solo() {
     setThinking(true);
     setSelected(null);
     setLegal([]);
-    // Defer so the "thinking" state paints before the (synchronous) search.
-    setTimeout(() => {
-      const m =
-        level === "adaptive"
-          ? bestMoveBySkill(chess.current.fen(), botSkill.current)
-          : bestMove(chess.current.fen(), level);
+    // Off-thread via the engine Web Worker (with a synchronous fallback), so even
+    // the "umulig" search never freezes the tab. All in-game controls are
+    // disabled while `thinking`, so there is no stale-result race to guard.
+    const fenNow = chess.current.fen();
+    const req =
+      level === "adaptive"
+        ? ({ mode: "skill", fen: fenNow, skill: botSkill.current } as const)
+        : ({ mode: "level", fen: fenNow, level } as const);
+    requestBotMove(req).then((m) => {
       if (m) {
         const mv = chess.current.move({ from: m.from, to: m.to, promotion: m.promotion ?? "q" });
         setLastMove({ from: m.from, to: m.to });
@@ -123,7 +128,7 @@ export default function Solo() {
       }
       setThinking(false);
       settle(forColor);
-    }, 340);
+    });
   }
 
   function tryMove(from: string, to: string): boolean {
