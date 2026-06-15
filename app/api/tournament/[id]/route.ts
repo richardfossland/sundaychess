@@ -5,6 +5,7 @@ import {
   listRounds,
   predictionPoints,
 } from "@/lib/server/store";
+import { maybeAutoFinishStale } from "@/lib/server/lifecycle";
 import { computeScores, computeStandings } from "@/lib/tournament/score";
 import { fail, ok } from "@/lib/server/http";
 import {
@@ -32,8 +33,8 @@ async function handleGet(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const { id } = await params;
-  const t = await getTournament(id);
-  if (!t) return fail(404, "not_found");
+  const t0 = await getTournament(id);
+  if (!t0) return fail(404, "not_found");
 
   const [players, games, rounds, tipping] = await Promise.all([
     listPlayers(id),
@@ -41,6 +42,11 @@ async function handleGet(
     listRounds(id),
     predictionPoints(id).catch(() => []), // empty until 0005 is migrated
   ]);
+
+  // Auto-close a tournament left running and then abandoned (e.g. overnight) so
+  // it can't be re-entered as a zombie live board. Reuses the games we just
+  // fetched; no-op for lobby/finished or still-active tournaments.
+  const t = await maybeAutoFinishStale(t0, games);
 
   // Standings = the LEAGUE table. Once the playoff starts, knockout games must
   // not pollute league scores/Buchholz/podium (the bracket is shown separately).

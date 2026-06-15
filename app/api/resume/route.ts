@@ -3,6 +3,7 @@ import {
   getTournament,
   getTournamentByPin,
 } from "@/lib/server/store";
+import { maybeAutoFinishStale } from "@/lib/server/lifecycle";
 import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
 import { normalizeResumeCode, isValidPin } from "@/lib/codes";
 
@@ -47,10 +48,14 @@ async function handleResume(req: Request): Promise<Response> {
   const player = await getPlayerByResume(tournament.id, resumeCode);
   if (!player) return fail(404, "invalid_code");
 
+  // Close a stale (abandoned-overnight) tournament before reporting status, so a
+  // student resuming the next morning sees it finished — never a zombie board.
+  const fresh = await maybeAutoFinishStale(tournament);
+
   return ok({
-    tournamentId: tournament.id,
+    tournamentId: fresh.id,
     playerId: player.id,
     displayName: player.display_name,
-    tournamentStatus: tournament.status,
+    tournamentStatus: fresh.status,
   });
 }
