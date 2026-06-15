@@ -50,9 +50,17 @@ export default function Landing() {
           </Link>
         </div>
 
-        <Link href="/solo" className="btn btn-ghost reveal" style={r(6, { marginTop: 2 })}>
-          ♟ {no.solo.cta}
-        </Link>
+        <div
+          className="row reveal"
+          style={r(6, { marginTop: 2, gap: 10, flexWrap: "wrap", justifyContent: "center" })}
+        >
+          <Link href="/versus" className="btn btn-ghost">
+            ⚔︎ {no.landing.versus}
+          </Link>
+          <Link href="/solo" className="btn btn-ghost">
+            ♟ {no.solo.cta}
+          </Link>
+        </div>
       </div>
     </main>
   );

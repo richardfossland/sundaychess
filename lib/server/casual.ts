@@ -1,0 +1,103 @@
+import "server-only";
+
+import {
+  addPlayer,
+  createGame,
+  createRound,
+  createTournament,
+  getTournamentByPin,
+  listPlayers,
+  updateTournament,
+} from "@/lib/server/store";
+import { broadcast } from "@/lib/server/broadcast";
+import { channels, events } from "@/lib/realtime";
+import type { TournamentConfig } from "@/lib/types";
+
+// A casual 1v1 is modelled as a throwaway two-player "tournament" so it can
+// reuse the whole game pipeline (GameView, moves, realtime, results). It is
+// flagged casual so it never shows up as a real tournament and the second join
+// auto-starts the single game — no host, no lobby wait.
+const CASUAL_CONFIG: TournamentConfig = {
+  leagueRounds: 1,
+  playoff: false,
+  playoffSize: 0,
+  roundTimerSec: null,
+  casual: true,
+};
+
+export interface CasualIdentity {
+  tournamentId: string;
+  joinPin: string;
+  playerId: string;
+  resumeCode: string;
+  displayName: string;
+}
+
+/** Create a casual 1v1 session and add the challenger. Status stays "lobby"
+ * until the opponent joins with the code (which auto-starts the game). */
+export async function createCasualGame(name: string): Promise<CasualIdentity> {
+  const t = await createTournament("Vennekamp", CASUAL_CONFIG);
+  const a = await addPlayer(t.id, name);
+  return {
+    tournamentId: t.id,
+    joinPin: t.join_pin,
+    playerId: a.id,
+    resumeCode: a.resume_code,
+    displayName: a.display_name,
+  };
+}
+
+export type JoinCasualResult =
+  | {
+      ok: true;
+      tournamentId: string;
+      playerId: string;
+      resumeCode: string;
+      displayName: string;
+      gameId: string;
+    }
+  | { ok: false; reason: "not_found" | "not_casual" | "full" };
+
+/** Join a casual session by code as the second player and auto-start the game
+ * with random colours. Idempotent against an empty/missing session. */
+export async function joinCasualGame(
+  pin: string,
+  name: string,
+): Promise<JoinCasualResult> {
+  const t = await getTournamentByPin(pin);
+  if (!t) return { ok: false, reason: "not_found" };
+  if (!t.config.casual) return { ok: false, reason: "not_casual" };
+
+  const existing = await listPlayers(t.id);
+  if (existing.length >= 2) return { ok: false, reason: "full" };
+  if (existing.length === 0) return { ok: false, reason: "not_found" };
+
+  const challenger = existing[0];
+  const joiner = await addPlayer(t.id, name);
+
+  // Random colours between the challenger and the joiner.
+  const challengerWhite = Math.random() < 0.5;
+  const whiteId = challengerWhite ? challenger.id : joiner.id;
+  const blackId = challengerWhite ? joiner.id : challenger.id;
+
+  const round = await createRound(t.id, 1, "league", "live");
+  const game = await createGame({
+    tournamentId: t.id,
+    roundId: round.id,
+    whitePlayerId: whiteId,
+    blackPlayerId: blackId,
+    slot: 0,
+  });
+  await updateTournament(t.id, { status: "league", current_round: 1 });
+  await broadcast(channels.lobby(t.id), events.roster, { joined: joiner.id });
+  await broadcast(channels.lobby(t.id), events.tournament, { started: true });
+
+  return {
+    ok: true,
+    tournamentId: t.id,
+    playerId: joiner.id,
+    resumeCode: joiner.resume_code,
+    displayName: joiner.display_name,
+    gameId: game.id,
+  };
+}
