@@ -1,4 +1,5 @@
 import { applyMove } from "@/lib/chess/validateMove";
+import { winnerCanMate } from "@/lib/chess/material";
 import {
   applyMoveRpc,
   getGame,
@@ -66,16 +67,21 @@ async function handleMove(req: Request): Promise<Response> {
   //     moving. Resolved server-side so the result is authoritative.
   const clock = await gameClock(game);
   if (clock && clock.snap.flagged === game.turn) {
-    const winner: GameStatus =
-      game.turn === "w" ? "black_win" : "white_win";
-    const resolved = await resolveGameRpc(game.id, winner, "play", true);
+    const winnerColor = game.turn === "w" ? "black" : "white";
+    // Win-on-time → DRAW if the winner can't possibly mate (FIDE 6.9), else win.
+    const result: GameStatus = winnerCanMate(game.fen, winnerColor)
+      ? winnerColor === "white"
+        ? "white_win"
+        : "black_win"
+      : "draw";
+    const resolved = await resolveGameRpc(game.id, result, "play", true);
     if (resolved.ok) {
-      await afterGameResolved(game, winner, "play");
-      await broadcastPosition(game.id, game.fen, game.turn, winner, null, {
+      await afterGameResolved(game, result, "play");
+      await broadcastPosition(game.id, game.fen, game.turn, result, null, {
         ...clock.info,
         running: false,
       });
-      await broadcastSpectate(game.tournament_id, game.id, game.fen, game.turn, winner);
+      await broadcastSpectate(game.tournament_id, game.id, game.fen, game.turn, result);
     }
     return fail(409, "flagged");
   }

@@ -10,6 +10,7 @@ const { store, maybeStartPlayoff } = vi.hoisted(() => ({
     setRoundStatus: vi.fn(),
     listPlayers: vi.fn(),
     listGames: vi.fn(),
+    listGamesForRound: vi.fn(),
     createRound: vi.fn(),
     createGame: vi.fn(),
     recomputeScores: vi.fn(),
@@ -23,7 +24,7 @@ vi.mock("@/lib/server/gameEvents", () => ({ afterGameResolved: vi.fn() }));
 vi.mock("@/lib/server/broadcast", () => ({ broadcast: vi.fn() }));
 vi.mock("@/lib/server/playoff", () => ({ maybeStartPlayoff }));
 
-import { advanceRound, startLeague } from "@/lib/server/league";
+import { advanceRound, currentRoundResolved, startLeague } from "@/lib/server/league";
 
 function tournament(over: Partial<Tournament> = {}): Tournament {
   return {
@@ -112,5 +113,28 @@ describe("advanceRound", () => {
       }),
     );
     expect(status).toBe("playoff");
+  });
+
+  it("finishes instead of pairing an empty round when <2 active remain", async () => {
+    store.listRounds.mockResolvedValue([round(1)]);
+    store.listPlayers.mockResolvedValue(players(1)); // everyone else left
+    const status = await advanceRound(tournament({ current_round: 1 }));
+    expect(status).toBe("finished");
+    expect(store.updateTournament).toHaveBeenCalledWith("t", { status: "finished" });
+    expect(store.createGame).not.toHaveBeenCalled(); // no empty round created
+  });
+});
+
+describe("currentRoundResolved", () => {
+  it("is false for an empty (0-game) round (not vacuously resolved)", async () => {
+    store.listRounds.mockResolvedValue([round(1)]);
+    store.listGamesForRound.mockResolvedValue([]);
+    expect(await currentRoundResolved(tournament({ current_round: 1 }))).toBe(false);
+  });
+
+  it("is true when the round has games and none are live", async () => {
+    store.listRounds.mockResolvedValue([round(1)]);
+    store.listGamesForRound.mockResolvedValue([{ status: "white_win" }, { status: "bye" }]);
+    expect(await currentRoundResolved(tournament({ current_round: 1 }))).toBe(true);
   });
 });

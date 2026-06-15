@@ -42,11 +42,22 @@ async function handleGet(
     predictionPoints(id).catch(() => []), // empty until 0005 is migrated
   ]);
 
+  // Standings = the LEAGUE table. Once the playoff starts, knockout games must
+  // not pollute league scores/Buchholz/podium (the bracket is shown separately).
+  // Pure-cup tournaments (no league rounds) keep all games so they aren't blanked.
+  const leagueRoundIds = new Set(
+    rounds.filter((r) => r.phase === "league").map((r) => r.id),
+  );
+  const standingsGames =
+    leagueRoundIds.size > 0
+      ? games.filter((g) => leagueRoundIds.has(g.round_id))
+      : games;
+
   const state: BoardState = {
     tournament: toBoardTournament(t),
     players: players.map(toPublicPlayer),
     games: games.map(toPublicGame),
-    standings: computeStandings(players, games),
+    standings: computeStandings(players, standingsGames),
     rounds: rounds.map((r) => ({
       id: r.id,
       number: r.number,

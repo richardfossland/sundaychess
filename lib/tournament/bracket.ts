@@ -42,11 +42,13 @@ export function sortBySlot<T extends { slot?: number | null }>(games: T[]): T[] 
 }
 
 /** Cup bracket size: the next power of two ≥ n (players beyond n become
- * first-round byes for the top seeds). Capped at 32. */
+ * first-round byes for the top seeds). Capped at 256 — well beyond any realistic
+ * single-organiser event, so a whole grade isn't silently dropped (the old cap
+ * of 32 left players 33+ stuck in the waiting room forever). */
 export function cupBracketSize(n: number): number {
   if (n < 2) return 0;
   let size = 2;
-  while (size < n && size < 32) size *= 2;
+  while (size < n && size < 256) size *= 2;
   return size;
 }
 

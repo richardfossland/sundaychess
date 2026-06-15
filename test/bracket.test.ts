@@ -90,9 +90,11 @@ describe("cupBracketSize", () => {
     expect(cupBracketSize(8)).toBe(8);
     expect(cupBracketSize(19)).toBe(32);
   });
-  it("needs at least 2 players, caps at 32", () => {
+  it("needs at least 2 players, scales past 32, caps at 256", () => {
     expect(cupBracketSize(1)).toBe(0);
-    expect(cupBracketSize(60)).toBe(32);
+    expect(cupBracketSize(60)).toBe(64); // no longer silently capped at 32
+    expect(cupBracketSize(200)).toBe(256);
+    expect(cupBracketSize(500)).toBe(256); // hard cap (beyond any real event)
   });
 });
 

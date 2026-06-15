@@ -25,17 +25,18 @@ contrast (#8), back-buttons (#9/#10).
 - [x] `LiveGamesView` spectate channel: `onStatus` → `onStale()` refetch (parity).
 - [x] `CodesModal`: retry button on fetch failure.
 
-## Batch 3 — engine correctness (P2/P3, headless)
-- [ ] League standings/podium/team scores filter to **league-phase** games (playoff games
-  currently pollute the league table/podium). `score.ts` + board/podium consumers.
-- [ ] Win-on-time → **draw** when the winner has insufficient mating material (FIDE 6.9).
-  `move` + `claim` routes; use chess.js `isInsufficientMaterial`.
-- [ ] Idempotent tiebreak/casual creation: skip if slot already has a 2nd game / guard the
-  casual 2-player gate (double-click + two-tab / two-joiner races). `playoff.ts`, `casual.ts`.
-- [ ] Cup mode > 32 players: raise/remove the 32 cap or block-and-warn (extras stuck in
-  waiting room). `bracket.ts`/`playoff.ts` + waiting-room state.
-- [ ] Edge cases: repeat-bye double point (`pair.ts`), zero-active-players round stall +
-  `currentRoundResolved` vacuous-true (`league.ts`), override-of-bye mis-score.
+## Batch 3 — engine correctness (P2/P3, headless)  ✅ (partial; rest → B4/B6)
+- [x] Individual standings/podium filter to **league-phase** games (board route): playoff
+  games no longer pollute the league table/podium/FinalResults. (Team standings via the SQL
+  `recompute_scores` still sum all phases → moved to Batch 4, needs a migration.)
+- [x] Win-on-time → **draw** when the winner can't mate (FIDE 6.9): `winnerCanMate`
+  (`lib/chess/material.ts`) wired into the `move` flag path + `claim` route.
+- [x] Cup mode cap raised 32 → 256 (`bracket.ts`) — no longer silently drops players 33+.
+- [x] `currentRoundResolved` no longer vacuously-true on an empty round; `advanceRound`
+  finishes instead of pairing an empty, un-advanceable round when <2 active remain (`league.ts`).
+- [ ] → B4: idempotent tiebreak/casual creation (needs a DB unique index / advisory lock).
+- [ ] → B6 (P3 polish): repeat-bye double point (`pair.ts`), override-of-bye mis-score,
+  team-standings phase filter (SQL), cup block-and-warn UI when >256.
 
 ## Batch 4 — scale / Worker-pressure (P2/P3, headless; some DB)
 - [ ] Board payload: stop shipping decided-game **PGN** on the 5s poll (add a `pgn` flag the
