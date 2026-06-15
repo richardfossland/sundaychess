@@ -204,7 +204,7 @@ export default function Solo() {
           <button className="btn btn-primary btn-block btn-lg" onClick={start}>
             {no.solo.start} →
           </button>
-          <Link href="/play" className="btn btn-ghost btn-block">
+          <Link href="/" className="btn btn-ghost btn-block">
             {no.solo.back}
           </Link>
         </div>
@@ -289,7 +289,7 @@ export default function Solo() {
           <button className="btn" onClick={start} disabled={thinking}>
             {no.solo.newGame}
           </button>
-          <Link href="/play" className="btn btn-ghost">
+          <Link href="/" className="btn btn-ghost">
             {no.solo.back}
           </Link>
         </div>
@@ -318,7 +318,7 @@ export default function Solo() {
                 <button className="btn btn-primary btn-lg" onClick={start}>
                   {no.solo.newGame}
                 </button>
-                <Link href="/play" className="btn btn-lg">
+                <Link href="/" className="btn btn-lg">
                   {no.solo.back}
                 </Link>
               </div>
