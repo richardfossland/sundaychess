@@ -49,6 +49,15 @@ export interface PublicGame {
   pgn?: string;
   /** Bracket/pairing position within the round (0 for pre-0007 rows). */
   slot?: number;
+  /** Chess-clock snapshot for a LIVE timed game, so the spectator grid can show
+   * remaining time. null/absent when no clock is configured or the game isn't
+   * live. Clients tick the `turn` side down locally from receipt. */
+  clock?: {
+    whiteMs: number;
+    blackMs: number;
+    turn: Turn;
+    running: boolean;
+  } | null;
 }
 
 export interface BoardState {

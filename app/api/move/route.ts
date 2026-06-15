@@ -81,7 +81,10 @@ async function handleMove(req: Request): Promise<Response> {
         ...clock.info,
         running: false,
       });
-      await broadcastSpectate(game.tournament_id, game.id, game.fen, game.turn, result);
+      await broadcastSpectate(game.tournament_id, game.id, game.fen, game.turn, result, {
+        ...clock.info,
+        running: false,
+      });
     }
     return fail(409, "flagged");
   }
@@ -153,6 +156,7 @@ async function handleMove(req: Request): Promise<Response> {
     applied.fen,
     applied.turn as Turn,
     applied.status,
+    newClock,
   );
 
   // 7. If the game ended on this move, run resolution side-effects.

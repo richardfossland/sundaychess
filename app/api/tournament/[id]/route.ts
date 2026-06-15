@@ -1,13 +1,16 @@
 import {
   getTournament,
   listGames,
+  listMoveStamps,
   listPlayers,
   listRounds,
   predictionPoints,
 } from "@/lib/server/store";
 import { maybeAutoFinishStale } from "@/lib/server/lifecycle";
+import { computeClocks } from "@/lib/chess/clock";
 import { computeScores, computeStandings } from "@/lib/tournament/score";
 import { fail, ok } from "@/lib/server/http";
+import type { PublicGame } from "@/lib/dto";
 import {
   toBoardTournament,
   toPublicGame,
@@ -65,13 +68,46 @@ async function handleGet(
   // longer read by any UI.
   const leagueScore = computeScores(standingsGames);
 
+  // Clocks for the live-games grid: only for a timed (lyn/blitz) tournament, and
+  // only the LIVE games. Reuses the rounds we already fetched; one move-stamp
+  // query per live game (skipped entirely when no clock is configured).
+  const clockByGame = new Map<string, NonNullable<PublicGame["clock"]>>();
+  const clockSec = t.config.clockSec ?? null;
+  if (clockSec) {
+    const roundById = new Map(rounds.map((r) => [r.id, r]));
+    const liveTimed = games.filter((g) => g.status === "live");
+    const stamps = await Promise.all(liveTimed.map((g) => listMoveStamps(g.id)));
+    liveTimed.forEach((g, i) => {
+      const round = roundById.get(g.round_id);
+      if (!round?.started_at) return;
+      const snap = computeClocks({
+        clockSec,
+        startedAt: round.started_at,
+        moves: stamps[i],
+        turn: g.turn,
+        now: new Date(),
+        running: true,
+      });
+      clockByGame.set(g.id, {
+        whiteMs: snap.whiteMs,
+        blackMs: snap.blackMs,
+        turn: g.turn,
+        running: true,
+      });
+    });
+  }
+
   const state: BoardState = {
     tournament: toBoardTournament(t),
     players: players.map((p) => ({
       ...toPublicPlayer(p),
       score: leagueScore.get(p.id) ?? 0,
     })),
-    games: games.map(toPublicGame),
+    games: games.map((g) => {
+      const pub = toPublicGame(g);
+      const clock = clockByGame.get(g.id);
+      return clock ? { ...pub, clock } : pub;
+    }),
     standings: computeStandings(players, standingsGames),
     rounds: rounds.map((r) => ({
       id: r.id,
