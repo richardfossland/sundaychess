@@ -11,6 +11,7 @@ import { no } from "@/lib/locale/no";
 import { variantStartFen } from "@/lib/chess/variants";
 import { plyOf } from "@/lib/chess/ply";
 import { SpectateGame } from "./SpectateGame";
+import { FullscreenToggle } from "@/lib/client/FullscreenToggle";
 
 const Chessboard = dynamic(
   () => import("react-chessboard").then((m) => m.Chessboard),
@@ -153,9 +154,13 @@ export function LiveGamesView({
     return () => clearTimeout(t);
   }, [openResult]);
 
-  const live = games.filter(
-    (g) => g.status === "live" && g.blackPlayerId && !finished.has(g.id),
-  );
+  // Stable board order: by bracket/pairing slot, then id. The incoming `games`
+  // list is ordered by updated_at, so without this a move would bump its card to
+  // a new position and the whole grid would jump around — hard to follow with
+  // many boards live. Sorting by slot keeps each board in a fixed place.
+  const live = games
+    .filter((g) => g.status === "live" && g.blackPlayerId && !finished.has(g.id))
+    .sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0) || a.id.localeCompare(b.id));
 
   if (openId) {
     const g = games.find((x) => x.id === openId);
@@ -219,6 +224,7 @@ export function LiveGamesView({
             </div>
           </div>
         </button>
+        <FullscreenToggle />
       </main>
     );
   }
@@ -262,6 +268,7 @@ export function LiveGamesView({
           ))}
         </div>
       )}
+      <FullscreenToggle />
     </main>
   );
 }

@@ -10,6 +10,7 @@ import { ReactionLayer, type FloatingReaction } from "@/lib/client/Reactions";
 import { MoveList, sansFromPgn } from "@/lib/client/MoveList";
 import { api } from "@/lib/client/api";
 import { SoundToggle } from "@/lib/client/SoundToggle";
+import { FullscreenToggle } from "@/lib/client/FullscreenToggle";
 import { Confetti, initials } from "@/lib/client/Confetti";
 import { sound } from "@/lib/client/sound";
 import { channels } from "@/lib/realtime";
@@ -202,6 +203,7 @@ export function SpectateGame({
       </div>
 
       <SoundToggle />
+      <FullscreenToggle />
     </main>
   );
 }

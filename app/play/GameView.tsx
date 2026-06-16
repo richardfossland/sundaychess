@@ -23,6 +23,7 @@ import { ChessClock } from "@/lib/client/ChessClock";
 import { RoundTimer } from "@/lib/client/RoundTimer";
 import { sound } from "@/lib/client/sound";
 import { SoundToggle } from "@/lib/client/SoundToggle";
+import { FullscreenToggle } from "@/lib/client/FullscreenToggle";
 import {
   ReactionBar,
   ReactionOverlay,
@@ -958,6 +959,7 @@ export function GameView({
       )}
 
       <SoundToggle />
+      <FullscreenToggle />
     </main>
   );
 }
