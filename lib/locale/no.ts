@@ -280,6 +280,7 @@ export const no = {
     waitingStart: "Venter på at arrangøren starter …",
     waitingNext: "Venter på neste motstander …",
     waitingBye: "Du har frirunde — slapp av til neste runde 🎉",
+    outOfTournament: "Du er ute av turneringen 🏁 — godt spilt!",
     yourTurn: "DIN TUR",
     opponentTurn: "Venter på motstander",
     boardLabel: "Sjakkbrett",

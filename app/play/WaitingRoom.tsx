@@ -67,6 +67,26 @@ function myGame(state: BoardState, playerId: string): PublicGame | null {
   return mine.find((g) => g.status === "live") ?? mine[mine.length - 1];
 }
 
+/** Is the player OUT of the tournament (vs merely waiting for the next round)?
+ *  - status "left": marked absent / walkover, or removed from the lobby.
+ *  - playoff: eliminated = not present in any game of the CURRENT playoff round
+ *    (once the round has advanced past them). */
+function isOut(state: BoardState, playerId: string): boolean {
+  const meP = state.players.find((p) => p.id === playerId);
+  if (meP?.status === "left") return true;
+  if (state.tournament.status !== "playoff") return false;
+  const cur = state.rounds.find(
+    (r) => r.phase === "playoff" && r.number === state.tournament.currentRound,
+  );
+  if (!cur) return false;
+  const inRound = state.games.some(
+    (g) =>
+      g.roundId === cur.id &&
+      (g.whitePlayerId === playerId || g.blackPlayerId === playerId),
+  );
+  return !inRound;
+}
+
 export function WaitingRoom({
   me,
   onLeave,
@@ -133,12 +153,17 @@ export function WaitingRoom({
     );
   }
 
+  const eliminated = state ? isOut(state, me.playerId) : false;
   let banner: string = no.player.waitingStart;
   if (status !== "lobby") {
-    if (game?.status === "bye") banner = no.player.waitingBye;
-    else if (status === "finished") banner = "Turneringen er ferdig 🏆";
+    if (status === "finished") banner = "Turneringen er ferdig 🏆";
+    else if (eliminated) banner = no.player.outOfTournament;
+    else if (game?.status === "bye") banner = no.player.waitingBye;
     else banner = no.player.waitingNext;
   }
+  // The spinner means "hang on, more is coming" — drop it once the player is out
+  // or the tournament is over, where nothing more is coming for them.
+  const showWaitingSpinner = !eliminated && status !== "finished";
 
   const myTeam =
     state?.players.find((p) => p.id === me.playerId)?.team ?? null;
@@ -162,10 +187,12 @@ export function WaitingRoom({
         )}
 
         <div className="banner banner-wait" style={{ marginTop: 2, width: "100%" }}>
-          <span
-            className="spin"
-            style={{ display: "inline-block", verticalAlign: "middle", marginRight: 10 }}
-          />
+          {showWaitingSpinner && (
+            <span
+              className="spin"
+              style={{ display: "inline-block", verticalAlign: "middle", marginRight: 10 }}
+            />
+          )}
           {banner}
         </div>
 

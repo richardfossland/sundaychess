@@ -150,6 +150,12 @@ button {
   justify-content: center;
   padding: 28px 14px;
 }
+/* The live game screen: top-align so content that appears mid-game (the move
+   list on the first move, flag/draw banners) grows DOWNWARD instead of
+   re-centering everything — which read as the board "jumping" on each move. */
+.center-screen.is-game {
+  align-items: flex-start;
+}
 /* flex centering caps width-100% children to the viewport (a grid auto-track
    would grow to the child's max-width and overflow on narrow screens). */
 .stack {

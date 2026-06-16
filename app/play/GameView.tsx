@@ -691,7 +691,7 @@ export function GameView({
   const oppColor: "white" | "black" = myColor === "white" ? "black" : "white";
 
   return (
-    <main className="center-screen">
+    <main className="center-screen is-game">
       {iWon && <Confetti count={120} />}
       <div className="game-grid">
         {/* opponent — left on wide, top on narrow */}
@@ -729,19 +729,23 @@ export function GameView({
           )}
 
           {!ended && (
+            // One fixed banner slot (never a second element that pushes the
+            // board down): shows your turn, the opponent's turn, or — when you've
+            // queued a pre-move on the opponent's turn — the pre-move indicator.
             <div
               className={`banner ${isMyTurn ? "banner-turn" : "banner-wait"}`}
-              style={{ width: "100%" }}
+              style={{
+                width: "100%",
+                ...(!isMyTurn && preMove ? { borderColor: "rgba(235,140,60,0.6)" } : {}),
+              }}
               role="status"
               aria-live="polite"
             >
-              {isMyTurn ? `♟ ${no.player.yourTurn}` : no.player.opponentTurn}
-            </div>
-          )}
-
-          {!ended && !isMyTurn && preMove && (
-            <div className="banner" style={{ width: "100%", borderColor: "rgba(235,140,60,0.6)" }} role="status">
-              ⏩ {no.player.premoveSet}
+              {isMyTurn
+                ? `♟ ${no.player.yourTurn}`
+                : preMove
+                  ? `⏩ ${no.player.premoveSet}`
+                  : no.player.opponentTurn}
             </div>
           )}
 
