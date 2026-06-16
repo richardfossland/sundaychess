@@ -9,6 +9,7 @@ import { identity, type StoredPlayer } from "@/lib/client/identity";
 import { initials } from "@/lib/client/Confetti";
 import { PuzzleCard } from "@/lib/client/PuzzleCard";
 import { PredictPanel } from "@/lib/client/PredictPanel";
+import { BracketBoard } from "@/lib/client/BracketBoard";
 import { variantStartFen } from "@/lib/chess/variants";
 import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
 import { no } from "@/lib/locale/no";
@@ -218,6 +219,14 @@ export function WaitingRoom({
           Logg ut
         </button>
       </div>
+
+      {/* the cup ladder — how it's going / how it went (knockout only) */}
+      {state && state.rounds.some((r) => r.phase === "playoff") && (
+        <div className="card stack" style={{ padding: 14, width: "100%", gap: 8 }}>
+          <p className="eyebrow" style={{ fontSize: 11 }}>{no.player.cupProgress}</p>
+          <BracketBoard games={state.games} rounds={state.rounds} players={state.players} />
+        </div>
+      )}
 
       {/* the player's own final standings once it's all over */}
       {state && status === "finished" && (

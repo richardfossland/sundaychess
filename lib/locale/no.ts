@@ -82,6 +82,7 @@ export const no = {
     games: "Partier",
     nextRound: "Neste runde",
     replay: "Omspill",
+    bracketRecap: "Slik gikk det",
     playRematch: "Spill omkamp",
     advanceBySeed: "Send høyest rangert videre",
     drawChoiceHint:
@@ -281,6 +282,7 @@ export const no = {
     waitingNext: "Venter på neste motstander …",
     waitingBye: "Du har frirunde — slapp av til neste runde 🎉",
     outOfTournament: "Du er ute av turneringen 🏁 — godt spilt!",
+    cupProgress: "Cup-stigen",
     yourTurn: "DIN TUR",
     opponentTurn: "Venter på motstander",
     boardLabel: "Sjakkbrett",

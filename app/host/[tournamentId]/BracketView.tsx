@@ -8,14 +8,9 @@ import { no } from "@/lib/locale/no";
 import { JoinChip } from "@/lib/client/JoinChip";
 import { RoundTimer } from "@/lib/client/RoundTimer";
 import { sortBySlot } from "@/lib/tournament/bracket";
+import { BracketBoard } from "@/lib/client/BracketBoard";
 import { OverrideModal } from "./OverrideModal";
 import { CodesModal } from "./CodesModal";
-
-function winnerId(g: PublicGame): string | null {
-  if (g.status === "white_win") return g.whitePlayerId;
-  if (g.status === "black_win") return g.blackPlayerId;
-  return null;
-}
 
 export function BracketView({
   state,
@@ -112,20 +107,6 @@ export function BracketView({
     }
   }
 
-  const slot = (g: PublicGame, side: "white" | "black") => {
-    const id = side === "white" ? g.whitePlayerId : g.blackPlayerId;
-    const p = player(id);
-    const won = winnerId(g) === id && id !== null;
-    return (
-      <div className={`bracket-slot ${won ? "win" : ""} ${p ? "" : "tbd"}`}>
-        <span>
-          {p?.seed != null && <span className="seed">{p.seed}</span>} {p?.displayName ?? "—"}
-        </span>
-        {won && <span>✓</span>}
-      </div>
-    );
-  };
-
   return (
     <main className="wrap" style={{ padding: "28px 24px 64px" }}>
       <header className="spread" style={{ marginBottom: 24 }}>
@@ -158,44 +139,12 @@ export function BracketView({
         {tournament.title && <span className="muted">{tournament.title}</span>}
       </header>
 
-      <div className="bracket">
-        {columns.map((col) => {
-          // Games sharing a slot in a column = an original draw + its tiebreak
-          // rematch. Count by slot so the header and badges read correctly.
-          const slotCounts = new Map<number, number>();
-          for (const g of col.games) {
-            const s = g.slot ?? 0;
-            slotCounts.set(s, (slotCounts.get(s) ?? 0) + 1);
-          }
-          return (
-            <div className="bracket-col" key={col.round.id}>
-              <h3>
-                {slotCounts.size === 1
-                  ? "Finale"
-                  : `${no.host.round} ${col.round.number}`}
-              </h3>
-              {col.games.map((g) => {
-                const isTiebreak = (slotCounts.get(g.slot ?? 0) ?? 0) > 1;
-                return (
-                  <div
-                    className="bracket-match"
-                    key={g.id}
-                    onClick={() => g.status !== "bye" && setOverrideGame(g)}
-                  >
-                    {isTiebreak && (
-                      <span className="badge" style={{ fontSize: 10 }}>
-                        ⚔︎ {no.host.replay}
-                      </span>
-                    )}
-                    {slot(g, "white")}
-                    {slot(g, "black")}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
+      <BracketBoard
+        games={games}
+        rounds={rounds}
+        players={players}
+        onPick={(g) => setOverrideGame(g)}
+      />
 
       <div className="row" style={{ marginTop: 24, maxWidth: 480 }}>
         {hasUndecidedDraw ? (

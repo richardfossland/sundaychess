@@ -837,6 +837,14 @@ a:focus-visible,
   border-color: var(--ink-line-strong);
   transform: translateY(-1px);
 }
+/* Read-only bracket (players / finished recap): not interactive. */
+.bracket-readonly .bracket-match {
+  cursor: default;
+}
+.bracket-readonly .bracket-match:hover {
+  transform: none;
+  border-color: var(--ink-line);
+}
 .bracket-slot {
   display: flex;
   justify-content: space-between;
