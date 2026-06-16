@@ -1002,6 +1002,49 @@ button {
   margin: 0 0 18px;
 }
 
+/* ============ move list (SAN notation panel) ============ */
+.movelist {
+  width: 100%;
+  max-width: min(94vw, 560px);
+  max-height: 132px;
+  overflow-y: auto;
+  background: var(--ink-2);
+  border: 1px solid var(--ink-line);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-variant-numeric: tabular-nums;
+  -webkit-overflow-scrolling: touch;
+}
+.movelist-empty {
+  font-size: 13px;
+}
+.movelist-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.movelist-row {
+  display: grid;
+  grid-template-columns: 2.4em 1fr 1fr;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.movelist-no {
+  color: var(--txt-faint);
+  text-align: right;
+}
+.movelist-san {
+  color: var(--txt-dim);
+}
+.movelist-current {
+  color: var(--gold);
+  font-weight: 700;
+}
+
 /* ============ motion utilities ============ */
 .reveal {
   opacity: 0;

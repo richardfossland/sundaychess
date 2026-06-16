@@ -29,6 +29,7 @@ import {
   type ReactionHandle,
 } from "@/lib/client/Reactions";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
+import { MoveList, sansFromPgn } from "@/lib/client/MoveList";
 import { ReviewView } from "./ReviewView";
 import { no } from "@/lib/locale/no";
 
@@ -252,6 +253,9 @@ export function GameView({
   // threefold-repetition draw (the live `detail.pgn` predates the final move,
   // since the poll stops at game end).
   const [finalPgn, setFinalPgn] = useState<string | null>(null);
+  // Live SAN move list. Rebuilt authoritatively from the PGN on load()/end, and
+  // appended optimistically per move so it tracks play without waiting for a poll.
+  const [sans, setSans] = useState<string[]>([]);
   const [clock, setClock] = useState<ClockState | null>(null);
   // Imperative handle to the reaction overlay — adding a float never re-renders
   // GameView (and therefore never re-renders the board).
@@ -263,6 +267,14 @@ export function GameView({
     },
     [],
   );
+
+  // Append a SAN to the move list only when it advances exactly one ply — this
+  // dedups against the authoritative rebuild (load) and ignores out-of-order /
+  // missed updates; the next load() rebuild self-heals any gap.
+  const appendSan = useCallback((san: string | undefined, fenAfter: string) => {
+    if (!san) return;
+    setSans((prev) => (plyOf(fenAfter) === prev.length + 1 ? [...prev, san] : prev));
+  }, []);
 
   // Last server-confirmed FEN — the rollback target for a failed optimistic move.
   const confirmedFen = useRef<string>("");
@@ -290,6 +302,7 @@ export function GameView({
       setLastMove(d.lastMove ? { from: d.lastMove.from, to: d.lastMove.to } : null);
       confirmedFen.current = d.fen;
       takeClock(d.clock);
+      setSans(sansFromPgn(d.pgn)); // authoritative move-list rebuild
     }
     // A terminal status must be honoured even when the ply didn't advance (a
     // resign / teacher-resolve emits no position move); a stale "live" must
@@ -396,7 +409,9 @@ export function GameView({
     api
       .game(gameId)
       .then((d) => {
-        if (live) setFinalPgn(d.pgn);
+        if (!live) return;
+        setFinalPgn(d.pgn);
+        setSans(sansFromPgn(d.pgn)); // complete, authoritative move list at end
       })
       .catch(() => {});
     return () => {
@@ -416,7 +431,7 @@ export function GameView({
         fen: string;
         turn: Turn;
         status: GameStatus;
-        lastMove?: { from: string; to: string } | null;
+        lastMove?: { from: string; to: string; san?: string } | null;
         clock?: { whiteMs: number; blackMs: number; turn: Turn; running: boolean } | null;
       };
       // Ignore a delayed / out-of-order broadcast that would roll the board back
@@ -430,6 +445,7 @@ export function GameView({
         takeClock(p.clock);
         confirmedFen.current = p.fen;
         if (p.lastMove) setLastMove({ from: p.lastMove.from, to: p.lastMove.to });
+        appendSan(p.lastMove?.san, p.fen); // extend the move list (opponent's move)
         setSelected(null);
         setLegal([]);
         setIncomingDraw(false); // a move supersedes any pending draw offer
@@ -482,6 +498,7 @@ export function GameView({
       setFen(local.fen);
       setTurn(local.turn);
       setLastMove({ from, to });
+      appendSan(local.san, local.fen); // extend the move list (my move)
       setSelected(null);
       setLegal([]);
       setPending(true);
@@ -537,7 +554,7 @@ export function GameView({
       }
       return true;
     },
-    [fen, gameId, isMyTurn, load, me.playerId, me.resumeCode, pending, takeClock],
+    [appendSan, fen, gameId, isMyTurn, load, me.playerId, me.resumeCode, pending, takeClock],
   );
 
   // Fire a queued pre-move the instant it becomes my turn: resolve it against
@@ -829,6 +846,8 @@ export function GameView({
           )}
 
           {toast && <div className="banner banner-error" style={{ width: "100%" }}>{toast}</div>}
+
+          {sans.length > 0 && <MoveList sans={sans} />}
         </div>
 
         {/* me — right on wide, bottom on narrow */}
