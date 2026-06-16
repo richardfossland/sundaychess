@@ -65,7 +65,12 @@ export function ReactionBar({ onSend }: { onSend: (emoji: string) => void }) {
   return (
     <div className="reaction-bar" role="group" aria-label="Send en reaksjon">
       {REACTION_EMOJIS.map((e) => (
-        <button key={e} className="reaction-btn" onClick={() => onSend(e)}>
+        <button
+          key={e}
+          className="reaction-btn"
+          aria-label={`Send ${e}`}
+          onClick={() => onSend(e)}
+        >
           {e}
         </button>
       ))}

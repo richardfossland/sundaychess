@@ -27,6 +27,8 @@ export function QRCode({ value, size = 200 }: { value: string; size?: number }) 
         style={{
           width: size,
           height: size,
+          maxWidth: "100%",
+          aspectRatio: "1 / 1",
           borderRadius: 12,
           background: "var(--ink-soft)",
         }}
@@ -39,7 +41,8 @@ export function QRCode({ value, size = 200 }: { value: string; size?: number }) 
       width={size}
       height={size}
       alt="QR-kode for å bli med"
-      style={{ borderRadius: 12, background: "var(--paper)" }}
+      // never overflow a narrow container; keep it square
+      style={{ borderRadius: 12, background: "var(--paper)", maxWidth: "100%", height: "auto" }}
     />
   );
 }

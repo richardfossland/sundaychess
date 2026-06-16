@@ -746,7 +746,11 @@ export function GameView({
           )}
 
           <div className="board-frame">
-            <div className="board-shell">
+            <div
+              className="board-shell"
+              role="group"
+              aria-label={isMyTurn ? `${no.player.yourTurn} – ${no.player.boardLabel}` : no.player.boardLabel}
+            >
               <Chessboard
                 options={{
                   position: fen || undefined,

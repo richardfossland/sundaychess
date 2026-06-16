@@ -277,6 +277,7 @@ export const no = {
     waitingBye: "Du har frirunde — slapp av til neste runde 🎉",
     yourTurn: "DIN TUR",
     opponentTurn: "Venter på motstander",
+    boardLabel: "Sjakkbrett",
     youAre: "Du spiller",
     white: "hvit",
     black: "svart",
