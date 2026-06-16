@@ -366,6 +366,7 @@ export const no = {
     ovningSub: "Tilbakemelding + angre og prøv igjen",
     mesterSub: "Sterkeste motstander + full analyse etterpå",
     warn: "Pass på – dette trekket ser ut til å tape materiell. Vil du flytte likevel?",
+    moveAnyway: "Flytt likevel",
     tagGood: "👍 Godt trekk!",
     tagInaccuracy: "🤔 Litt unøyaktig",
     tagBlunder: "⚠️ Tabbe – du taper noe her",
