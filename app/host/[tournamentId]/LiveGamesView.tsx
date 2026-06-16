@@ -12,6 +12,7 @@ import { variantStartFen } from "@/lib/chess/variants";
 import { plyOf } from "@/lib/chess/ply";
 import { SpectateGame } from "./SpectateGame";
 import { FullscreenToggle } from "@/lib/client/FullscreenToggle";
+import { Confetti } from "@/lib/client/Confetti";
 
 const Chessboard = dynamic(
   () => import("react-chessboard").then((m) => m.Chessboard),
@@ -47,11 +48,14 @@ function gridMin(liveCount: number): number {
 export function LiveGamesView({
   state,
   onStale,
+  onExitLive,
 }: {
   state: BoardState;
   onStale?: () => void;
+  /** Leave live mode back to the arranging view (bracket / league control). */
+  onExitLive?: () => void;
 }) {
-  const { tournament, players, games } = state;
+  const { tournament, players, games, rounds } = state;
   const nameById = useMemo(() => {
     const m = new Map(players.map((p) => [p.id, p.displayName]));
     return (id: string | null) => (id ? (m.get(id) ?? "?") : no.host.bye);
@@ -71,6 +75,8 @@ export function LiveGamesView({
   const [finished, setFinished] = useState<Set<string>>(() => new Set());
   // Result of the currently-open game (drives the winner animation + auto-close).
   const [openResult, setOpenResult] = useState<GameStatus | null>(null);
+  // A brief "X vant!" flash over the grid when any game finishes in live mode.
+  const [winFlash, setWinFlash] = useState<string | null>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -134,6 +140,17 @@ export function LiveGamesView({
         // Drop it from the grid immediately; refetch authoritative standings.
         setFinished((s) => (s.has(p.gameId) ? s : new Set(s).add(p.gameId)));
         if (p.gameId === openId) setOpenResult(p.status);
+        // Celebrate the result over the grid (who won / draw).
+        const g = games.find((x) => x.id === p.gameId);
+        const flash =
+          p.status === "white_win" && g
+            ? `${nameById(g.whitePlayerId)} ${no.host.spectateWon}`
+            : p.status === "black_win" && g
+              ? `${nameById(g.blackPlayerId)} ${no.host.spectateWon}`
+              : p.status === "draw"
+                ? no.host.spectateDraw
+                : null;
+        if (flash) setWinFlash(flash);
         onStale?.();
       }
     },
@@ -153,6 +170,23 @@ export function LiveGamesView({
     }, 4500);
     return () => clearTimeout(t);
   }, [openResult]);
+
+  // Per-game win flash auto-dismiss.
+  useEffect(() => {
+    if (!winFlash) return;
+    const t = setTimeout(() => setWinFlash(null), 3500);
+    return () => clearTimeout(t);
+  }, [winFlash]);
+
+  // Is the CURRENT round fully resolved (every game done, none live)? When so,
+  // there's nothing left to watch → prompt the host back to arranging to advance.
+  const roundOver = useMemo(() => {
+    const cur = games.filter((g) => {
+      const r = rounds.find((rr) => rr.id === g.roundId);
+      return r?.number === tournament.currentRound;
+    });
+    return cur.length > 0 && cur.every((g) => g.status !== "live");
+  }, [games, rounds, tournament.currentRound]);
 
   // Stable board order: by bracket/pairing slot, then id. The incoming `games`
   // list is ordered by updated_at, so without this a move would bump its card to
@@ -232,9 +266,26 @@ export function LiveGamesView({
   return (
     <main className="wrap" style={{ padding: "12px 24px 64px", maxWidth: "min(96vw, 1800px)" }}>
       {live.length === 0 ? (
-        <p className="muted text-center" style={{ padding: 40 }}>
-          Ingen partier pågår akkurat nå.
-        </p>
+        roundOver && onExitLive ? (
+          // Round done — nothing left to watch. A fullscreen card prompts the
+          // host back to the arranging view to advance the round / bracket.
+          <div className="result-overlay">
+            <Confetti count={120} />
+            <div className="result-card stack" style={{ alignItems: "center", gap: 14 }}>
+              <div className="result-emoji">🏁</div>
+              <h2 style={{ fontSize: "clamp(28px,5vw,46px)", textAlign: "center" }}>
+                {no.host.roundOver}
+              </h2>
+              <button className="btn btn-primary btn-lg" onClick={onExitLive}>
+                {no.host.backToArranging} →
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="muted text-center" style={{ padding: 40 }}>
+            Ingen partier pågår akkurat nå.
+          </p>
+        )
       ) : (
         <div
           style={{
@@ -266,6 +317,30 @@ export function LiveGamesView({
               </div>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Brief "X vant!" celebration over the grid as each game finishes — does
+          not block the other live boards (suppressed once the round is over, when
+          the round-complete card takes over). */}
+      {winFlash && !roundOver && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            display: "grid",
+            placeItems: "center",
+            pointerEvents: "none",
+            zIndex: 55,
+          }}
+        >
+          <Confetti count={90} />
+          <div className="result-card stack" style={{ alignItems: "center", gap: 8 }}>
+            <div className="result-emoji">🎉</div>
+            <h2 style={{ fontSize: "clamp(24px,4.5vw,40px)", textAlign: "center" }}>
+              {winFlash}
+            </h2>
+          </div>
         </div>
       )}
       <FullscreenToggle />

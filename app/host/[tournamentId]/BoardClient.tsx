@@ -43,7 +43,11 @@ export function BoardClient({ tournamentId }: { tournamentId: string }) {
 
   const view =
     liveable && mode === "live" ? (
-      <LiveGamesView state={state} onStale={refresh} />
+      <LiveGamesView
+        state={state}
+        onStale={refresh}
+        onExitLive={() => setMode("board")}
+      />
     ) : status === "league" ? (
       <LeagueView state={state} onChanged={refresh} />
     ) : status === "playoff" ? (
