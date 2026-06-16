@@ -75,6 +75,14 @@ export async function joinCasualGame(
   const challenger = existing[0];
   const joiner = await addPlayer(t.id, name);
 
+  // Atomicity guard (no DB constraint on the 2-seat cap): if two players joined
+  // at once, re-read by join order and let only the first joiner (seat 1) take
+  // the seat. A later joiner gets a clean "full" instead of a duplicate
+  // round/game and a confusing 503. (seat 0 is the challenger.)
+  const seats = await listPlayers(t.id); // ordered by joined_at asc
+  const seat = seats.findIndex((p) => p.id === joiner.id);
+  if (seat < 0 || seat >= 2) return { ok: false, reason: "full" };
+
   // Random colours between the challenger and the joiner.
   const challengerWhite = Math.random() < 0.5;
   const whiteId = challengerWhite ? challenger.id : joiner.id;

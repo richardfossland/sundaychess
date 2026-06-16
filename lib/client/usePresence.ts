@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { acquireChannel } from "@/lib/supabase/channelRegistry";
 
 /** Track and/or observe Supabase Realtime presence on `topic`.
  *
@@ -18,28 +18,13 @@ export function usePresence(topic: string | null, trackKey?: string): Set<string
     if (!topic) return;
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return;
 
-    const supabase = createClient();
-    const channel = supabase.channel(topic, {
-      config: { presence: { key: trackKey ?? "" } },
+    // Shared, ref-counted channel per topic (see channelRegistry). The registry
+    // owns track()/presenceState() and fans the present-key set out to us.
+    const { release } = acquireChannel(topic, {
+      trackKey,
+      onPresence: (keys) => setPresent(keys),
     });
-
-    const sync = () => {
-      const state = channel.presenceState();
-      // Drop the empty observer key (host) — only real player ids count.
-      setPresent(new Set(Object.keys(state).filter((k) => k !== "")));
-    };
-    channel.on("presence", { event: "sync" }, sync);
-    channel.on("presence", { event: "join" }, sync);
-    channel.on("presence", { event: "leave" }, sync);
-    channel.subscribe((status) => {
-      if (status === "SUBSCRIBED" && trackKey) {
-        void channel.track({ online: true });
-      }
-    });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return release;
     // trackKey in deps: a key change re-subscribes (so it's never silently
     // ignored). In practice the player id is stable, so no churn.
   }, [topic, trackKey]);

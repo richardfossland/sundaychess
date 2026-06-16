@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { annotateGame } from "@/lib/chess/analysis";
 import { reviewFacts, templatedSummaryNo } from "@/lib/chess/reviewSummary";
+import type { ReviewFacts } from "@/lib/chess/reviewSummary";
 import { no } from "@/lib/locale/no";
 
 // Coached post-game review for a SOLO game. The game is client-only, so all
@@ -19,13 +20,31 @@ export function SoloReview({
   playerColor: "white" | "black";
   onClose: () => void;
 }) {
-  // Engine truth is computed purely (no network), so derive it synchronously.
-  const base = useMemo(() => {
-    const review = annotateGame(pgn, no.solo.you, no.solo.computer);
-    if (!review) return null;
-    const side = playerColor === "white" ? review.white : review.black;
-    const f = reviewFacts(side, review.result);
-    return { facts: f, templated: templatedSummaryNo(f) };
+  // Engine truth is computed purely (no network). Defer it OFF the render/paint
+  // path (a setTimeout(0) after mount) so the modal opens instantly even after a
+  // long game — annotateGame is depth-1 + FEN-memoised, but on a Chromebook a
+  // synchronous useMemo could still jank the open. undefined = still computing,
+  // null = unreplayable (error), object = ready.
+  const [base, setBase] = useState<
+    { facts: ReviewFacts; templated: string } | null | undefined
+  >(undefined);
+  useEffect(() => {
+    let live = true;
+    const id = setTimeout(() => {
+      const review = annotateGame(pgn, no.solo.you, no.solo.computer);
+      if (!live) return;
+      if (!review) {
+        setBase(null);
+        return;
+      }
+      const side = playerColor === "white" ? review.white : review.black;
+      const f = reviewFacts(side, review.result);
+      setBase({ facts: f, templated: templatedSummaryNo(f) });
+    }, 0);
+    return () => {
+      live = false;
+      clearTimeout(id);
+    };
   }, [pgn, playerColor]);
 
   // Optional AI narration upgrade (keyless → stays templated).

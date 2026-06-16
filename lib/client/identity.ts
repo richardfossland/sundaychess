@@ -21,7 +21,11 @@ export const identity = {
   saveHostCode(tournamentId: string, hostCode: string) {
     try {
       localStorage.setItem(HOST_KEY(tournamentId), hostCode);
-    } catch {}
+    } catch (e) {
+      // Persistence lost (private mode / quota) → crash-recovery won't work for
+      // this device. Surface it instead of failing silently.
+      console.warn("[identity] localStorage write failed", e);
+    }
   },
   hostCode(tournamentId: string): string | null {
     try {
@@ -33,7 +37,11 @@ export const identity = {
   savePlayer(p: StoredPlayer) {
     try {
       localStorage.setItem(PLAYER_KEY, JSON.stringify(p));
-    } catch {}
+    } catch (e) {
+      // Persistence lost (private mode / quota) → crash-recovery won't work for
+      // this device. Surface it instead of failing silently.
+      console.warn("[identity] localStorage write failed", e);
+    }
   },
   player(): StoredPlayer | null {
     try {
@@ -46,7 +54,11 @@ export const identity = {
   clearPlayer() {
     try {
       localStorage.removeItem(PLAYER_KEY);
-    } catch {}
+    } catch (e) {
+      // Persistence lost (private mode / quota) → crash-recovery won't work for
+      // this device. Surface it instead of failing silently.
+      console.warn("[identity] localStorage write failed", e);
+    }
   },
 
   /** The device's adaptive single-player rating (Elo-like). Client-only; never
@@ -67,6 +79,10 @@ export const identity = {
   saveSoloRating(state: RatingState) {
     try {
       localStorage.setItem(SOLO_RATING_KEY, JSON.stringify(state));
-    } catch {}
+    } catch (e) {
+      // Persistence lost (private mode / quota) → crash-recovery won't work for
+      // this device. Surface it instead of failing silently.
+      console.warn("[identity] localStorage write failed", e);
+    }
   },
 };

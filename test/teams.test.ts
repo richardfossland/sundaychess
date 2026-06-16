@@ -35,6 +35,19 @@ describe("computeTeamStandings", () => {
     expect(computeTeamStandings([], [{ team: "Rød", score: 1 }])).toEqual([]);
   });
 
+  it("excludes players who LEFT, matching the individual standings", () => {
+    const rows = computeTeamStandings(
+      ["Rød", "Blå"],
+      [
+        { team: "Rød", score: 3, status: "active" },
+        { team: "Rød", score: 5, status: "left" }, // dropped from the board → drop here too
+        { team: "Blå", score: 2, status: "active" },
+      ],
+    );
+    const rod = rows.find((r) => r.team === "Rød")!;
+    expect(rod).toEqual({ team: "Rød", score: 3, players: 1 });
+  });
+
   it("breaks score ties alphabetically for a stable display", () => {
     const rows = computeTeamStandings(
       ["Gul", "Blå"],

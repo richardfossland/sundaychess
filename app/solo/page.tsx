@@ -265,6 +265,11 @@ export default function Solo() {
     setLegal([]);
     setLastMove(null);
     refresh();
+    // If the undo landed on the computer's turn, it must re-move or the board
+    // soft-locks (nothing else re-triggers it). This happens when Black undoes
+    // White's opening: the history empties, the second undo is skipped, and the
+    // position sits on White (the computer) to move. Re-open for the computer.
+    if (!c.isGameOver() && c.turn() !== myLetter) botMove(playerColor);
   }
 
   function onDrop({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean {

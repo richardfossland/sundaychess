@@ -218,13 +218,23 @@ export function GameView({
 
   const load = useCallback(async () => {
     const d = await api.game(gameId);
-    setDetail(d);
-    setFen(d.fen);
-    setTurn(d.turn);
-    setStatus(d.status);
-    setLastMove(d.lastMove ? { from: d.lastMove.from, to: d.lastMove.to } : null);
-    confirmedFen.current = d.fen;
-    takeClock(d.clock);
+    setDetail(d); // names/pgn are always safe to refresh
+    // Ply-guard exactly like the broadcast handler: a slow in-flight GET that
+    // resolves AFTER a fresher move (mine or the opponent's) must not roll the
+    // board back to a stale ply. Only adopt the fetched position if it's at
+    // least as fresh as the last confirmed one.
+    const fresh = plyOf(d.fen) >= plyOf(confirmedFen.current || d.fen);
+    if (fresh) {
+      setFen(d.fen);
+      setTurn(d.turn);
+      setLastMove(d.lastMove ? { from: d.lastMove.from, to: d.lastMove.to } : null);
+      confirmedFen.current = d.fen;
+      takeClock(d.clock);
+    }
+    // A terminal status must be honoured even when the ply didn't advance (a
+    // resign / teacher-resolve emits no position move); a stale "live" must
+    // never un-end a finished game.
+    if (fresh || d.status !== "live") setStatus(d.status);
     // Reconcile draw banners from the authoritative offer state, so a lost
     // decline/offer broadcast can never leave a banner stuck (3s poll heals).
     if (d.drawOfferedBy !== undefined) {
@@ -237,7 +247,10 @@ export function GameView({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load()
       .then(() => setLoadError(false))
-      .catch(() => setLoadError(true));
+      .catch((e) => {
+        console.warn("[game] initial load failed", e);
+        setLoadError(true);
+      });
   }, [load]);
 
   // Reconnect hardening: re-sync the authoritative position when the tab

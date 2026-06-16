@@ -1,7 +1,7 @@
 import { authHost } from "@/lib/server/auth";
 import { getGame, resolveGameRpc } from "@/lib/server/store";
 import { afterGameResolved } from "@/lib/server/gameEvents";
-import { fail, ok, readJson } from "@/lib/server/http";
+import { fail, ok, readJson, hostRateLimit } from "@/lib/server/http";
 import type { GameStatus } from "@/lib/types";
 
 const ALLOWED: GameStatus[] = ["white_win", "black_win", "draw", "aborted"];
@@ -17,6 +17,8 @@ export async function POST(req: Request) {
 }
 
 async function handlePost(req: Request): Promise<Response> {
+  const limited = hostRateLimit(req);
+  if (limited) return limited;
   const body = await readJson<{
     gameId?: string;
     hostCode?: string;

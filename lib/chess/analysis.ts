@@ -138,11 +138,25 @@ function resultFromPgn(pgn: string): GameReview["result"] {
   }
 }
 
+/** Hard ceiling on how many plies get a (relatively expensive) engine eval.
+ * `annotateGame` runs on a Cloudflare Worker (POST /api/review) where a runaway
+ * synchronous negamax can trip the CPU limit (Error 1102), and on a Chromebook's
+ * main thread (solo review). A normal classroom game is well under this; only a
+ * pathological 100+-move marathon would hit it. Beyond the cap we still record
+ * the move (so the move list is complete) but skip the eval (delta 0 → "best"),
+ * which keeps the whole call bounded no matter how long the game ran. */
+const MAX_EVAL_PLIES = 240;
+
 /**
  * Replay `pgn` and annotate every move. Pure: no network, no key, no React.
  *
- * `evalDepth` is forwarded to `evaluateFen`; the default of 2 matches the eval
- * bar / hype callout so reviews agree with what the projector showed live.
+ * `evalDepth` is forwarded to `evaluateFen`. The default is 1: review's only
+ * callers are the post-game summaries (server /api/review + solo SoloReview),
+ * where a depth-2 negamax PER PLY, twice per move, is ~9× the cost and risks the
+ * Worker CPU limit on long games. Depth 1 still surfaces blunders/hung pieces
+ * (the eval swing is what the coach narrates) at a fraction of the cost. Eval
+ * results are memoised per FEN, so the shared position between consecutive plies
+ * (`after[i]` === `before[i+1]`) is only searched once — roughly halving the work.
  * Returns null if the PGN has no replayable moves (empty / overridden game).
  *
  * Each move is evaluated by:
@@ -155,7 +169,7 @@ export function annotateGame(
   pgn: string,
   whiteName: string,
   blackName: string,
-  evalDepth = 2,
+  evalDepth = 1,
 ): GameReview | null {
   if (!pgn.trim()) return null;
   const chess = new Chess();
@@ -167,14 +181,28 @@ export function annotateGame(
   const hist = chess.history({ verbose: true });
   if (hist.length === 0) return null;
 
+  // Memoise the engine eval per FEN: consecutive plies share a position
+  // (`after[i]` === `before[i+1]`), so this halves the negamax searches.
+  const evalCache = new Map<string, { cp: number; mate: 1 | -1 | null }>();
+  const cachedEval = (fen: string) => {
+    let v = evalCache.get(fen);
+    if (!v) {
+      v = evaluateFen(fen, evalDepth);
+      evalCache.set(fen, v);
+    }
+    return v;
+  };
+
   const moves: AnnotatedMove[] = [];
   hist.forEach((m, i) => {
     const side: Side = m.color; // "w" | "b"
     // `evaluateFen` is always from WHITE's perspective; re-base to the mover.
     const sign = side === "w" ? 1 : -1;
 
-    const beforeEval = evaluateFen(m.before, evalDepth);
-    const afterEval = evaluateFen(m.after, evalDepth);
+    // Past the cap, record the move but skip the eval (keeps the call bounded).
+    const skipEval = i >= MAX_EVAL_PLIES;
+    const beforeEval = skipEval ? { cp: 0, mate: null as 1 | -1 | null } : cachedEval(m.before);
+    const afterEval = skipEval ? { cp: 0, mate: null as 1 | -1 | null } : cachedEval(m.after);
     const cpBefore = clampCp(beforeEval.cp * sign);
     const cpAfter = clampCp(afterEval.cp * sign);
     const delta = cpAfter - cpBefore;
