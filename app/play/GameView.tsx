@@ -11,7 +11,8 @@ import { applyMove, legalDestinations } from "@/lib/chess/validateMove";
 import { needsPromotion, type PromoPiece } from "@/lib/chess/promotion";
 import { PromotionPicker } from "@/lib/client/PromotionPicker";
 import { resolvePremove, pieceColorAt } from "@/lib/chess/premove";
-import { drawReasonFromFen } from "@/lib/chess/drawReason";
+import { drawReasonFromPgn } from "@/lib/chess/drawReason";
+import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { plyOf } from "@/lib/chess/ply";
 import { channels } from "@/lib/realtime";
 import { useChannel } from "@/lib/client/useChannel";
@@ -239,6 +240,7 @@ export function GameView({
   // instant it becomes mine (blitz / online multiplayer). null = none.
   const [preMove, setPreMove] = useState<{ from: string; to: string } | null>(null);
   const [promo, setPromo] = useState<{ from: string; to: string } | null>(null);
+  const [confirmResign, setConfirmResign] = useState(false);
   const [acting, setActing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -246,6 +248,10 @@ export function GameView({
   const [drawSent, setDrawSent] = useState(false);
   const [replayPgn, setReplayPgn] = useState<string | null>(null);
   const [showReview, setShowReview] = useState(false);
+  // Authoritative final PGN, fetched once the game ends — needed to name a
+  // threefold-repetition draw (the live `detail.pgn` predates the final move,
+  // since the poll stops at game end).
+  const [finalPgn, setFinalPgn] = useState<string | null>(null);
   const [clock, setClock] = useState<ClockState | null>(null);
   // Imperative handle to the reaction overlay — adding a float never re-renders
   // GameView (and therefore never re-renders the board).
@@ -381,6 +387,22 @@ export function GameView({
       (status === "black_win" && myColor === "black");
     sound.play(status === "draw" ? "draw" : won ? "win" : "lose");
   }, [status, myColor]);
+
+  // On game end, fetch the authoritative final PGN once so a threefold draw is
+  // named correctly (the live poll has stopped, so detail.pgn is now stale).
+  useEffect(() => {
+    if (status === "live" || status === "bye" || status === "aborted") return;
+    let live = true;
+    api
+      .game(gameId)
+      .then((d) => {
+        if (live) setFinalPgn(d.pgn);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [status, gameId]);
 
   // The chess-clock flag state ("krev seier på tid" / "tiden din er ute") is
   // computed inside <ClockFlagBanners>, which owns its own ticker — so ticking
@@ -644,7 +666,8 @@ export function GameView({
       (status === "black_win" && myColor === "black"));
   let resultText = "";
   if (ended) {
-    if (status === "draw") resultText = no.player.drawReason[drawReasonFromFen(fen)];
+    if (status === "draw")
+      resultText = no.player.drawReason[drawReasonFromPgn(finalPgn ?? detail.pgn, fen)];
     else resultText = iWon ? no.player.youWon : no.player.youLost;
   }
 
@@ -752,10 +775,7 @@ export function GameView({
               <button
                 className="btn btn-danger"
                 disabled={pending || acting}
-                onClick={() => {
-                  if (!confirm(no.player.resignConfirm)) return;
-                  runMeta(api.resign(gameId, me.playerId, me.resumeCode));
-                }}
+                onClick={() => setConfirmResign(true)}
               >
                 {no.player.resign}
               </button>
@@ -894,6 +914,19 @@ export function GameView({
             void tryMove(from, to, piece);
           }}
           onCancel={() => setPromo(null)}
+        />
+      )}
+
+      {confirmResign && (
+        <ConfirmDialog
+          message={no.player.resignConfirm}
+          confirmLabel={no.player.resign}
+          danger
+          onConfirm={() => {
+            setConfirmResign(false);
+            runMeta(api.resign(gameId, me.playerId, me.resumeCode));
+          }}
+          onCancel={() => setConfirmResign(false)}
         />
       )}
 

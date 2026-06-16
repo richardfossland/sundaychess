@@ -986,6 +986,21 @@ button {
   color: var(--txt-faint);
   margin: 12px 0 0;
 }
+.confirm-card {
+  background: var(--ink-2);
+  border: 1px solid var(--ink-line-strong);
+  border-radius: var(--radius);
+  padding: 22px 22px 18px;
+  max-width: min(92vw, 380px);
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: popIn 0.35s var(--spring) both;
+}
+.confirm-msg {
+  font-size: 16px;
+  line-height: 1.45;
+  margin: 0 0 18px;
+}
 
 /* ============ motion utilities ============ */
 .reveal {

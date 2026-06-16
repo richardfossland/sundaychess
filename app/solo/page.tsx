@@ -19,6 +19,7 @@ import { identity } from "@/lib/client/identity";
 import { legalDestinations } from "@/lib/chess/validateMove";
 import { needsPromotion, type PromoPiece } from "@/lib/chess/promotion";
 import { PromotionPicker } from "@/lib/client/PromotionPicker";
+import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { Confetti } from "@/lib/client/Confetti";
 import { EvalBar } from "@/lib/client/EvalBar";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
@@ -104,6 +105,10 @@ export default function Solo() {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [replayPgn, setReplayPgn] = useState<string | null>(null);
   const [promo, setPromo] = useState<{ from: string; to: string } | null>(null);
+  // A blunder the beginner coach has flagged, awaiting "move anyway" confirmation.
+  const [warnMove, setWarnMove] = useState<
+    { from: string; to: string; promotion?: PromoPiece } | null
+  >(null);
 
   // Coach mode + lessons.
   const [mode, setMode] = useState<Mode>("normal");
@@ -179,7 +184,12 @@ export default function Solo() {
       .catch(() => setThinking(false));
   }
 
-  function tryMove(from: string, to: string, promotion?: PromoPiece): boolean {
+  function tryMove(
+    from: string,
+    to: string,
+    promotion?: PromoPiece,
+    skipWarn = false,
+  ): boolean {
     if (!isMyTurn) return false;
     // Needs a piece choice and none given yet → open the chooser, defer the move.
     if (!promotion && needsPromotion(chess.current.fen(), from, to)) {
@@ -188,9 +198,15 @@ export default function Solo() {
     }
     const fenBefore = chess.current.fen();
 
-    // Beginner coach: warn BEFORE committing an obvious blunder.
-    if (coachCfg?.warn && moveAdvice(fenBefore, { from, to }).kind === "blunder") {
-      if (!confirm(no.coach.warn)) return false;
+    // Beginner coach: warn BEFORE committing an obvious blunder (themed dialog;
+    // carries the chosen promotion so confirming doesn't re-open the picker).
+    if (
+      !skipWarn &&
+      coachCfg?.warn &&
+      moveAdvice(fenBefore, { from, to }).kind === "blunder"
+    ) {
+      setWarnMove({ from, to, promotion });
+      return false;
     }
 
     let captured = false;
@@ -608,6 +624,19 @@ export default function Solo() {
             tryMove(from, to, piece);
           }}
           onCancel={() => setPromo(null)}
+        />
+      )}
+
+      {warnMove && (
+        <ConfirmDialog
+          message={no.coach.warn}
+          confirmLabel={no.coach.moveAnyway}
+          onConfirm={() => {
+            const { from, to, promotion } = warnMove;
+            setWarnMove(null);
+            tryMove(from, to, promotion, true);
+          }}
+          onCancel={() => setWarnMove(null)}
         />
       )}
 
