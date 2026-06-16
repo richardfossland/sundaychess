@@ -23,6 +23,17 @@ describe("winnerCanMate (win-on-time → draw on insufficient material)", () => 
   it("bishop + knight (two different minors) can mate", () => {
     expect(winnerCanMate(fen("8/8/8/4k3/8/4K3/8/4BN2"), "white")).toBe(true);
   });
+  it("two SAME-coloured bishops cannot mate (KBB on one colour → draw)", () => {
+    // Bishops on a3 and c1 — both dark squares.
+    expect(winnerCanMate(fen("8/8/8/4k3/8/B7/8/2B1K3"), "white")).toBe(false);
+  });
+  it("two OPPOSITE-coloured bishops can mate", () => {
+    // Bishops on c1 (dark) and f1 (light).
+    expect(winnerCanMate(fen("8/8/8/4k3/8/8/8/2B1KB2"), "white")).toBe(true);
+  });
+  it("three knights can mate (rare, but possible)", () => {
+    expect(winnerCanMate(fen("8/8/8/4k3/8/4K3/8/3NNN2"), "white")).toBe(true);
+  });
   it("reads the correct side's material", () => {
     // White has only K+B (can't mate); black has a queen (could). Winner=white → false.
     const board = "4q3/8/8/4k3/8/4K3/8/5B2";

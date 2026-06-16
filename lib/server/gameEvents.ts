@@ -60,8 +60,12 @@ export async function afterGameResolved(
   game: Pick<Game, "id" | "tournament_id">,
   status: GameStatus,
   resultSource: ResultSource,
+  opts?: { skipRecompute?: boolean },
 ): Promise<void> {
-  await recomputeScores(game.tournament_id);
+  // recomputeScores re-aggregates the WHOLE tournament; a batch resolver (e.g.
+  // forceResolveRound across N boards) passes skipRecompute and recomputes once
+  // at the end instead of N identical times.
+  if (!opts?.skipRecompute) await recomputeScores(game.tournament_id);
   // settle the tipping points; no-op until the predictions table exists
   await scorePredictions(game.id, status).catch(() => {});
   await Promise.all([

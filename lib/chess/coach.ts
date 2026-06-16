@@ -74,12 +74,16 @@ export function moveAdvice(
   const chosen = legal.find((m) => m.from === move.from && m.to === move.to);
   if (!chosen) return { kind: "ok", lossCp: 0 };
 
+  // Search every legal move once; remember the chosen move's value as we pass it
+  // (it's one of `legal`, same object) instead of re-searching it afterwards.
   let bestVal = -Infinity;
+  let chosenVal = 0;
   for (const m of legal) {
     const v = valueOf(m);
     if (v > bestVal) bestVal = v;
+    if (m === chosen) chosenVal = v;
   }
-  const loss = Math.max(0, bestVal - valueOf(chosen));
+  const loss = Math.max(0, bestVal - chosenVal);
   const kind: AdviceKind =
     loss >= BLUNDER_CP ? "blunder" : loss >= INACCURACY_CP ? "inaccuracy" : "ok";
   return { kind, lossCp: Math.round(loss) };

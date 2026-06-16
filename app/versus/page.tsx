@@ -19,7 +19,9 @@ const CASUAL_KEY = "sjakk:casual";
 function saveCasual(b: CasualBlob) {
   try {
     localStorage.setItem(CASUAL_KEY, JSON.stringify(b));
-  } catch {}
+  } catch (e) {
+    console.warn("[versus] localStorage write failed", e);
+  }
 }
 function loadCasual(): CasualBlob | null {
   try {
@@ -32,7 +34,9 @@ function loadCasual(): CasualBlob | null {
 function clearCasual() {
   try {
     localStorage.removeItem(CASUAL_KEY);
-  } catch {}
+  } catch (e) {
+    console.warn("[versus] localStorage write failed", e);
+  }
 }
 
 export default function Versus() {

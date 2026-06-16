@@ -2,7 +2,7 @@ import { authHost } from "@/lib/server/auth";
 import { getPlayer, setPlayerStatus } from "@/lib/server/store";
 import { broadcast } from "@/lib/server/broadcast";
 import { channels, events } from "@/lib/realtime";
-import { fail, ok, readJson } from "@/lib/server/http";
+import { fail, ok, readJson, hostRateLimit } from "@/lib/server/http";
 
 // POST /api/lobby/kick — host removes a player from the LOBBY (bad/abusive name,
 // or a ghost who left and never came back). Only valid before the tournament
@@ -17,6 +17,8 @@ export async function POST(req: Request) {
 }
 
 async function handlePost(req: Request): Promise<Response> {
+  const limited = hostRateLimit(req);
+  if (limited) return limited;
   const body = await readJson<{
     tournamentId?: string;
     hostCode?: string;

@@ -72,6 +72,19 @@ export function __bucketCount(): number {
   return buckets.size;
 }
 
+/** Per-IP rate-limit guard for host-code-authenticated routes. The host code is
+ * the only secret protecting a tournament's resume codes (≈270M-code space), and
+ * those routes had NO throttle — a student who knows their tournament id could
+ * brute-force it to harvest classmates' bearer tokens. 90/min per IP is far more
+ * than any real teacher clicks, but caps brute-forcing at ~90/min (millennia for
+ * the full space). Returns a 429 Response when over the cap, else null. */
+export function hostRateLimit(req: Request): Response | null {
+  if (!rateLimit(`host:${clientIp(req)}`, 90, 60_000)) {
+    return fail(429, "rate_limited");
+  }
+  return null;
+}
+
 export function clientIp(req: Request): string {
   const fwd = req.headers.get("x-forwarded-for");
   return fwd?.split(",")[0]?.trim() || "local";

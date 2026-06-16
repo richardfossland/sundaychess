@@ -98,20 +98,29 @@ export async function currentRoundResolved(
 }
 
 /** Force-resolve: set every still-live game in the current round to a draw
- * (½–½), result_source = 'timeout_draw'. */
+ * (½–½), result_source = 'timeout_draw'. Works in either phase — a playoff round
+ * reuses league round numbers, so we key off the tournament's current phase to
+ * pick the right round (otherwise an abandoned playoff round can't be resolved).
+ * A drawn playoff game then flows through advancePlayoff's tiebreak/draw-odds. */
 export async function forceResolveRound(tournament: Tournament): Promise<void> {
   const rounds = await listRounds(tournament.id);
+  const phase = tournament.status === "playoff" ? "playoff" : "league";
   const cur = rounds.find(
-    (r) => r.number === tournament.current_round && r.phase === "league",
+    (r) => r.number === tournament.current_round && r.phase === phase,
   );
   if (!cur) return;
   const games = await listGamesForRound(cur.id);
+  let resolvedAny = false;
   for (const g of games) {
     if (g.status === "live") {
       await resolveGameRpc(g.id, "draw", "timeout_draw");
-      await afterGameResolved(g, "draw", "timeout_draw");
+      // skipRecompute: the full-tournament score aggregate is run ONCE below
+      // instead of once per board (it was firing N identical writes per round).
+      await afterGameResolved(g, "draw", "timeout_draw", { skipRecompute: true });
+      resolvedAny = true;
     }
   }
+  if (resolvedAny) await recomputeScores(tournament.id);
 }
 
 /** Advance to the next round. Caller must ensure the current round is resolved

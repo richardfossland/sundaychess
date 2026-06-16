@@ -45,9 +45,16 @@ describe("createCasualGame", () => {
 describe("joinCasualGame", () => {
   it("adds the second player and auto-starts one game (both colours filled)", async () => {
     store.getTournamentByPin.mockResolvedValue({ id: "t1", config: { casual: true } });
-    store.listPlayers.mockResolvedValue([
-      { id: "pa", resume_code: "AAAA-AA", display_name: "Ada" },
-    ]);
+    // First read = capacity check (challenger only); second read = post-join seat
+    // check (now includes the joiner, in join order).
+    store.listPlayers
+      .mockResolvedValueOnce([
+        { id: "pa", resume_code: "AAAA-AA", display_name: "Ada" },
+      ])
+      .mockResolvedValue([
+        { id: "pa", resume_code: "AAAA-AA", display_name: "Ada" },
+        { id: "pb", resume_code: "BBBB-BB", display_name: "Bo" },
+      ]);
     store.addPlayer.mockResolvedValue({ id: "pb", resume_code: "BBBB-BB", display_name: "Bo" });
 
     const res = await joinCasualGame("123456", "Bo");
@@ -82,5 +89,17 @@ describe("joinCasualGame", () => {
     store.listPlayers.mockResolvedValue([{ id: "pa" }, { id: "pb" }]);
     expect(await joinCasualGame("123456", "Cy")).toEqual({ ok: false, reason: "full" });
     expect(store.addPlayer).not.toHaveBeenCalled();
+  });
+
+  it("rejects a racing over-join with a clean 'full' (no duplicate game)", async () => {
+    store.getTournamentByPin.mockResolvedValue({ id: "t1", config: { casual: true } });
+    // Capacity check passes (1 seat free), but a concurrent joiner took seat 1
+    // first — by the post-join re-read this joiner is seat 2 → full, no game.
+    store.listPlayers
+      .mockResolvedValueOnce([{ id: "pa" }])
+      .mockResolvedValue([{ id: "pa" }, { id: "pb" }, { id: "pc" }]);
+    store.addPlayer.mockResolvedValue({ id: "pc", resume_code: "CCCC-CC", display_name: "Cy" });
+    expect(await joinCasualGame("123456", "Cy")).toEqual({ ok: false, reason: "full" });
+    expect(store.createGame).not.toHaveBeenCalled();
   });
 });
