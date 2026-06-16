@@ -16,6 +16,7 @@ import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { plyOf } from "@/lib/chess/ply";
 import { channels } from "@/lib/realtime";
 import { useChannel } from "@/lib/client/useChannel";
+import { useActiveTab } from "@/lib/client/useActiveTab";
 import type { StoredPlayer } from "@/lib/client/identity";
 import { Confetti, initials } from "@/lib/client/Confetti";
 import { CapturedPieces } from "@/lib/client/CapturedPieces";
@@ -279,6 +280,9 @@ export function GameView({
 
   // Last server-confirmed FEN — the rollback target for a failed optimistic move.
   const confirmedFen = useRef<string>("");
+  // Last PGN we parsed into the move list — lets the poll skip a full chess.js
+  // re-parse when the position is unchanged (the common no-op poll).
+  const lastPgn = useRef<string>("");
 
   // game-start jingle (also nudges the AudioContext awake on mount)
   useEffect(() => {
@@ -288,6 +292,12 @@ export function GameView({
   const myColor: Color = detail?.black?.id === me.playerId ? "black" : "white";
   const myTurnLetter: Turn = myColor === "white" ? "w" : "b";
   const isMyTurn = status === "live" && turn === myTurnLetter;
+
+  // Only one tab per player may be the active board (others POSTing moves with
+  // the same identity collide → "can't move"). Passive tabs show a "play here".
+  const { active: tabActive, claim: claimTab } = useActiveTab(
+    `${me.tournamentId}:${me.playerId}`,
+  );
 
   const load = useCallback(async () => {
     const d = await api.game(gameId);
@@ -303,7 +313,12 @@ export function GameView({
       setLastMove(d.lastMove ? { from: d.lastMove.from, to: d.lastMove.to } : null);
       confirmedFen.current = d.fen;
       takeClock(d.clock);
-      setSans(sansFromPgn(d.pgn)); // authoritative move-list rebuild
+      // Authoritative move-list rebuild — but only when the PGN actually changed
+      // (skip the full chess.js parse on a no-op poll).
+      if (d.pgn !== lastPgn.current) {
+        lastPgn.current = d.pgn;
+        setSans(sansFromPgn(d.pgn));
+      }
     }
     // A terminal status must be honoured even when the ply didn't advance (a
     // resign / teacher-resolve emits no position move); a stale "live" must
@@ -352,12 +367,12 @@ export function GameView({
   // ply-guards stale broadcasts, so it can't undo my own optimistic move.
   // Guarantees the board un-freezes within ~3 s no matter how state got stuck.
   useEffect(() => {
-    if (status !== "live") return;
+    if (status !== "live" || !tabActive) return; // passive tab: don't poll
     const id = setInterval(() => {
       if (document.visibilityState === "visible") load().catch(() => {});
     }, 3000);
     return () => clearInterval(id);
-  }, [status, load]);
+  }, [status, load, tabActive]);
 
   // Pending watchdog: an absolute ceiling so the optimistic-move lock can NEVER
   // freeze the board permanently. If `pending` somehow outlives the API timeout
@@ -640,6 +655,27 @@ export function GameView({
     const pm = { background: "rgba(235,140,60,0.55)" };
     squareStyles[preMove.from] = { ...pm };
     squareStyles[preMove.to] = { ...pm };
+  }
+
+  // Another tab on this device took over this player's session. Show a prompt
+  // instead of a second live board (two boards → conflicting moves → "can't
+  // move"). The poll is already paused while passive.
+  if (!tabActive) {
+    return (
+      <main className="center-screen">
+        <div
+          className="card card-narrow stack text-center"
+          style={{ alignItems: "center", gap: 12 }}
+        >
+          <div style={{ fontSize: 40 }}>♟</div>
+          <h2>{no.player.otherTabTitle}</h2>
+          <p className="muted">{no.player.otherTabBody}</p>
+          <button className="btn btn-primary btn-lg" onClick={claimTab}>
+            {no.player.otherTabResume}
+          </button>
+        </div>
+      </main>
+    );
   }
 
   if (!detail) {
