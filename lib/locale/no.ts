@@ -83,6 +83,8 @@ export const no = {
     nextRound: "Neste runde",
     replay: "Omspill",
     bracketRecap: "Slik gikk det",
+    roundOver: "Runden er ferdig!",
+    backToArranging: "Tilbake til arrangering",
     playRematch: "Spill omkamp",
     advanceBySeed: "Send høyest rangert videre",
     drawChoiceHint:
