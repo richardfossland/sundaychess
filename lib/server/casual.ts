@@ -5,8 +5,11 @@ import {
   createGame,
   createRound,
   createTournament,
+  getTournament,
   getTournamentByPin,
+  listGames,
   listPlayers,
+  listRounds,
   updateTournament,
 } from "@/lib/server/store";
 import { broadcast } from "@/lib/server/broadcast";
@@ -108,4 +111,49 @@ export async function joinCasualGame(
     displayName: joiner.display_name,
     gameId: game.id,
   };
+}
+
+export type RematchResult =
+  | { ok: true; gameId: string }
+  | { ok: false; reason: "not_found" | "not_casual" | "not_player" };
+
+/** Start a rematch in an existing casual session: a fresh game in a new round
+ * with the colours swapped from the most recent game. Idempotent — if a rematch
+ * is already live (the other player clicked first, or a double-tap), return it
+ * so both players land in the SAME game. Caller must have verified the player. */
+export async function rematchCasual(
+  tournamentId: string,
+  playerId: string,
+): Promise<RematchResult> {
+  const t = await getTournament(tournamentId);
+  if (!t) return { ok: false, reason: "not_found" };
+  if (!t.config.casual) return { ok: false, reason: "not_casual" };
+
+  const players = await listPlayers(tournamentId);
+  if (!players.some((p) => p.id === playerId)) return { ok: false, reason: "not_player" };
+  if (players.length < 2) return { ok: false, reason: "not_found" };
+
+  const games = await listGames(tournamentId); // ordered by updated_at asc
+  const live = games.find((g) => g.status === "live");
+  if (live) return { ok: true, gameId: live.id }; // rematch already running
+
+  // Swap colours from the most recent game (fall back to roster order).
+  const last = games[games.length - 1];
+  const whiteId = last ? last.black_player_id ?? players[1].id : players[0].id;
+  const blackId = last ? last.white_player_id : players[1].id;
+
+  const rounds = await listRounds(tournamentId);
+  const nextNumber = (rounds[rounds.length - 1]?.number ?? 0) + 1;
+  const round = await createRound(tournamentId, nextNumber, "league", "live");
+  const game = await createGame({
+    tournamentId,
+    roundId: round.id,
+    whitePlayerId: whiteId,
+    blackPlayerId: blackId,
+    slot: 0,
+  });
+  await broadcast(channels.lobby(tournamentId), events.tournament, {
+    rematch: game.id,
+  });
+  return { ok: true, gameId: game.id };
 }

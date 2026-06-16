@@ -4,8 +4,11 @@ const { store } = vi.hoisted(() => ({
   store: {
     createTournament: vi.fn(),
     addPlayer: vi.fn(),
+    getTournament: vi.fn(),
     getTournamentByPin: vi.fn(),
     listPlayers: vi.fn(),
+    listGames: vi.fn(),
+    listRounds: vi.fn(),
     createRound: vi.fn(),
     createGame: vi.fn(),
     updateTournament: vi.fn(),
@@ -14,7 +17,7 @@ const { store } = vi.hoisted(() => ({
 vi.mock("@/lib/server/store", () => store);
 vi.mock("@/lib/server/broadcast", () => ({ broadcast: vi.fn() }));
 
-import { createCasualGame, joinCasualGame } from "@/lib/server/casual";
+import { createCasualGame, joinCasualGame, rematchCasual } from "@/lib/server/casual";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -101,5 +104,42 @@ describe("joinCasualGame", () => {
     store.addPlayer.mockResolvedValue({ id: "pc", resume_code: "CCCC-CC", display_name: "Cy" });
     expect(await joinCasualGame("123456", "Cy")).toEqual({ ok: false, reason: "full" });
     expect(store.createGame).not.toHaveBeenCalled();
+  });
+});
+
+describe("rematchCasual", () => {
+  it("creates a new game with the colours swapped", async () => {
+    store.getTournament.mockResolvedValue({ id: "t1", config: { casual: true } });
+    store.listPlayers.mockResolvedValue([{ id: "pa" }, { id: "pb" }]);
+    store.listGames.mockResolvedValue([
+      { id: "g1", status: "white_win", white_player_id: "pa", black_player_id: "pb" },
+    ]);
+    store.listRounds.mockResolvedValue([{ number: 1 }]);
+    store.createRound.mockResolvedValue({ id: "r2" });
+    store.createGame.mockResolvedValue({ id: "g2" });
+
+    const res = await rematchCasual("t1", "pa");
+    expect(res).toEqual({ ok: true, gameId: "g2" });
+    expect(store.createRound).toHaveBeenCalledWith("t1", 2, "league", "live");
+    const g = store.createGame.mock.calls[0][0];
+    expect(g.whitePlayerId).toBe("pb"); // old black is now white
+    expect(g.blackPlayerId).toBe("pa");
+  });
+
+  it("is idempotent: returns the already-live rematch", async () => {
+    store.getTournament.mockResolvedValue({ id: "t1", config: { casual: true } });
+    store.listPlayers.mockResolvedValue([{ id: "pa" }, { id: "pb" }]);
+    store.listGames.mockResolvedValue([
+      { id: "gLive", status: "live", white_player_id: "pb", black_player_id: "pa" },
+    ]);
+    const res = await rematchCasual("t1", "pb");
+    expect(res).toEqual({ ok: true, gameId: "gLive" });
+    expect(store.createGame).not.toHaveBeenCalled();
+  });
+
+  it("rejects someone who isn't in the session", async () => {
+    store.getTournament.mockResolvedValue({ id: "t1", config: { casual: true } });
+    store.listPlayers.mockResolvedValue([{ id: "pa" }, { id: "pb" }]);
+    expect(await rematchCasual("t1", "px")).toEqual({ ok: false, reason: "not_player" });
   });
 });

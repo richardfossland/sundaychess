@@ -122,6 +122,13 @@ export const api = {
   joinCasual: (pin: string, name: string) =>
     post<CasualJoined>("/api/casual/join", { pin, name }),
 
+  rematchCasual: (tournamentId: string, playerId: string, resumeCode: string) =>
+    post<{ gameId: string }>("/api/casual/rematch", {
+      tournamentId,
+      playerId,
+      resumeCode,
+    }),
+
   resume: (resumeCode: string, ref: { pin?: string; tournamentId?: string }) =>
     post<ResumeResult>("/api/resume", { resumeCode, ...ref }),
 

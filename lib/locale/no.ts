@@ -48,6 +48,7 @@ export const no = {
     draw: "Remis",
     flip: "Snu brettet",
     newGame: "Nytt parti",
+    rematch: "⚔︎ Omkamp",
     start: "Start",
     back: "Tilbake",
     create2: "Lag parti",

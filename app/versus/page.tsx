@@ -94,6 +94,36 @@ export default function Versus() {
     };
   }, [screen, me]);
 
+  // While sitting on the "done" screen, watch for a rematch the OTHER player may
+  // have started (a fresh live game in this session) and jump straight into it.
+  useEffect(() => {
+    if (screen !== "done" || !me) return;
+    let stop = false;
+    const tick = async () => {
+      try {
+        const board = await api.board(me.tournamentId);
+        const live = board.games.find(
+          (g) =>
+            (g.whitePlayerId === me.playerId || g.blackPlayerId === me.playerId) &&
+            g.status === "live",
+        );
+        if (live && !stop) {
+          saveCasual({ ...me });
+          setGameId(live.id);
+          setScreen("playing");
+        }
+      } catch {
+        /* transient — keep polling */
+      }
+    };
+    tick();
+    const iv = setInterval(tick, 2500);
+    return () => {
+      stop = true;
+      clearInterval(iv);
+    };
+  }, [screen, me]);
+
   async function doCreate() {
     if (!name.trim()) return;
     setBusy(true);
@@ -148,6 +178,22 @@ export default function Versus() {
             ? no.versus.invalidCode
             : no.common.error,
       );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function doRematch() {
+    if (!me) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api.rematchCasual(me.tournamentId, me.playerId, me.resumeCode);
+      saveCasual({ ...me }); // re-arm refresh-recovery for the new game
+      setGameId(r.gameId);
+      setScreen("playing");
+    } catch {
+      setError(no.common.error);
     } finally {
       setBusy(false);
     }
@@ -326,7 +372,14 @@ export default function Versus() {
               <div style={{ fontSize: 36 }}>🏁</div>
               <p className="eyebrow">{no.versus.done}</p>
             </div>
-            <button className="btn btn-primary btn-block btn-lg" onClick={() => leave("online")}>
+            <button
+              className="btn btn-primary btn-block btn-lg"
+              disabled={busy || !me}
+              onClick={doRematch}
+            >
+              {busy ? <span className="spin" /> : no.versus.rematch}
+            </button>
+            <button className="btn btn-block" onClick={() => leave("online")}>
               {no.versus.newGame}
             </button>
             <Link href="/" className="btn btn-ghost btn-block">{no.versus.back}</Link>
