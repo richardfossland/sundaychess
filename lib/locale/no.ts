@@ -82,6 +82,11 @@ export const no = {
     games: "Partier",
     nextRound: "Neste runde",
     replay: "Omspill",
+    playRematch: "Spill omkamp",
+    advanceBySeed: "Send høyest rangert videre",
+    drawChoiceHint:
+      "Uavgjort i runden — spill omkamp, eller send den høyest rangerte videre.",
+    rematchStarted: "Omkamp startet — spilles nå.",
     forceResolve: "Tving fullføring",
     forceResolveConfirm:
       "Sette alle uavgjorte partier til remis (½–½)? Dette kan ikke angres.",

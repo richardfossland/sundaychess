@@ -222,6 +222,30 @@ describe("advancePlayoff", () => {
     });
   });
 
+  it("resolveDrawsBySeed sends the higher seed through with NO rematch", async () => {
+    store.listRounds.mockResolvedValue([playoffRound(1)]);
+    store.listPlayers.mockResolvedValue(
+      players(8).map((p, i) => ({ ...p, seed: i + 1 })), // p1 seed 1 … p8 seed 8
+    );
+    store.listGamesForRound.mockResolvedValue([
+      game("p1", "p8", "white_win", 0),
+      game("p4", "p5", "draw", 1), // drawn — would normally spawn a rematch
+      game("p2", "p7", "black_win", 2),
+      game("p3", "p6", "white_win", 3),
+    ]);
+    const status = await advancePlayoff(tournament({ current_round: 1 }), {
+      resolveDrawsBySeed: true,
+    });
+    expect(status).toBe("playoff"); // advanced immediately, no tiebreak
+    expect(store.setRoundStatus).toHaveBeenCalledWith("pr1", "done");
+    expect(store.createGame).toHaveBeenCalledTimes(2); // semifinals, NOT a rematch
+    // slot 1's draw resolved to the higher seed p4 (seed 4 < p5 seed 5) → SF1 = p1 vs p4
+    expect(store.createGame.mock.calls[0][0]).toMatchObject({
+      whitePlayerId: "p1",
+      blackPlayerId: "p4",
+    });
+  });
+
   it("advances the tiebreak winner once the rematch is decisive", async () => {
     store.listRounds.mockResolvedValue([playoffRound(1)]);
     store.listPlayers.mockResolvedValue(players(8));
