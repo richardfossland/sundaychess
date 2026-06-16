@@ -515,7 +515,11 @@ export async function getGame(id: string): Promise<Game | null> {
 }
 
 
-/** Move timestamps for clock computation (ply + created_at only). */
+/** Move timestamps for clock computation (ply + created_at only), for ONE game.
+ * Used by `gameClock` (the per-move authoritative clock check). NOT dead — it is
+ * the single-game counterpart to `listMoveStampsForGames`, which batches MANY
+ * games for the board route's live grid. Keep both: a single `.eq` lookup is the
+ * right query for one game; the `.in` batch is the right one for the grid. */
 export async function listMoveStamps(
   gameId: string,
 ): Promise<{ ply: number; createdAt: string }[]> {
