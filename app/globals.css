@@ -1245,6 +1245,29 @@ a:focus-visible,
   opacity: 1;
   transform: scale(1.06);
 }
+/* Fullscreen toggle — same pill as the sound toggle, stacked just above it. */
+.fullscreen-toggle {
+  position: fixed;
+  right: 14px;
+  bottom: 64px;
+  z-index: 60;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  background: color-mix(in srgb, var(--ink-soft) 80%, transparent);
+  border: 1px solid var(--ink-line-strong);
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.fullscreen-toggle:hover {
+  opacity: 1;
+  transform: scale(1.06);
+}
 
 /* ============ emoji reactions ============ */
 .reaction-layer {
