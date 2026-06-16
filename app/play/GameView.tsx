@@ -22,8 +22,8 @@ import { sound } from "@/lib/client/sound";
 import { SoundToggle } from "@/lib/client/SoundToggle";
 import {
   ReactionBar,
-  ReactionLayer,
-  type FloatingReaction,
+  ReactionOverlay,
+  type ReactionHandle,
 } from "@/lib/client/Reactions";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
 import { ReviewView } from "./ReviewView";
@@ -63,6 +63,62 @@ function clockRemaining(c: ClockState, side: Turn): number {
   return c.running && c.turn === side
     ? Math.max(0, base - (Date.now() - c.at))
     : base;
+}
+
+/** The two clock-flag banners (opponent flagged → claim win; I flagged → out of
+ * time). Owns its OWN half-second ticker so detecting a flag re-renders only
+ * this little component, never the parent GameView (and its board). */
+function ClockFlagBanners({
+  clock,
+  status,
+  myTurnLetter,
+  acting,
+  onClaim,
+}: {
+  clock: ClockState | null;
+  status: GameStatus;
+  myTurnLetter: Turn;
+  acting: boolean;
+  onClaim: () => void;
+}) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!clock?.running || status !== "live") return;
+    const t = setInterval(() => tick((n) => n + 1), 500);
+    return () => clearInterval(t);
+  }, [clock, status]);
+
+  const oppTurnLetter: Turn = myTurnLetter === "w" ? "b" : "w";
+  const myClockMs = clock ? clockRemaining(clock, myTurnLetter) : null;
+  const oppClockMs = clock ? clockRemaining(clock, oppTurnLetter) : null;
+  const oppFlagged = status === "live" && oppClockMs !== null && oppClockMs <= 0;
+  const meFlagged = status === "live" && myClockMs !== null && myClockMs <= 0;
+
+  return (
+    <>
+      {oppFlagged && (
+        <div
+          className="banner banner-turn"
+          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}
+        >
+          <span>{no.player.oppOutOfTime}</span>
+          <button
+            className="btn btn-primary"
+            style={{ flexShrink: 0 }}
+            disabled={acting}
+            onClick={onClaim}
+          >
+            ⏱ {no.player.claimWin}
+          </button>
+        </div>
+      )}
+      {meFlagged && (
+        <div className="banner banner-error" style={{ width: "100%" }} role="status" aria-live="polite">
+          ⏱ {no.player.myTimeOut}
+        </div>
+      )}
+    </>
+  );
 }
 
 /** A player's side panel (avatar, name, colour, captured pieces) — sits beside
@@ -185,11 +241,12 @@ export function GameView({
   const [loadError, setLoadError] = useState(false);
   const [incomingDraw, setIncomingDraw] = useState(false);
   const [drawSent, setDrawSent] = useState(false);
-  const [floats, setFloats] = useState<FloatingReaction[]>([]);
   const [replayPgn, setReplayPgn] = useState<string | null>(null);
   const [showReview, setShowReview] = useState(false);
   const [clock, setClock] = useState<ClockState | null>(null);
-  const floatSeq = useRef(0);
+  // Imperative handle to the reaction overlay — adding a float never re-renders
+  // GameView (and therefore never re-renders the board).
+  const reactionRef = useRef<ReactionHandle>(null);
 
   const takeClock = useCallback(
     (c: { whiteMs: number; blackMs: number; turn: Turn; running: boolean } | null | undefined) => {
@@ -200,12 +257,6 @@ export function GameView({
 
   // Last server-confirmed FEN — the rollback target for a failed optimistic move.
   const confirmedFen = useRef<string>("");
-
-  const addFloat = useCallback((emoji: string) => {
-    const id = ++floatSeq.current;
-    setFloats((f) => [...f, { id, emoji, x: 12 + Math.random() * 70 }]);
-    setTimeout(() => setFloats((f) => f.filter((r) => r.id !== id)), 2600);
-  }, []);
 
   // game-start jingle (also nudges the AudioContext awake on mount)
   useEffect(() => {
@@ -328,20 +379,10 @@ export function GameView({
     sound.play(status === "draw" ? "draw" : won ? "win" : "lose");
   }, [status, myColor]);
 
-  // Chess-clock flag watcher: re-render twice a second while a clock runs so
-  // the "krev seier på tid" / "tiden din er ute" states appear on time.
-  const [, setFlagTick] = useState(0);
-  useEffect(() => {
-    if (!clock?.running || status !== "live") return;
-    const t = setInterval(() => setFlagTick((n) => n + 1), 500);
-    return () => clearInterval(t);
-  }, [clock, status]);
-
+  // The chess-clock flag state ("krev seier på tid" / "tiden din er ute") is
+  // computed inside <ClockFlagBanners>, which owns its own ticker — so ticking
+  // it twice a second does NOT re-render the board/clocks here.
   const oppTurnLetter: Turn = myTurnLetter === "w" ? "b" : "w";
-  const myClockMs = clock ? clockRemaining(clock, myTurnLetter) : null;
-  const oppClockMs = clock ? clockRemaining(clock, oppTurnLetter) : null;
-  const oppFlagged = status === "live" && oppClockMs !== null && oppClockMs <= 0;
-  const meFlagged = status === "live" && myClockMs !== null && myClockMs <= 0;
 
   // Authoritative updates from the game channel.
   const sendOnGame = useChannel(channels.game(gameId), (event, payload) => {
@@ -374,7 +415,8 @@ export function GameView({
       if (fresh || p.status !== "live") setStatus(p.status);
     } else if (event === "reaction") {
       const p = payload as { emoji?: string };
-      if (typeof p.emoji === "string" && p.emoji.length <= 8) addFloat(p.emoji);
+      if (typeof p.emoji === "string" && p.emoji.length <= 8)
+        reactionRef.current?.add(p.emoji);
     } else if (event === "result") {
       const p = payload as { status: GameStatus };
       setStatus(p.status);
@@ -672,13 +714,13 @@ export function GameView({
                 }}
               />
             </div>
-            <ReactionLayer items={floats} />
+            <ReactionOverlay ref={reactionRef} />
           </div>
 
           {reactionsEnabled && !ended && (
             <ReactionBar
               onSend={(emoji) => {
-                addFloat(emoji); // self-broadcast is off → show mine locally
+                reactionRef.current?.add(emoji); // self-broadcast off → show mine locally
                 sendOnGame("reaction", { emoji, by: me.playerId });
               }}
             />
@@ -711,28 +753,13 @@ export function GameView({
             </div>
           )}
 
-          {oppFlagged && (
-            <div
-              className="banner banner-turn"
-              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}
-            >
-              <span>{no.player.oppOutOfTime}</span>
-              <button
-                className="btn btn-primary"
-                style={{ flexShrink: 0 }}
-                disabled={acting}
-                onClick={() => runMeta(api.claimTime(gameId, me.playerId, me.resumeCode))}
-              >
-                ⏱ {no.player.claimWin}
-              </button>
-            </div>
-          )}
-
-          {meFlagged && (
-            <div className="banner banner-error" style={{ width: "100%" }} role="status" aria-live="polite">
-              ⏱ {no.player.myTimeOut}
-            </div>
-          )}
+          <ClockFlagBanners
+            clock={clock}
+            status={status}
+            myTurnLetter={myTurnLetter}
+            acting={acting}
+            onClaim={() => runMeta(api.claimTime(gameId, me.playerId, me.resumeCode))}
+          />
 
           {drawSent && !ended && (
             <div className="banner banner-wait" style={{ width: "100%" }} role="status" aria-live="polite">
