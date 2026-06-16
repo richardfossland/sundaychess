@@ -9,6 +9,7 @@ import { SoundToggle } from "@/lib/client/SoundToggle";
 import { sound } from "@/lib/client/sound";
 import { computeAwards, type Award } from "@/lib/tournament/awards";
 import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
+import { BracketBoard } from "@/lib/client/BracketBoard";
 import { no } from "@/lib/locale/no";
 
 const AWARD_EMOJI: Record<Award["key"], string> = {
@@ -183,6 +184,14 @@ export function FinishedView({ state }: { state: BoardState }) {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* how the knockout went — the full bracket path (cup / playoff only) */}
+        {rounds.some((r) => r.phase === "playoff") && (
+          <div className="stack" style={{ alignItems: "center", gap: 10, marginTop: 18, width: "100%" }}>
+            <p className="eyebrow">{no.host.bracketRecap}</p>
+            <BracketBoard games={games} rounds={rounds} players={players} />
           </div>
         )}
 
