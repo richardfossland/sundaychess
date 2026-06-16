@@ -8,6 +8,8 @@ import type { GameDetail } from "@/lib/dto";
 import type { GameStatus, Turn } from "@/lib/types";
 import { api, ApiError } from "@/lib/client/api";
 import { applyMove, legalDestinations } from "@/lib/chess/validateMove";
+import { needsPromotion, type PromoPiece } from "@/lib/chess/promotion";
+import { PromotionPicker } from "@/lib/client/PromotionPicker";
 import { resolvePremove, pieceColorAt } from "@/lib/chess/premove";
 import { drawReasonFromFen } from "@/lib/chess/drawReason";
 import { plyOf } from "@/lib/chess/ply";
@@ -236,6 +238,7 @@ export function GameView({
   // Single pre-move: a move queued while it's the opponent's turn, fired the
   // instant it becomes mine (blitz / online multiplayer). null = none.
   const [preMove, setPreMove] = useState<{ from: string; to: string } | null>(null);
+  const [promo, setPromo] = useState<{ from: string; to: string } | null>(null);
   const [acting, setActing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -440,11 +443,17 @@ export function GameView({
 
   // Attempt a move: optimistic render, then server reconcile / rollback.
   const tryMove = useCallback(
-    async (from: string, to: string) => {
+    async (from: string, to: string, promotion?: PromoPiece) => {
       if (!isMyTurn || pending) return false;
 
-      // Auto-queen on promotion (custom promotion UI is a Phase 6 open question).
-      const local = applyMove(fen, { from, to, promotion: "q" });
+      // Promoting move with no piece chosen yet → open the chooser, defer.
+      if (!promotion && needsPromotion(fen, from, to)) {
+        setPromo({ from, to });
+        return false;
+      }
+      const piece = promotion ?? "q";
+
+      const local = applyMove(fen, { from, to, promotion: piece });
       if (!local.ok) return false;
       sound.play(moveCue(fen, local.fen));
 
@@ -460,7 +469,7 @@ export function GameView({
           gameId,
           from,
           to,
-          promotion: "q",
+          promotion: piece,
           playerId: me.playerId,
           resumeCode: me.resumeCode,
         });
@@ -874,6 +883,18 @@ export function GameView({
             </div>
           )}
         </div>
+      )}
+
+      {promo && (
+        <PromotionPicker
+          color={myColor}
+          onPick={(piece) => {
+            const { from, to } = promo;
+            setPromo(null);
+            void tryMove(from, to, piece);
+          }}
+          onCancel={() => setPromo(null)}
+        />
       )}
 
       <SoundToggle />

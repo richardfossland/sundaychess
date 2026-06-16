@@ -209,6 +209,15 @@ export const no = {
     close: "Lukk",
   },
 
+  promo: {
+    title: "Velg brikke",
+    hint: "Trykk en brikke · Esc = dronning",
+    q: "Dronning",
+    r: "Tårn",
+    b: "Løper",
+    n: "Springer",
+  },
+
   awards: {
     title: "Utmerkelser",
     fastest_mate: "Lyn-matt",
