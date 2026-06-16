@@ -204,8 +204,16 @@ export const api = {
   startRound: (tournamentId: string, hostCode: string) =>
     post<{ status: string }>("/api/round/start", { tournamentId, hostCode }),
 
-  advanceRound: (tournamentId: string, hostCode: string) =>
-    post<{ status: string }>("/api/round/advance", { tournamentId, hostCode }),
+  advanceRound: (
+    tournamentId: string,
+    hostCode: string,
+    tiebreak?: "rematch" | "ranking",
+  ) =>
+    post<{ status: string }>("/api/round/advance", {
+      tournamentId,
+      hostCode,
+      ...(tiebreak ? { tiebreak } : {}),
+    }),
 
   forceResolve: (tournamentId: string, hostCode: string) =>
     post<{ ok: boolean }>("/api/round/force", { tournamentId, hostCode }),

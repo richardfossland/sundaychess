@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { BoardState, PublicGame } from "@/lib/dto";
-import { api, ApiError } from "@/lib/client/api";
+import { api } from "@/lib/client/api";
 import { identity } from "@/lib/client/identity";
 import { no } from "@/lib/locale/no";
 import { JoinChip } from "@/lib/client/JoinChip";
@@ -28,6 +28,7 @@ export function BracketView({
   const [hostCode, setHostCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [overrideGame, setOverrideGame] = useState<PublicGame | null>(null);
   const [showCodes, setShowCodes] = useState(false);
 
@@ -58,6 +59,18 @@ export function BracketView({
   const liveCount = currentCol?.games.filter((g) => g.status === "live").length ?? 0;
   const allResolved =
     (currentCol?.games.length ?? 0) > 0 && liveCount === 0;
+  // A slot is "undecided" when none of its games has a decisive result (a draw,
+  // with no rematch winner yet). When the round is resolved but a slot is still
+  // undecided, the teacher must pick: play a rematch, or send the higher seed on.
+  const DECISIVE = new Set(["white_win", "black_win", "bye"]);
+  const hasUndecidedDraw =
+    allResolved &&
+    [...new Set((currentCol?.games ?? []).map((g) => g.slot ?? 0))].some(
+      (s) =>
+        !(currentCol?.games ?? [])
+          .filter((g) => (g.slot ?? 0) === s)
+          .some((g) => DECISIVE.has(g.status)),
+    );
   // The final is the round with a single matchup. Count distinct bracket slots,
   // not games, so a drawn final that spawned a tiebreak rematch still counts.
   const isFinal =
@@ -81,17 +94,19 @@ export function BracketView({
     }
   }
 
-  async function advance() {
+  async function advance(tiebreak?: "rematch" | "ranking") {
     if (!hostCode) return setError(no.host.missingHostCode);
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
-      await api.advanceRound(tournament.id, hostCode ?? "");
+      const res = await api.advanceRound(tournament.id, hostCode ?? "", tiebreak);
+      // A "rematch" choice on a drawn slot spawns a live rematch — tell the
+      // teacher it's now being played (the round stays live until it finishes).
+      if (res.status === "tiebreak") setNotice(no.host.rematchStarted);
       onChanged();
-    } catch (e) {
-      if (e instanceof ApiError && e.code === "needs_decision") {
-        setError("Avgjør uavgjorte partier først — overstyr dem til en vinner.");
-      } else setError(no.common.error);
+    } catch {
+      setError(no.common.error);
     } finally {
       setBusy(false);
     }
@@ -183,19 +198,41 @@ export function BracketView({
       </div>
 
       <div className="row" style={{ marginTop: 24, maxWidth: 480 }}>
-        <button
-          className="btn btn-primary grow"
-          disabled={busy || !allResolved}
-          onClick={advance}
-        >
-          {busy ? <span className="spin" /> : isFinal ? "Kår mester" : no.host.nextRound}
-        </button>
+        {hasUndecidedDraw ? (
+          <>
+            <button className="btn grow" disabled={busy} onClick={() => advance("rematch")}>
+              {busy ? <span className="spin" /> : `⚔︎ ${no.host.playRematch}`}
+            </button>
+            <button
+              className="btn btn-primary grow"
+              disabled={busy}
+              onClick={() => advance("ranking")}
+            >
+              {busy ? <span className="spin" /> : `🏆 ${no.host.advanceBySeed}`}
+            </button>
+          </>
+        ) : (
+          <button
+            className="btn btn-primary grow"
+            disabled={busy || !allResolved}
+            onClick={() => advance()}
+          >
+            {busy ? <span className="spin" /> : isFinal ? "Kår mester" : no.host.nextRound}
+          </button>
+        )}
       </div>
-      {!allResolved && (
-        <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
-          Alle partier i runden må være ferdige.
+      {hasUndecidedDraw ? (
+        <p className="muted" style={{ fontSize: 13, marginTop: 8, maxWidth: 480 }}>
+          {no.host.drawChoiceHint}
         </p>
+      ) : (
+        !allResolved && (
+          <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
+            Alle partier i runden må være ferdige.
+          </p>
+        )
       )}
+      {notice && <div className="banner banner-wait" style={{ marginTop: 10, maxWidth: 480 }}>{notice}</div>}
       {error && <div className="banner banner-error" style={{ marginTop: 10, maxWidth: 480 }}>{error}</div>}
 
       {showCodes && (

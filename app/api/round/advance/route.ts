@@ -9,7 +9,13 @@ import { fail, ok, readJson, hostRateLimit } from "@/lib/server/http";
 export async function POST(req: Request) {
   const limited = hostRateLimit(req);
   if (limited) return limited;
-  const body = await readJson<{ tournamentId?: string; hostCode?: string }>(req);
+  const body = await readJson<{
+    tournamentId?: string;
+    hostCode?: string;
+    // Playoff draw handling: "rematch" (default) spawns a swap-colours rematch;
+    // "ranking" sends the higher seed straight through (no rematch).
+    tiebreak?: "rematch" | "ranking";
+  }>(req);
   const t = await authHost(body?.tournamentId, body?.hostCode);
   if (!t) return fail(401, "unauthorized");
 
@@ -21,7 +27,9 @@ export async function POST(req: Request) {
     }
     if (t.status === "playoff") {
       if (!(await playoffRoundResolved(t))) return fail(409, "round_unresolved");
-      const next = await advancePlayoff(t);
+      const next = await advancePlayoff(t, {
+        resolveDrawsBySeed: body?.tiebreak === "ranking",
+      });
       return ok({ status: next });
     }
     return fail(409, "not_in_progress");

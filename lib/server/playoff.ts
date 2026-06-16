@@ -134,14 +134,17 @@ export async function playoffRoundResolved(
   return games.length > 0 && games.every((g) => g.status !== "live");
 }
 
-/** Advance the bracket. A drawn game never stalls it: the first draw at a
- * bracket slot spawns ONE tiebreak rematch (colours swapped) in the same round
- * and the same slot; if that rematch is also drawn, the higher seed advances
- * (draw-odds). Returns "tiebreak" when it created rematches (the round keeps
- * playing — advance again once they finish), else "playoff"/"finished". The
- * teacher can still override any game manually as an escape hatch. */
+/** Advance the bracket. A drawn game never stalls it. By default the first draw
+ * at a bracket slot spawns ONE tiebreak rematch (colours swapped) in the same
+ * round and slot; if that rematch is also drawn, the higher seed advances
+ * (draw-odds). With `resolveDrawsBySeed`, a first draw skips the rematch and the
+ * higher seed advances immediately (the teacher's "send høyest rangert videre"
+ * choice). Returns "tiebreak" when it created rematches (the round keeps playing
+ * — advance again once they finish), else "playoff"/"finished". The teacher can
+ * still override any game manually as an escape hatch. */
 export async function advancePlayoff(
   tournament: Tournament,
+  opts: { resolveDrawsBySeed?: boolean } = {},
 ): Promise<"playoff" | "finished" | "tiebreak"> {
   const rounds = await listRounds(tournament.id);
   const cur = currentPlayoffRound(rounds, tournament.current_round);
@@ -181,8 +184,9 @@ export async function advancePlayoff(
     const black = orig.black_player_id;
     if (!black) {
       winners.push(white); // a bye is decisive; guard defensively
-    } else if (slotGames.length >= 2) {
-      // The tiebreak rematch also drew → draw-odds: higher seed (lower number).
+    } else if (slotGames.length >= 2 || opts.resolveDrawsBySeed) {
+      // Either the rematch ALSO drew, or the teacher chose to skip the rematch →
+      // draw-odds: the higher seed (lower number) advances.
       winners.push(seedOf(white) <= seedOf(black) ? white : black);
     } else {
       tiebreaks.push({ slot: s, white: black, black: white }); // swap colours
