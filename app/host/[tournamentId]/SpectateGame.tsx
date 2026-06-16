@@ -7,6 +7,8 @@ import { CapturedPieces } from "@/lib/client/CapturedPieces";
 import { ChessClock } from "@/lib/client/ChessClock";
 import { HypeCallout } from "@/lib/client/HypeCallout";
 import { ReactionLayer, type FloatingReaction } from "@/lib/client/Reactions";
+import { MoveList, sansFromPgn } from "@/lib/client/MoveList";
+import { api } from "@/lib/client/api";
 import { SoundToggle } from "@/lib/client/SoundToggle";
 import { Confetti, initials } from "@/lib/client/Confetti";
 import { sound } from "@/lib/client/sound";
@@ -99,6 +101,23 @@ export function SpectateGame({
   const [floats, setFloats] = useState<FloatingReaction[]>([]);
   const floatSeq = useRef(0);
 
+  // SpectateGame is FEN-driven (the parent patches `fen` live from broadcasts),
+  // so there's no PGN here — fetch it for the move list when the position changes
+  // (one cheap fetch per move, for the single game being spectated).
+  const [sans, setSans] = useState<string[]>([]);
+  useEffect(() => {
+    let live = true;
+    api
+      .game(gameId)
+      .then((d) => {
+        if (live) setSans(sansFromPgn(d.pgn));
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [gameId, fen]);
+
   const addFloat = useCallback((emoji: string) => {
     const id = ++floatSeq.current;
     setFloats((f) => [...f, { id, emoji, x: 12 + Math.random() * 70 }]);
@@ -178,6 +197,8 @@ export function SpectateGame({
         </div>
 
         <SpectatePlayer name={white} side="white" fen={fen} baselineFen={baselineFen} clock={clock} />
+
+        {sans.length > 0 && <MoveList sans={sans} />}
       </div>
 
       <SoundToggle />
