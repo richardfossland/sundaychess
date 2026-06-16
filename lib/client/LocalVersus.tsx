@@ -6,6 +6,8 @@ import dynamic from "next/dynamic";
 import { Chess } from "chess.js";
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import { legalDestinations } from "@/lib/chess/validateMove";
+import { needsPromotion, type PromoPiece } from "@/lib/chess/promotion";
+import { PromotionPicker } from "@/lib/client/PromotionPicker";
 import { Confetti } from "@/lib/client/Confetti";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
 import { SoundToggle } from "@/lib/client/SoundToggle";
@@ -33,6 +35,8 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
   const [legal, setLegal] = useState<string[]>([]);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [replayPgn, setReplayPgn] = useState<string | null>(null);
+  // A promoting move waiting for the player to choose a piece.
+  const [promo, setPromo] = useState<{ from: string; to: string } | null>(null);
 
   const turn: Turn = fen.split(" ")[1] === "b" ? "b" : "w";
   const refresh = () => setFen(chess.current.fen());
@@ -52,11 +56,16 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
     return true;
   }
 
-  function tryMove(from: string, to: string): boolean {
+  function tryMove(from: string, to: string, promotion?: PromoPiece): boolean {
     if (outcome) return false;
+    // Needs a piece choice and none given yet → open the chooser, defer the move.
+    if (!promotion && needsPromotion(chess.current.fen(), from, to)) {
+      setPromo({ from, to });
+      return false;
+    }
     let captured = false;
     try {
-      const mv = chess.current.move({ from, to, promotion: "q" });
+      const mv = chess.current.move({ from, to, promotion: promotion ?? "q" });
       if (!mv) return false;
       captured = Boolean(mv.captured);
     } catch {
@@ -213,6 +222,18 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
             </div>
           )}
         </div>
+      )}
+
+      {promo && (
+        <PromotionPicker
+          color={turn === "w" ? "white" : "black"}
+          onPick={(piece) => {
+            const { from, to } = promo;
+            setPromo(null);
+            tryMove(from, to, piece);
+          }}
+          onCancel={() => setPromo(null)}
+        />
       )}
 
       <SoundToggle />

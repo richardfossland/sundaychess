@@ -17,6 +17,8 @@ import {
 } from "@/lib/chess/skill";
 import { identity } from "@/lib/client/identity";
 import { legalDestinations } from "@/lib/chess/validateMove";
+import { needsPromotion, type PromoPiece } from "@/lib/chess/promotion";
+import { PromotionPicker } from "@/lib/client/PromotionPicker";
 import { Confetti } from "@/lib/client/Confetti";
 import { EvalBar } from "@/lib/client/EvalBar";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
@@ -101,6 +103,7 @@ export default function Solo() {
   const [legal, setLegal] = useState<string[]>([]);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [replayPgn, setReplayPgn] = useState<string | null>(null);
+  const [promo, setPromo] = useState<{ from: string; to: string } | null>(null);
 
   // Coach mode + lessons.
   const [mode, setMode] = useState<Mode>("normal");
@@ -176,8 +179,13 @@ export default function Solo() {
       .catch(() => setThinking(false));
   }
 
-  function tryMove(from: string, to: string): boolean {
+  function tryMove(from: string, to: string, promotion?: PromoPiece): boolean {
     if (!isMyTurn) return false;
+    // Needs a piece choice and none given yet → open the chooser, defer the move.
+    if (!promotion && needsPromotion(chess.current.fen(), from, to)) {
+      setPromo({ from, to });
+      return false;
+    }
     const fenBefore = chess.current.fen();
 
     // Beginner coach: warn BEFORE committing an obvious blunder.
@@ -187,7 +195,7 @@ export default function Solo() {
 
     let captured = false;
     try {
-      const mv = chess.current.move({ from, to, promotion: "q" });
+      const mv = chess.current.move({ from, to, promotion: promotion ?? "q" });
       if (!mv) return false;
       captured = Boolean(mv.captured);
     } catch {
@@ -589,6 +597,18 @@ export default function Solo() {
             </div>
           )}
         </div>
+      )}
+
+      {promo && (
+        <PromotionPicker
+          color={playerColor}
+          onPick={(piece) => {
+            const { from, to } = promo;
+            setPromo(null);
+            tryMove(from, to, piece);
+          }}
+          onCancel={() => setPromo(null)}
+        />
       )}
 
       <SoundToggle />

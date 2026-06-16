@@ -922,6 +922,71 @@ button {
   animation: dropIn 0.6s var(--spring) both;
 }
 
+/* ============ promotion picker ============ */
+.promo-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 80; /* above the result overlay (60) */
+  background: rgba(8, 10, 14, 0.72);
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.2s ease both;
+}
+.promo-card {
+  background: var(--ink-2);
+  border: 1px solid var(--ink-line-strong);
+  border-radius: var(--radius);
+  padding: 18px 20px 14px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: popIn 0.35s var(--spring) both;
+}
+.promo-title {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--txt-dim);
+  margin: 0 0 12px;
+}
+.promo-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.promo-btn {
+  width: 60px;
+  height: 60px;
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 34px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--ink-line-strong);
+  background: var(--ink-soft);
+  color: var(--txt);
+  cursor: pointer;
+  transition: transform 0.12s var(--ease-out), border-color 0.12s, background 0.12s;
+}
+.promo-btn:hover {
+  background: var(--ink-3);
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+.promo-btn:focus-visible {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 40%, transparent);
+}
+.promo-hint {
+  font-size: 12px;
+  color: var(--txt-faint);
+  margin: 12px 0 0;
+}
+
 /* ============ motion utilities ============ */
 .reveal {
   opacity: 0;
