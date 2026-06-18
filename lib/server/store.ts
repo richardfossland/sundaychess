@@ -112,6 +112,45 @@ export async function getTournamentByPin(pin: string): Promise<Tournament | null
   return (data as Tournament) ?? null;
 }
 
+/** Every tournament owned by a Sunday Account host (newest first). Anonymous
+ * tournaments (host_user_id null) are NOT returned. Backs the host dashboard.
+ * Capped + warned like the other list reads. */
+export async function listTournamentsByOwner(
+  hostUserId: string,
+): Promise<Tournament[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("tournaments")
+    .select("*")
+    .eq("host_user_id", hostUserId)
+    .order("created_at", { ascending: false })
+    .limit(LIST_CAP);
+  if (error) throw error;
+  const rows = (data as Tournament[]) ?? [];
+  warnIfCapped("listTournamentsByOwner", rows.length);
+  return rows;
+}
+
+/** Delete a tournament IFF it is owned by `hostUserId`. The where-clause double-
+ * gates on owner so a stale/forged id can never delete someone else's (or an
+ * anonymous) tournament. Returns true if a row was deleted, false otherwise.
+ * Child rows (players/rounds/games/moves/predictions) cascade via the FKs in
+ * 0001/0005. */
+export async function deleteTournamentOwned(
+  id: string,
+  hostUserId: string,
+): Promise<boolean> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("tournaments")
+    .delete()
+    .eq("id", id)
+    .eq("host_user_id", hostUserId)
+    .select("id");
+  if (error) throw error;
+  return ((data as { id: string }[]) ?? []).length > 0;
+}
+
 export async function openTournamentByHostCode(
   hostCode: string,
 ): Promise<Tournament | null> {

@@ -132,6 +132,43 @@ export const no = {
     endRound: "Avslutt runden",
   },
 
+  // Sunday Account host login + "mine turneringer"-oversikt (arrangør only).
+  // Players/joiners are untouched — they still use codes.
+  hostAuth: {
+    loginTitle: "Logg inn som arrangør",
+    loginLede: "Logg inn med Sunday-kontoen din for å samle turneringene dine.",
+    emailLabel: "E-post",
+    emailPlaceholder: "deg@menigheten.no",
+    sendLink: "Send innloggingslenke",
+    sending: "Sender …",
+    linkSent: "Sjekk innboksen — vi har sendt deg en innloggingslenke.",
+    sunday: "Logg inn med Sunday-konto",
+    google: "Logg inn med Google",
+    linkError: "Klarte ikke å sende lenken — sjekk adressen og prøv igjen.",
+    authError: "Innloggingen mislyktes. Prøv igjen.",
+    or: "eller",
+    // Dashboard
+    dashTitle: "Mine turneringer",
+    dashLede: "Turneringene du har laget mens du var innlogget.",
+    signedInAs: "Innlogget som",
+    signOut: "Logg ut",
+    createNew: "Ny turnering",
+    empty: "Du har ingen lagrede turneringer ennå. Lag en ny for å komme i gang.",
+    untitled: "Uten tittel",
+    created: "Opprettet",
+    manage: "Åpne",
+    delete: "Slett",
+    deleting: "Sletter …",
+    deleteConfirm:
+      "Slette denne turneringen for godt? Alle spillere, partier og resultater forsvinner. Dette kan ikke angres.",
+    deleteError: "Klarte ikke å slette turneringen. Prøv igjen.",
+    loadError: "Klarte ikke å hente turneringene dine.",
+    statusLobby: "Lobby",
+    statusLeague: "Liga pågår",
+    statusPlayoff: "Sluttspill",
+    statusFinished: "Ferdig",
+  },
+
   wizard: {
     step: "Steg",
     of: "av",
