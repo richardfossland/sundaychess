@@ -17,6 +17,9 @@ export const no = {
     copied: "Kopiert!",
     error: "Noe gikk galt",
     retry: "Prøv igjen",
+    notFoundTitle: "Fant ikke siden",
+    notFoundBody: "Lenken kan være utløpt eller feil. Sjekk PIN-en, eller gå tilbake.",
+    home: "Til forsiden",
   },
 
   landing: {
