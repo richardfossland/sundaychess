@@ -1,6 +1,6 @@
 # SundayChess
 
-A Kahoot-style classroom chess tournament for ungdomsskole. A live Swiss league
+A big-screen classroom chess tournament for ungdomsskole. A live Swiss league
 (3–7 rounds) with an optional knockout playoff. Students join with a PIN; the
 teacher runs a projector "board". Part of the **Sunday Suite**, deployed at
 **`sjakk.sundaysuite.app`**.
