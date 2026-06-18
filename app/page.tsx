@@ -38,7 +38,7 @@ export default function Landing() {
             marginTop: 8,
           })}
         >
-          <Link href="/host" className="card stack entrance" style={{ padding: 26, alignItems: "center", gap: 8, textAlign: "center" }}>
+          <Link href="/arranger" className="card stack entrance" style={{ padding: 26, alignItems: "center", gap: 8, textAlign: "center" }}>
             <span className="entrance-glyph">♚</span>
             <b style={{ fontSize: 19 }}>{no.landing.teacher}</b>
             <span className="faint" style={{ fontSize: 13 }}>{no.landing.teacherSub}</span>

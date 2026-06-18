@@ -1,14 +1,21 @@
 import { createTournament, DEFAULT_CONFIG } from "@/lib/server/store";
 import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
+import { getHost } from "@/lib/server/auth";
 import { isVariant } from "@/lib/chess/variants";
 import type { TournamentConfig } from "@/lib/types";
 
 // POST /api/tournament — create a tournament. In Phase 1 the config is the
 // default; the Phase 4 wizard posts a full config here.
+//
+// OWNER WIRING: if a Sunday Account host is signed in (allow-listed), the new
+// tournament is stamped with their user id so it shows up in their dashboard.
+// Anonymous create still works exactly as before (owner stays null) — getHost()
+// returns null without throwing, so the host code remains the only required key.
 export async function POST(req: Request) {
   if (!rateLimit(`create:${clientIp(req)}`, 10, 60_000)) {
     return fail(429, "rate_limited");
   }
+  const host = await getHost(); // null for anonymous create — never throws
   const body = await readJson<{ title?: string; config?: Partial<TournamentConfig> }>(req);
 
   const config: TournamentConfig = { ...DEFAULT_CONFIG, ...(body?.config ?? {}) };
@@ -45,7 +52,7 @@ export async function POST(req: Request) {
   const title = body?.title?.toString().slice(0, 80).trim() || null;
 
   try {
-    const t = await createTournament(title, config);
+    const t = await createTournament(title, config, host?.id ?? null);
     return ok({ id: t.id, joinPin: t.join_pin, hostCode: t.host_code });
   } catch (err) {
     console.error("[create tournament]", err);

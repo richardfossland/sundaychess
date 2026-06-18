@@ -1,103 +1,38 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import Link from "next/link";
+import { getHost } from "@/lib/server/auth";
+import { listTournamentsByOwner } from "@/lib/server/store";
 import { no } from "@/lib/locale/no";
-import { api, ApiError } from "@/lib/client/api";
-import { Wizard } from "./Wizard";
+import { HostDashboard } from "./HostDashboard";
 
-export default function HostEntry() {
-  const router = useRouter();
-  // Chooser-first: the create/open choice is its own screen, so once you're in
-  // the wizard there is no "Åpne turnering" button to accidentally hit (which
-  // would reset your progress). A back button returns to the chooser.
-  const [mode, setMode] = useState<"choose" | "create" | "open">("choose");
-  const [hostCode, setHostCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+// The signed-in host's "mine turneringer" dashboard. Middleware already
+// redirects anonymous visitors to /host/login; this also guards server-side
+// (defence in depth + handles the allow-list 403: a signed-in but non-admin
+// Sunday Account is bounced to login rather than shown the dashboard).
+export default async function HostDashboardPage() {
+  const host = await getHost();
+  if (!host) redirect("/host/login");
 
-  async function open() {
-    setBusy(true);
-    setError(null);
-    try {
-      const r = await api.openHost(hostCode);
-      router.push(`/host/${r.id}`);
-    } catch (e) {
-      setError(
-        e instanceof ApiError && e.code === "not_found"
-          ? no.player.invalidCode
-          : no.common.error,
-      );
-      setBusy(false);
-    }
-  }
+  const rows = await listTournamentsByOwner(host.id);
+  const items = rows.map((t) => ({
+    id: t.id,
+    title: t.title,
+    status: t.status,
+    joinPin: t.join_pin,
+    createdAt: t.created_at,
+  }));
 
   return (
     <main className="center-screen">
-      <div className="card card-narrow stack scale-in">
+      <div className="card stack scale-in" style={{ maxWidth: 640, width: "100%" }}>
         <div className="brandmark" style={{ justifyContent: "center" }}>
           <span className="knight">♞</span> Sunday<b>Chess</b>
         </div>
-
-        {mode === "choose" && (
-          <div className="stack" style={{ gap: 12 }}>
-            <p className="eyebrow text-center">Arrangør</p>
-            <button
-              className="btn btn-primary btn-block btn-lg"
-              onClick={() => setMode("create")}
-            >
-              {no.host.createTitle}
-            </button>
-            <button
-              className="btn btn-block btn-lg"
-              onClick={() => {
-                setError(null);
-                setMode("open");
-              }}
-            >
-              {no.host.enterTitle}
-            </button>
-            <Link href="/" className="btn btn-ghost btn-block">
-              ← {no.common.back}
-            </Link>
-          </div>
-        )}
-
-        {mode === "create" && <Wizard onExit={() => setMode("choose")} />}
-
-        {mode === "open" && (
-          <>
-            <p className="eyebrow text-center">{no.host.enterTitle}</p>
-            <div className="field">
-              <label htmlFor="hc">{no.host.hostCodeLabel}</label>
-              <input
-                id="hc"
-                className="input"
-                placeholder="f.eks. ABCD-7F"
-                value={hostCode}
-                autoFocus
-                autoCapitalize="characters"
-                onChange={(e) => setHostCode(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && hostCode.trim() && open()}
-              />
-            </div>
-            <button
-              className="btn btn-primary btn-block btn-lg"
-              disabled={busy || !hostCode.trim()}
-              onClick={open}
-            >
-              {busy ? <span className="spin" /> : no.host.open}
-            </button>
-            {error && <div className="banner banner-error">{error}</div>}
-            <button
-              className="btn btn-ghost btn-block"
-              onClick={() => setMode("choose")}
-            >
-              ← {no.common.back}
-            </button>
-          </>
-        )}
+        <p className="eyebrow text-center">{no.hostAuth.dashTitle}</p>
+        <p className="muted text-center" style={{ fontSize: 14 }}>
+          {no.hostAuth.signedInAs} <b>{host.email}</b>
+        </p>
+        <HostDashboard initial={items} />
       </div>
     </main>
   );
