@@ -17,7 +17,7 @@ const body = Hanken_Grotesk({
 export const metadata: Metadata = {
   title: "SundayChess — sjakkturnering for hele gruppa",
   description:
-    "Kahoot-stil sjakkturnering med liga, sluttspill, lag og lynsjakk. Arrangøren styrer tavla, spillerne blir med med en PIN.",
+    "Sjakkturnering på storskjerm med liga, sluttspill, lag og lynsjakk. Arrangøren styrer tavla, spillerne blir med med en PIN.",
 };
 
 export default function RootLayout({
