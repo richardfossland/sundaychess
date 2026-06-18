@@ -2,11 +2,13 @@ import { authHost } from "@/lib/server/auth";
 import { isUniqueViolation, listPlayers } from "@/lib/server/store";
 import { startLeague } from "@/lib/server/league";
 import { startCup } from "@/lib/server/playoff";
-import { fail, ok, readJson } from "@/lib/server/http";
+import { fail, ok, readJson, hostRateLimit } from "@/lib/server/http";
 
 // POST /api/round/start — organizer starts the tournament: league round 1, or
 // straight into the knockout bracket when format = "cup".
 export async function POST(req: Request) {
+  const limited = hostRateLimit(req);
+  if (limited) return limited;
   const body = await readJson<{ tournamentId?: string; hostCode?: string }>(req);
   const t = await authHost(body?.tournamentId, body?.hostCode);
   if (!t) return fail(401, "unauthorized");

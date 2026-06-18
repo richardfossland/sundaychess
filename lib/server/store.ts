@@ -27,6 +27,18 @@ export function isUniqueViolation(e: unknown): boolean {
   );
 }
 
+// Explicit ceiling on "list everything in a tournament" reads. PostgREST applies
+// its own `max_rows` cap silently (the 1102-class gotcha: an unfiltered SELECT is
+// quietly truncated, and pre-read uniqueness checks then break). One classroom is
+// nowhere near this, so hitting it means something is wrong (or the table needs a
+// tighter filter) — cap explicitly AND warn so the truncation is never silent.
+const LIST_CAP = 1000;
+function warnIfCapped(label: string, n: number): void {
+  if (n >= LIST_CAP) {
+    console.warn(`[store] ${label} returned ${n} rows (>= ${LIST_CAP} cap) — results may be truncated`);
+  }
+}
+
 export const DEFAULT_CONFIG: TournamentConfig = {
   leagueRounds: 5,
   playoff: false,
@@ -43,16 +55,19 @@ export async function createTournament(
 ): Promise<Tournament> {
   const db = createServiceClient();
 
-  // PIN must be globally unique. The pre-read avoids most collisions; the DB
-  // constraint backstops races — on 23505 we regenerate and retry.
-  const { data: existing } = await db.from("tournaments").select("join_pin");
-  const takenPins = new Set((existing ?? []).map((r) => r.join_pin as string));
+  // PIN uniqueness is enforced by the DB unique constraint; on a 23505 collision
+  // we regenerate and retry. We deliberately do NOT pre-read existing pins:
+  // PostgREST's max_rows caps that SELECT at 1000 rows, so once the tournaments
+  // table grows (the casual 1v1 feature creates one per game) the pre-read both
+  // wastes work AND samples an INCOMPLETE set → it stops preventing collisions
+  // and starts causing them. Generate-and-retry against the constraint is correct
+  // and O(1). 6-digit space (1e6) makes a collision rare; 8 retries make exhaustion
+  // astronomically unlikely.
   const host_code = generateHostCode();
 
   let lastError: unknown = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const join_pin = generateUnique(generatePin, takenPins);
-    takenPins.add(join_pin); // don't re-pick it on the next attempt
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const join_pin = generatePin();
     const { data, error } = await db
       .from("tournaments")
       .insert({
@@ -73,19 +88,27 @@ export async function createTournament(
   throw lastError;
 }
 
+// A transient DB error (timeout / network / 5xx) must NOT look like "no row":
+// swallowing it to null makes attemptResume 404 (→ client wipes the session and
+// kicks the student) or a move 401. Throw instead, so the route's try/catch
+// returns a structured 503 the client treats as transient (keep session, retry).
+// `.maybeSingle()` returns {data:null,error:null} for a genuine miss, so this
+// only fires on real errors.
 export async function getTournament(id: string): Promise<Tournament | null> {
   const db = createServiceClient();
-  const { data } = await db.from("tournaments").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await db.from("tournaments").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
   return (data as Tournament) ?? null;
 }
 
 export async function getTournamentByPin(pin: string): Promise<Tournament | null> {
   const db = createServiceClient();
-  const { data } = await db
+  const { data, error } = await db
     .from("tournaments")
     .select("*")
     .eq("join_pin", pin)
     .maybeSingle();
+  if (error) throw error;
   return (data as Tournament) ?? null;
 }
 
@@ -93,12 +116,17 @@ export async function openTournamentByHostCode(
   hostCode: string,
 ): Promise<Tournament | null> {
   const db = createServiceClient();
-  const { data } = await db
+  // .limit(1): host_code is not unique in the DB, so a collision would make
+  // .maybeSingle() error ("multiple rows") and the teacher couldn't reopen.
+  // Newest-first + limit(1) returns their most recent tournament deterministically.
+  const { data, error } = await db
     .from("tournaments")
     .select("*")
     .eq("host_code", hostCode)
     .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
+  if (error) throw error;
   return (data as Tournament) ?? null;
 }
 
@@ -117,16 +145,48 @@ export async function updateTournament(
   return data as Tournament;
 }
 
+/** Atomically finish a tournament ONLY if it's still active. Returns the updated
+ * row if THIS call did the transition, or null if it was already finished (a
+ * concurrent writer won). Lets the auto-finish path collapse a whole class
+ * resuming at once into a single effective write + broadcast. */
+export async function finishIfActive(id: string): Promise<Tournament | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("tournaments")
+    .update({ status: "finished" })
+    .eq("id", id)
+    .in("status", ["league", "playoff"])
+    .select("*")
+    .maybeSingle();
+  return (data as Tournament) ?? null;
+}
+
 // ---------------- players ----------------
 
 export async function listPlayers(tournamentId: string): Promise<Player[]> {
   const db = createServiceClient();
-  const { data } = await db
+  const { data, error } = await db
     .from("players")
     .select("*")
     .eq("tournament_id", tournamentId)
-    .order("joined_at", { ascending: true });
-  return (data as Player[]) ?? [];
+    .order("joined_at", { ascending: true })
+    .limit(LIST_CAP);
+  if (error) throw error;
+  const rows = (data as Player[]) ?? [];
+  warnIfCapped("listPlayers", rows.length);
+  return rows;
+}
+
+/** The currently smallest team (ties → declared order). JS mirror of the SQL in
+ * join_team_player, used as the fallback when migration 0008 isn't applied. */
+function smallestTeam(existing: Player[], teams: string[]): string {
+  const counts = new Map(teams.map((name) => [name, 0]));
+  for (const p of existing) {
+    if (p.team && counts.has(p.team)) counts.set(p.team, counts.get(p.team)! + 1);
+  }
+  return teams.reduce((min, name) =>
+    counts.get(name)! < counts.get(min)! ? name : min,
+  );
 }
 
 export async function addPlayer(
@@ -137,49 +197,50 @@ export async function addPlayer(
   const db = createServiceClient();
   const existing = await listPlayers(tournamentId);
   const taken = new Set(existing.map((p) => p.resume_code));
+  const name = displayName.slice(0, 40);
+  const useTeams = teams.length >= 2;
+  // Once the RPC proves unavailable (pre-0008), don't keep retrying it.
+  let rpcAvailable = useTeams;
 
-  // Lagturnering: auto-assign to the currently smallest team so they stay
-  // balanced regardless of join order.
-  let team: string | null = null;
-  if (teams.length >= 2) {
-    const counts = new Map(teams.map((name) => [name, 0]));
-    for (const p of existing) {
-      if (p.team && counts.has(p.team)) counts.set(p.team, counts.get(p.team)! + 1);
-    }
-    team = teams.reduce((min, name) =>
-      counts.get(name)! < counts.get(min)! ? name : min,
-    );
-  }
-
-  const row: {
-    tournament_id: string;
-    display_name: string;
-    resume_code: string;
-    team?: string;
-  } = {
-    tournament_id: tournamentId,
-    display_name: displayName.slice(0, 40),
-    resume_code: "",
-  };
-  if (team) row.team = team;
-
-  // Two failure modes, handled separately:
-  //  * 23505 (concurrent join picked the same resume code) → regenerate + retry
-  //  * anything else with team set (players.team not migrated, 0006) → drop team
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 3; attempt++) {
-    row.resume_code = generateUnique(generateResumeCode, taken);
-    taken.add(row.resume_code);
+    const resumeCode = generateUnique(generateResumeCode, taken);
+    taken.add(resumeCode);
+
+    // Preferred path for team tournaments: atomic, race-free balanced assignment.
+    if (rpcAvailable) {
+      const { data, error } = await db.rpc("join_team_player", {
+        p_tournament_id: tournamentId,
+        p_display_name: name,
+        p_resume_code: resumeCode,
+        p_teams: teams,
+      });
+      if (!error) return data as Player;
+      lastError = error;
+      if (isUniqueViolation(error)) continue; // code collision → new code
+      rpcAvailable = false; // RPC missing/older DB → fall back to JS below
+    }
+
+    // Fallback (no teams, or RPC not yet migrated): JS balance + plain insert.
+    const row: {
+      tournament_id: string;
+      display_name: string;
+      resume_code: string;
+      team?: string;
+    } = { tournament_id: tournamentId, display_name: name, resume_code: resumeCode };
+    if (useTeams) row.team = smallestTeam(existing, teams);
+
     const { data, error } = await db.from("players").insert(row).select("*").single();
     if (!error) return data as Player;
     lastError = error;
     if (isUniqueViolation(error)) continue; // new code next loop
     if (row.team) {
+      // players.team not migrated (pre-0006) → drop team and retry once.
       delete row.team;
       const retry = await db.from("players").insert(row).select("*").single();
       if (!retry.error) return retry.data as Player;
       lastError = retry.error;
-      if (isUniqueViolation(retry.error)) continue; // teamless + new code
+      if (isUniqueViolation(retry.error)) continue;
     }
     break; // non-retryable
   }
@@ -191,18 +252,20 @@ export async function getPlayerByResume(
   resumeCode: string,
 ): Promise<Player | null> {
   const db = createServiceClient();
-  const { data } = await db
+  const { data, error } = await db
     .from("players")
     .select("*")
     .eq("tournament_id", tournamentId)
     .eq("resume_code", resumeCode)
     .maybeSingle();
+  if (error) throw error; // transient → 503, never a false "invalid_code" kick
   return (data as Player) ?? null;
 }
 
 export async function getPlayer(id: string): Promise<Player | null> {
   const db = createServiceClient();
-  const { data } = await db.from("players").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await db.from("players").select("*").eq("id", id).maybeSingle();
+  if (error) throw error; // transient → 503, never a false 401 on a move
   return (data as Player) ?? null;
 }
 
@@ -226,18 +289,23 @@ export async function setPlayerStatus(
 
 export async function getRound(id: string): Promise<Round | null> {
   const db = createServiceClient();
-  const { data } = await db.from("rounds").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await db.from("rounds").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
   return (data as Round) ?? null;
 }
 
 export async function listRounds(tournamentId: string): Promise<Round[]> {
   const db = createServiceClient();
-  const { data } = await db
+  const { data, error } = await db
     .from("rounds")
     .select("*")
     .eq("tournament_id", tournamentId)
-    .order("number", { ascending: true });
-  return (data as Round[]) ?? [];
+    .order("number", { ascending: true })
+    .limit(LIST_CAP);
+  if (error) throw error;
+  const rows = (data as Round[]) ?? [];
+  warnIfCapped("listRounds", rows.length);
+  return rows;
 }
 
 export async function createRound(
@@ -327,14 +395,33 @@ export async function createGame(g: NewGame): Promise<Game> {
     slot: g.slot ?? 0,
   };
   const { data, error } = await db.from("games").insert(row).select("*").single();
-  if (error) {
-    // games.slot may not be migrated yet (0007) — retry without it
-    delete row.slot;
-    const retry = await db.from("games").insert(row).select("*").single();
-    if (retry.error) throw error; // surface the ORIGINAL error
-    return retry.data as Game;
+  if (!error) return data as Game;
+
+  // Idempotency hit (migration 0009: at most one live game per round+slot). A
+  // double-fired playoff advance / tiebreak-rematch creation lost the race —
+  // return the existing game at this slot instead of duplicating. Return the
+  // NEWEST row at the slot (full idempotency): a slot can hold an old drawn game
+  // plus its live rematch, and the caller wants the current one. Only throw if
+  // there is genuinely no row there (i.e. the 23505 was something else).
+  if (isUniqueViolation(error)) {
+    const existing = await db
+      .from("games")
+      .select("*")
+      .eq("round_id", g.roundId)
+      .eq("slot", g.slot ?? 0)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existing.error) throw existing.error;
+    if (existing.data) return existing.data as Game;
+    throw error;
   }
-  return data as Game;
+
+  // games.slot may not be migrated yet (0007) — retry without it
+  delete row.slot;
+  const retry = await db.from("games").insert(row).select("*").single();
+  if (retry.error) throw error; // surface the ORIGINAL error
+  return retry.data as Game;
 }
 
 // ---------------- atomic RPCs (migration 0002) ----------------
@@ -408,22 +495,31 @@ export async function recomputeScores(tournamentId: string): Promise<void> {
 
 export async function listGames(tournamentId: string): Promise<Game[]> {
   const db = createServiceClient();
-  const { data } = await db
+  const { data, error } = await db
     .from("games")
     .select("*")
     .eq("tournament_id", tournamentId)
-    .order("updated_at", { ascending: true });
-  return (data as Game[]) ?? [];
+    .order("updated_at", { ascending: true })
+    .limit(LIST_CAP);
+  if (error) throw error;
+  const rows = (data as Game[]) ?? [];
+  warnIfCapped("listGames", rows.length);
+  return rows;
 }
 
 export async function getGame(id: string): Promise<Game | null> {
   const db = createServiceClient();
-  const { data } = await db.from("games").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await db.from("games").select("*").eq("id", id).maybeSingle();
+  if (error) throw error; // transient → 503 on /api/move, not a false "no_game"
   return (data as Game) ?? null;
 }
 
 
-/** Move timestamps for clock computation (ply + created_at only). */
+/** Move timestamps for clock computation (ply + created_at only), for ONE game.
+ * Used by `gameClock` (the per-move authoritative clock check). NOT dead — it is
+ * the single-game counterpart to `listMoveStampsForGames`, which batches MANY
+ * games for the board route's live grid. Keep both: a single `.eq` lookup is the
+ * right query for one game; the `.in` batch is the right one for the grid. */
 export async function listMoveStamps(
   gameId: string,
 ): Promise<{ ply: number; createdAt: string }[]> {
@@ -437,6 +533,28 @@ export async function listMoveStamps(
     ply: m.ply,
     createdAt: m.created_at,
   }));
+}
+
+/** Move stamps for MANY games in ONE query, grouped by game id. Used by the
+ * board route's live-clock computation so it costs a single round-trip instead
+ * of one per live game. */
+export async function listMoveStampsForGames(
+  gameIds: string[],
+): Promise<Map<string, { ply: number; createdAt: string }[]>> {
+  const out = new Map<string, { ply: number; createdAt: string }[]>();
+  if (gameIds.length === 0) return out;
+  const db = createServiceClient();
+  const { data } = await db
+    .from("moves")
+    .select("game_id, ply, created_at")
+    .in("game_id", gameIds)
+    .order("ply", { ascending: true });
+  for (const m of (data as { game_id: string; ply: number; created_at: string }[]) ?? []) {
+    const list = out.get(m.game_id) ?? [];
+    list.push({ ply: m.ply, createdAt: m.created_at });
+    out.set(m.game_id, list);
+  }
+  return out;
 }
 
 // ---------------- predictions (tippemodus, migration 0005) ----------------
@@ -536,7 +654,7 @@ export async function currentGameForPlayer(
   playerId: string,
 ): Promise<Game | null> {
   const db = createServiceClient();
-  const { data } = await db
+  const { data, error } = await db
     .from("games")
     .select("*")
     .eq("tournament_id", tournamentId)
@@ -544,6 +662,7 @@ export async function currentGameForPlayer(
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (error) throw error;
   return (data as Game) ?? null;
 }
 

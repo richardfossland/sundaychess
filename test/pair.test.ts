@@ -104,6 +104,25 @@ describe("round >=2 pairing", () => {
     expect(bye?.whiteId).not.toBe("p5");
     expect(bye?.whiteId).toBe("p4"); // next lowest without a bye
   });
+
+  it("spreads a repeat bye to the player with the FEWEST byes", () => {
+    // Everyone has had a bye, but p5 has had two — it must not get a third.
+    const result = pair({
+      players: players(5, [4, 3, 2, 1, 0]),
+      round: 4,
+      byeCounts: new Map([
+        ["p1", 1],
+        ["p2", 1],
+        ["p3", 1],
+        ["p4", 1],
+        ["p5", 2],
+      ]),
+      rng: constRng(0),
+    });
+    const bye = result.find((g) => g.blackId === null);
+    expect(bye?.whiteId).not.toBe("p5"); // not a third free point
+    expect(bye?.whiteId).toBe("p4"); // lowest-ranked among the fewest-bye players
+  });
 });
 
 describe("full 9-player / 5-round league simulation", () => {

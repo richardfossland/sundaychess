@@ -60,6 +60,16 @@ beforeEach(() => {
 });
 
 describe("POST /api/game/draw", () => {
+  it("returns a structured 503 (never throws) when an internal call fails", async () => {
+    // The route-resilience sweep: an unexpected throw must not become a platform
+    // 500/1102 HTML page (which the client mis-renders).
+    authPlayer.mockResolvedValue(player("white"));
+    store.getGame.mockRejectedValue(new Error("db down"));
+    const res = await POST(req({ gameId: "g1", playerId: "white", resumeCode: "AAAA-AA", action: "offer" }));
+    expect(res.status).toBe(503);
+    expect((await res.json()).error).toBe("server_error");
+  });
+
   it("offer records the pending offer", async () => {
     authPlayer.mockResolvedValue(player("white"));
     store.getGame.mockResolvedValue(makeGame());

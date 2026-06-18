@@ -111,6 +111,16 @@ describe("POST /api/move", () => {
     expect(applyMoveRpc).not.toHaveBeenCalled();
   });
 
+  it("returns a structured 503 (never throws) when an internal call fails", async () => {
+    // Regression for the spurious 'illegal move': an unexpected throw used to
+    // become a platform 500/1102 HTML page, which the client mapped to illegal.
+    authPlayer.mockResolvedValue(makePlayer("white"));
+    getGame.mockRejectedValue(new Error("db down"));
+    const res = await POST(req({ gameId: "g1", from: "e2", to: "e4", playerId: "white", resumeCode: "AAAA-AA" }));
+    expect(res.status).toBe(503);
+    expect((await res.json()).error).toBe("server_error");
+  });
+
   it("applies a legal move atomically and broadcasts", async () => {
     authPlayer.mockResolvedValue(makePlayer("white"));
     getGame.mockResolvedValue(makeGame());

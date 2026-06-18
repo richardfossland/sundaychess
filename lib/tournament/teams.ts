@@ -17,6 +17,11 @@ export function computeTeamStandings(
   );
   for (const p of players) {
     if (!p.team) continue;
+    // Mirror computeStandings: a player who LEFT is dropped from the individual
+    // board, so they must not still count toward their team's total either
+    // (otherwise the two tables disagree). status is optional for callers that
+    // only pass active players.
+    if (p.status && p.status !== "active") continue;
     const row = rows.get(p.team);
     if (!row) continue;
     row.players++;

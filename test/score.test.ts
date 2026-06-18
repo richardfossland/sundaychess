@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  colorCounts,
   computeBuchholz,
   computeScores,
   computeStandings,
@@ -121,5 +122,29 @@ describe("history helpers", () => {
     const set = hadByeSet([game("c", null, "bye"), game("a", "b", "draw")]);
     expect(set.has("c")).toBe(true);
     expect(set.size).toBe(1);
+  });
+});
+
+describe("colorCounts", () => {
+  it("tallies white/black per player and ignores byes", () => {
+    const games = [
+      game("a", "b", "white_win"),
+      game("b", "a", "draw"), // colours swapped next round
+      game("a", null, "bye"), // bye carries no colour
+      game("c", "a", "black_win"),
+    ];
+    const c = colorCounts(games);
+    // a: white in g0, black in g1, (bye ignored), black in g3 → 1 white / 2 black
+    expect(c.get("a")).toEqual({ white: 1, black: 2 });
+    // b: black in g0, white in g1 → balanced
+    expect(c.get("b")).toEqual({ white: 1, black: 1 });
+    // c: white in g3 only
+    expect(c.get("c")).toEqual({ white: 1, black: 0 });
+    // the bye recipient gained no colour from the bye
+    expect(c.get("a")?.white).toBe(1);
+  });
+
+  it("is empty for no games", () => {
+    expect(colorCounts([]).size).toBe(0);
   });
 });

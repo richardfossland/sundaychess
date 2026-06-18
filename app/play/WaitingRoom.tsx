@@ -3,10 +3,13 @@
 import { useEffect, useState } from "react";
 import type { BoardState, PublicGame } from "@/lib/dto";
 import { useBoardState } from "@/lib/client/useBoardState";
+import { usePresence } from "@/lib/client/usePresence";
+import { channels } from "@/lib/realtime";
 import { identity, type StoredPlayer } from "@/lib/client/identity";
 import { initials } from "@/lib/client/Confetti";
 import { PuzzleCard } from "@/lib/client/PuzzleCard";
 import { PredictPanel } from "@/lib/client/PredictPanel";
+import { BracketBoard } from "@/lib/client/BracketBoard";
 import { variantStartFen } from "@/lib/chess/variants";
 import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
 import { no } from "@/lib/locale/no";
@@ -65,6 +68,26 @@ function myGame(state: BoardState, playerId: string): PublicGame | null {
   return mine.find((g) => g.status === "live") ?? mine[mine.length - 1];
 }
 
+/** Is the player OUT of the tournament (vs merely waiting for the next round)?
+ *  - status "left": marked absent / walkover, or removed from the lobby.
+ *  - playoff: eliminated = not present in any game of the CURRENT playoff round
+ *    (once the round has advanced past them). */
+function isOut(state: BoardState, playerId: string): boolean {
+  const meP = state.players.find((p) => p.id === playerId);
+  if (meP?.status === "left") return true;
+  if (state.tournament.status !== "playoff") return false;
+  const cur = state.rounds.find(
+    (r) => r.phase === "playoff" && r.number === state.tournament.currentRound,
+  );
+  if (!cur) return false;
+  const inRound = state.games.some(
+    (g) =>
+      g.roundId === cur.id &&
+      (g.whitePlayerId === playerId || g.blackPlayerId === playerId),
+  );
+  return !inRound;
+}
+
 export function WaitingRoom({
   me,
   onLeave,
@@ -77,6 +100,10 @@ export function WaitingRoom({
   // the student dismisses it.
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const { state, refresh } = useBoardState(me.tournamentId);
+  // Advertise that this student is connected (keyed by playerId) so the host can
+  // see who's online in the lobby and drop ghosts. Stays active across the
+  // waiting view and the in-game child below (this component remains mounted).
+  usePresence(channels.presence(me.tournamentId), me.playerId);
 
   const game = state ? myGame(state, me.playerId) : null;
   const status = state?.tournament.status ?? "lobby";
@@ -87,6 +114,15 @@ export function WaitingRoom({
       setActiveGameId(game.id);
     }
   }, [game, activeGameId]);
+
+  // If the latched game vanished from a loaded state (host reset the tournament),
+  // drop back to the waiting view instead of rendering a board that can't load.
+  useEffect(() => {
+    if (state && activeGameId && !state.games.some((g) => g.id === activeGameId)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveGameId(null);
+    }
+  }, [state, activeGameId]);
 
   if (activeGameId) {
     // Round timer (league rounds only) — fed to the player's board.
@@ -118,12 +154,17 @@ export function WaitingRoom({
     );
   }
 
+  const eliminated = state ? isOut(state, me.playerId) : false;
   let banner: string = no.player.waitingStart;
   if (status !== "lobby") {
-    if (game?.status === "bye") banner = no.player.waitingBye;
-    else if (status === "finished") banner = "Turneringen er ferdig 🏆";
+    if (status === "finished") banner = "Turneringen er ferdig 🏆";
+    else if (eliminated) banner = no.player.outOfTournament;
+    else if (game?.status === "bye") banner = no.player.waitingBye;
     else banner = no.player.waitingNext;
   }
+  // The spinner means "hang on, more is coming" — drop it once the player is out
+  // or the tournament is over, where nothing more is coming for them.
+  const showWaitingSpinner = !eliminated && status !== "finished";
 
   const myTeam =
     state?.players.find((p) => p.id === me.playerId)?.team ?? null;
@@ -147,10 +188,12 @@ export function WaitingRoom({
         )}
 
         <div className="banner banner-wait" style={{ marginTop: 2, width: "100%" }}>
-          <span
-            className="spin"
-            style={{ display: "inline-block", verticalAlign: "middle", marginRight: 10 }}
-          />
+          {showWaitingSpinner && (
+            <span
+              className="spin"
+              style={{ display: "inline-block", verticalAlign: "middle", marginRight: 10 }}
+            />
+          )}
           {banner}
         </div>
 
@@ -176,6 +219,14 @@ export function WaitingRoom({
           Logg ut
         </button>
       </div>
+
+      {/* the cup ladder — how it's going / how it went (knockout only) */}
+      {state && state.rounds.some((r) => r.phase === "playoff") && (
+        <div className="card stack" style={{ padding: 14, width: "100%", gap: 8 }}>
+          <p className="eyebrow" style={{ fontSize: 11 }}>{no.player.cupProgress}</p>
+          <BracketBoard games={state.games} rounds={state.rounds} players={state.players} />
+        </div>
+      )}
 
       {/* the player's own final standings once it's all over */}
       {state && status === "finished" && (

@@ -1,6 +1,7 @@
 import { getGame, resolveGameRpc } from "@/lib/server/store";
 import { authPlayer } from "@/lib/server/auth";
 import { gameClock } from "@/lib/server/clock";
+import { winnerCanMate } from "@/lib/chess/material";
 import {
   afterGameResolved,
   broadcastPosition,
@@ -12,6 +13,15 @@ import type { GameStatus } from "@/lib/types";
 // POST /api/game/claim — "krev seier på tid": a player claims the win when the
 // OPPONENT's chess clock has run out. Server-verified against move timestamps.
 export async function POST(req: Request) {
+  try {
+    return await handlePost(req);
+  } catch (err) {
+    console.error("[claim]", err);
+    return fail(503, "server_error");
+  }
+}
+
+async function handlePost(req: Request): Promise<Response> {
   const body = await readJson<{
     gameId?: string;
     playerId?: string;
@@ -37,16 +47,22 @@ export async function POST(req: Request) {
   const oppColor = isWhite ? "b" : "w";
   if (clock.snap.flagged !== oppColor) return fail(409, "not_flagged");
 
-  const winner: GameStatus = isWhite ? "white_win" : "black_win";
-  const resolved = await resolveGameRpc(game.id, winner, "play", true);
+  const winnerColor = isWhite ? "white" : "black";
+  // Win-on-time → DRAW if the claimer can't possibly mate (FIDE 6.9), else win.
+  const result: GameStatus = winnerCanMate(game.fen, winnerColor)
+    ? winnerColor === "white"
+      ? "white_win"
+      : "black_win"
+    : "draw";
+  const resolved = await resolveGameRpc(game.id, result, "play", true);
   if (!resolved.ok) return fail(409, resolved.conflict ?? "conflict");
 
-  await afterGameResolved(game, winner, "play");
-  await broadcastPosition(game.id, game.fen, game.turn, winner, null, {
+  await afterGameResolved(game, result, "play");
+  await broadcastPosition(game.id, game.fen, game.turn, result, null, {
     ...clock.info,
     running: false,
   });
-  await broadcastSpectate(game.tournament_id, game.id, game.fen, game.turn, winner);
+  await broadcastSpectate(game.tournament_id, game.id, game.fen, game.turn, result);
 
-  return ok({ status: winner });
+  return ok({ status: result });
 }

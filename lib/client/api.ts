@@ -3,7 +3,7 @@
 // Thin typed fetch wrappers around the server API. All mutations go through
 // these; the browser never touches the database directly.
 
-import type { BoardState, GameDetail } from "@/lib/dto";
+import type { BoardState, GameDetail, ReviewResult } from "@/lib/dto";
 import type { GameStatus, Turn } from "@/lib/types";
 
 export class ApiError extends Error {
@@ -18,37 +18,56 @@ export class ApiError extends Error {
 
 const DEFAULT_TIMEOUT = 8000;
 
-/** fetch with a hard timeout — a hung request must never freeze the UI. On
- * timeout/abort or a network failure it throws ApiError(0, "timeout"|"network")
- * so callers always settle (releases optimistic locks, falls back gracefully). */
-async function timedFetch(url: string, init: RequestInit, timeoutMs = DEFAULT_TIMEOUT): Promise<Response> {
+/** fetch + JSON parse under ONE hard timeout — a hung request must never freeze
+ * the UI. CRUCIAL: the timeout spans BOTH the fetch AND reading the response
+ * body, because a flaky/slow network can deliver headers and then stall the body
+ * stream — leaving `await res.json()` hung forever (which previously wedged the
+ * optimistic-move `pending` flag and froze the board). On timeout/abort or a
+ * network failure this throws ApiError(0, "timeout"|"network") so every caller
+ * settles. Exported for tests. */
+export async function timedJson(
+  url: string,
+  init: RequestInit,
+  timeoutMs = DEFAULT_TIMEOUT,
+): Promise<{ ok: boolean; status: number; data: unknown }> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...init, signal: ctrl.signal });
+    const res = await fetch(url, { ...init, signal: ctrl.signal });
+    // Body read is still covered by `ctrl`: aborting cancels an in-flight
+    // res.json() too. Tolerate an empty/non-JSON body (→ {}), but a timeout/abort
+    // during the body read MUST propagate so it surfaces as ApiError("timeout")
+    // rather than a fake-empty success.
+    const data = await res.json().catch((e) => {
+      if (e instanceof DOMException && e.name === "AbortError") throw e;
+      return {};
+    });
+    return { ok: res.ok, status: res.status, data };
   } catch (e) {
     const aborted = e instanceof DOMException && e.name === "AbortError";
     throw new ApiError(0, aborted ? "timeout" : "network", null);
   } finally {
-    clearTimeout(t);
+    clearTimeout(t); // only after the body is read (or aborted) — never earlier
   }
 }
 
 async function post<T>(url: string, body: unknown): Promise<T> {
-  const res = await timedFetch(url, {
+  const { ok, status, data } = await timedJson(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(res.status, data?.error ?? "error", data);
+  if (!ok) {
+    const code = (data as { error?: string } | null)?.error ?? "error";
+    throw new ApiError(status, code, data);
+  }
   return data as T;
 }
 
 async function getJson<T>(url: string, code: string): Promise<T> {
-  const res = await timedFetch(url, { cache: "no-store" });
-  if (!res.ok) throw new ApiError(res.status, code, null);
-  return (await res.json()) as T;
+  const { ok, status, data } = await timedJson(url, { cache: "no-store" });
+  if (!ok) throw new ApiError(status, code, null);
+  return data as T;
 }
 
 export interface CreatedTournament {
@@ -71,6 +90,22 @@ export interface ResumeResult {
   tournamentStatus: string;
 }
 
+export interface CasualCreated {
+  tournamentId: string;
+  joinPin: string;
+  playerId: string;
+  resumeCode: string;
+  displayName: string;
+}
+
+export interface CasualJoined {
+  tournamentId: string;
+  playerId: string;
+  resumeCode: string;
+  displayName: string;
+  gameId: string;
+}
+
 export const api = {
   createTournament: (body: { title?: string; config?: unknown }) =>
     post<CreatedTournament>("/api/tournament", body),
@@ -81,12 +116,32 @@ export const api = {
   join: (pin: string, displayName: string) =>
     post<JoinResult>("/api/join", { pin, displayName }),
 
+  createCasual: (name: string) =>
+    post<CasualCreated>("/api/casual", { name }),
+
+  joinCasual: (pin: string, name: string) =>
+    post<CasualJoined>("/api/casual/join", { pin, name }),
+
+  rematchCasual: (tournamentId: string, playerId: string, resumeCode: string) =>
+    post<{ gameId: string }>("/api/casual/rematch", {
+      tournamentId,
+      playerId,
+      resumeCode,
+    }),
+
   resume: (resumeCode: string, ref: { pin?: string; tournamentId?: string }) =>
     post<ResumeResult>("/api/resume", { resumeCode, ...ref }),
 
-  board: (id: string) => getJson<BoardState>(`/api/tournament/${id}`, "board_failed"),
+  board: (id: string, withClocks = false) =>
+    getJson<BoardState>(
+      `/api/tournament/${id}${withClocks ? "?clocks=1" : ""}`,
+      "board_failed",
+    ),
 
   game: (id: string) => getJson<GameDetail>(`/api/game/${id}`, "game_failed"),
+
+  review: (gameId: string, playerId: string, resumeCode: string) =>
+    post<ReviewResult>("/api/review", { gameId, playerId, resumeCode }),
 
   move: (args: {
     gameId: string;
@@ -149,8 +204,16 @@ export const api = {
   startRound: (tournamentId: string, hostCode: string) =>
     post<{ status: string }>("/api/round/start", { tournamentId, hostCode }),
 
-  advanceRound: (tournamentId: string, hostCode: string) =>
-    post<{ status: string }>("/api/round/advance", { tournamentId, hostCode }),
+  advanceRound: (
+    tournamentId: string,
+    hostCode: string,
+    tiebreak?: "rematch" | "ranking",
+  ) =>
+    post<{ status: string }>("/api/round/advance", {
+      tournamentId,
+      hostCode,
+      ...(tiebreak ? { tiebreak } : {}),
+    }),
 
   forceResolve: (tournamentId: string, hostCode: string) =>
     post<{ ok: boolean }>("/api/round/force", { tournamentId, hostCode }),
@@ -183,4 +246,7 @@ export const api = {
       `/api/tournament/${tournamentId}/codes`,
       { hostCode },
     ),
+
+  kick: (tournamentId: string, hostCode: string, playerId: string) =>
+    post<{ ok: boolean }>("/api/lobby/kick", { tournamentId, hostCode, playerId }),
 };

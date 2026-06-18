@@ -2,6 +2,7 @@ import { Chess } from "chess.js";
 
 export type DrawReason =
   | "agreement"
+  | "threefold"
   | "insufficient"
   | "stalemate"
   | "fifty_move"
@@ -20,4 +21,23 @@ export function drawReasonFromFen(fen: string): DrawReason {
   } catch {
     return "draw";
   }
+}
+
+/** Draw reason using the full move history (PGN), so threefold repetition — which
+ * a FEN alone cannot see — is named correctly. Falls back to the FEN-only checks
+ * (and to "agreement") when the PGN is missing/unparseable. */
+export function drawReasonFromPgn(pgn: string, fen: string): DrawReason {
+  if (pgn && pgn.trim()) {
+    try {
+      const c = new Chess();
+      c.loadPgn(pgn);
+      if (c.isThreefoldRepetition()) return "threefold";
+      if (c.isStalemate()) return "stalemate";
+      if (c.isInsufficientMaterial()) return "insufficient";
+      if (c.isDrawByFiftyMoves?.()) return "fifty_move";
+    } catch {
+      // fall through to the FEN-only reason
+    }
+  }
+  return drawReasonFromFen(fen);
 }

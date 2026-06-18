@@ -9,20 +9,20 @@ import { useChannel } from "@/lib/client/useChannel";
 /** Fetch authoritative board state on mount, keep it fresh by refetching on any
  * lobby-channel event, and expose a manual refresh. Used by both the host board
  * and the student client (reads are public — no secrets in board state). */
-export function useBoardState(tournamentId: string | null) {
+export function useBoardState(tournamentId: string | null, withClocks = false) {
   const [state, setState] = useState<BoardState | null>(null);
   const [error, setError] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!tournamentId) return;
     try {
-      const next = await api.board(tournamentId);
+      const next = await api.board(tournamentId, withClocks);
       setState(next);
       setError(false);
     } catch {
       setError(true);
     }
-  }, [tournamentId]);
+  }, [tournamentId, withClocks]);
 
   useEffect(() => {
     // Fetch-on-mount: setState happens asynchronously after the await, in the
@@ -31,9 +31,16 @@ export function useBoardState(tournamentId: string | null) {
     refresh();
   }, [refresh]);
 
-  useChannel(tournamentId ? channels.lobby(tournamentId) : null, () => {
-    refresh();
-  });
+  useChannel(
+    tournamentId ? channels.lobby(tournamentId) : null,
+    () => {
+      refresh();
+    },
+    (s) => {
+      // Lobby broadcasts silently stopped → refetch the board immediately.
+      if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") refresh();
+    },
+  );
 
   // Reconnect hardening: re-sync when the tab regains focus or the network
   // comes back (a missed broadcast is recovered here).

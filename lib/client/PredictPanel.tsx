@@ -74,33 +74,30 @@ export function PredictPanel({
       </div>
       <p className="muted" style={{ fontSize: 13 }}>{no.predict.hint}</p>
 
-      {tippable.map((g) => (
-        <div key={g.id} className="stack" style={{ gap: 6 }}>
-          <span style={{ fontSize: 14 }}>
-            <b>{nameById(g.whitePlayerId)}</b>{" "}
-            <span className="faint">{no.player.vs}</span>{" "}
-            <b>{nameById(g.blackPlayerId)}</b>
-          </span>
-          <div className="row" style={{ gap: 6 }}>
-            {(
-              [
-                ["white", no.predict.white],
-                ["draw", no.predict.draw],
-                ["black", no.predict.black],
-              ] as const
-            ).map(([key, label]) => (
+      {tippable.map((g) => {
+        // Pick by PLAYER NAME, not colour — not every spectator knows who is
+        // white/black. The stored value is still "white" | "draw" | "black".
+        const options: { key: Pick; label: string; glyph?: string }[] = [
+          { key: "white", label: nameById(g.whitePlayerId), glyph: "♔" },
+          { key: "draw", label: no.predict.draw },
+          { key: "black", label: nameById(g.blackPlayerId), glyph: "♚" },
+        ];
+        return (
+          <div key={g.id} className="row" style={{ gap: 6 }}>
+            {options.map(({ key, label, glyph }) => (
               <button
                 key={key}
                 className={`btn grow ${picks[g.id] === key ? "btn-primary" : "btn-ghost"}`}
                 style={{ padding: "8px 6px", fontSize: 13 }}
                 onClick={() => tip(g.id, key)}
               >
+                {glyph && <span className="faint" style={{ marginRight: 4 }}>{glyph}</span>}
                 {label}
               </button>
             ))}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

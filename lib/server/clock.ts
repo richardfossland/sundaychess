@@ -21,10 +21,13 @@ export async function gameClock(
   const clockSec = t?.config.clockSec ?? null;
   if (!clockSec) return null;
 
-  const round = await getRound(game.round_id);
+  // round + move stamps in parallel — saves a serial DB round-trip on the hot
+  // move path for clock (lyn/blitz) games.
+  const [round, moves] = await Promise.all([
+    getRound(game.round_id),
+    listMoveStamps(game.id),
+  ]);
   if (!round?.started_at) return null;
-
-  const moves = await listMoveStamps(game.id);
   const running = game.status === "live";
   const snap = computeClocks({
     clockSec,

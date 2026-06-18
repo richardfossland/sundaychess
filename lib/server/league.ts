@@ -18,9 +18,9 @@ import { channels, events } from "@/lib/realtime";
 import { pair, type PairablePlayer } from "@/lib/tournament/pair";
 import { variantStartFen } from "@/lib/chess/variants";
 import {
+  byeCounts,
   colorCounts,
   computeStandings,
-  hadByeSet,
   metBeforeSet,
 } from "@/lib/tournament/score";
 import { maybeStartPlayoff } from "@/lib/server/playoff";
@@ -50,7 +50,7 @@ async function pairLeagueRound(
     players: pairable,
     round: roundNumber,
     metBefore: metBeforeSet(games),
-    hadBye: hadByeSet(games),
+    byeCounts: byeCounts(games),
     colors: colorCounts(games),
   });
 
@@ -92,24 +92,35 @@ export async function currentRoundResolved(
   );
   if (!cur) return false;
   const games = await listGamesForRound(cur.id);
-  return games.every((g) => g.status !== "live");
+  // length>0: an empty (0-game) round is NOT "resolved" — treating it as resolved
+  // let advance wedge on a round that can never be force-resolved or advanced.
+  return games.length > 0 && games.every((g) => g.status !== "live");
 }
 
 /** Force-resolve: set every still-live game in the current round to a draw
- * (½–½), result_source = 'timeout_draw'. */
+ * (½–½), result_source = 'timeout_draw'. Works in either phase — a playoff round
+ * reuses league round numbers, so we key off the tournament's current phase to
+ * pick the right round (otherwise an abandoned playoff round can't be resolved).
+ * A drawn playoff game then flows through advancePlayoff's tiebreak/draw-odds. */
 export async function forceResolveRound(tournament: Tournament): Promise<void> {
   const rounds = await listRounds(tournament.id);
+  const phase = tournament.status === "playoff" ? "playoff" : "league";
   const cur = rounds.find(
-    (r) => r.number === tournament.current_round && r.phase === "league",
+    (r) => r.number === tournament.current_round && r.phase === phase,
   );
   if (!cur) return;
   const games = await listGamesForRound(cur.id);
+  let resolvedAny = false;
   for (const g of games) {
     if (g.status === "live") {
       await resolveGameRpc(g.id, "draw", "timeout_draw");
-      await afterGameResolved(g, "draw", "timeout_draw");
+      // skipRecompute: the full-tournament score aggregate is run ONCE below
+      // instead of once per board (it was firing N identical writes per round).
+      await afterGameResolved(g, "draw", "timeout_draw", { skipRecompute: true });
+      resolvedAny = true;
     }
   }
+  if (resolvedAny) await recomputeScores(tournament.id);
 }
 
 /** Advance to the next round. Caller must ensure the current round is resolved
@@ -127,6 +138,18 @@ export async function advanceRound(
   const next = tournament.current_round + 1;
 
   if (next <= tournament.config.leagueRounds) {
+    // If everyone has left, pairing would create an empty, un-advanceable round
+    // that wedges the tournament. Finish instead.
+    const active = (await listPlayers(tournament.id)).filter(
+      (p) => p.status === "active",
+    );
+    if (active.length < 2) {
+      await updateTournament(tournament.id, { status: "finished" });
+      await broadcast(channels.lobby(tournament.id), events.tournament, {
+        finished: true,
+      });
+      return "finished";
+    }
     await pairLeagueRound(tournament, next);
     await updateTournament(tournament.id, { current_round: next });
     await broadcast(channels.lobby(tournament.id), events.tournament, {

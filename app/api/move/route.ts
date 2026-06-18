@@ -1,4 +1,5 @@
 import { applyMove } from "@/lib/chess/validateMove";
+import { winnerCanMate } from "@/lib/chess/material";
 import {
   applyMoveRpc,
   getGame,
@@ -17,6 +18,18 @@ import type { GameStatus, Turn } from "@/lib/types";
 
 // POST /api/move — THE server-authoritative move path (spec §4).
 export async function POST(req: Request) {
+  try {
+    return await handleMove(req);
+  } catch (err) {
+    // Never let an unexpected throw become a platform 500/1102 HTML page: the
+    // client maps an unknown move error to a (false) "Ulovlig trekk". Return a
+    // structured transient error so the client shows reconnecting + resyncs.
+    console.error("[move]", err);
+    return fail(503, "server_error");
+  }
+}
+
+async function handleMove(req: Request): Promise<Response> {
   const body = await readJson<{
     gameId?: string;
     from?: string;
@@ -54,16 +67,24 @@ export async function POST(req: Request) {
   //     moving. Resolved server-side so the result is authoritative.
   const clock = await gameClock(game);
   if (clock && clock.snap.flagged === game.turn) {
-    const winner: GameStatus =
-      game.turn === "w" ? "black_win" : "white_win";
-    const resolved = await resolveGameRpc(game.id, winner, "play", true);
+    const winnerColor = game.turn === "w" ? "black" : "white";
+    // Win-on-time → DRAW if the winner can't possibly mate (FIDE 6.9), else win.
+    const result: GameStatus = winnerCanMate(game.fen, winnerColor)
+      ? winnerColor === "white"
+        ? "white_win"
+        : "black_win"
+      : "draw";
+    const resolved = await resolveGameRpc(game.id, result, "play", true);
     if (resolved.ok) {
-      await afterGameResolved(game, winner, "play");
-      await broadcastPosition(game.id, game.fen, game.turn, winner, null, {
+      await afterGameResolved(game, result, "play");
+      await broadcastPosition(game.id, game.fen, game.turn, result, null, {
         ...clock.info,
         running: false,
       });
-      await broadcastSpectate(game.tournament_id, game.id, game.fen, game.turn, winner);
+      await broadcastSpectate(game.tournament_id, game.id, game.fen, game.turn, result, {
+        ...clock.info,
+        running: false,
+      });
     }
     return fail(409, "flagged");
   }
@@ -135,6 +156,7 @@ export async function POST(req: Request) {
     applied.fen,
     applied.turn as Turn,
     applied.status,
+    newClock,
   );
 
   // 7. If the game ended on this move, run resolution side-effects.

@@ -18,15 +18,15 @@ import {
   buildFirstRound,
   cupBracketSize,
   effectivePlayoffSize,
-  sortBySlot,
   type SeededPlayer,
 } from "@/lib/tournament/bracket";
 import { variantStartFen } from "@/lib/chess/variants";
 import type { Game, Tournament } from "@/lib/types";
 
 /** Winner of a resolved game, or null if it has no decisive winner (draw /
- * aborted → the teacher must decide a playoff game). A bye advances its
- * player (cup first rounds when the field isn't a power of two). */
+ * aborted). A bye advances its player (cup first rounds when the field isn't a
+ * power of two). Drawn playoff games are resolved by advancePlayoff (tiebreak
+ * rematch, then draw-odds), not here. */
 function winnerOf(g: Game): string | null {
   if (g.status === "white_win") return g.white_player_id;
   if (g.status === "black_win") return g.black_player_id;
@@ -134,24 +134,84 @@ export async function playoffRoundResolved(
   return games.length > 0 && games.every((g) => g.status !== "live");
 }
 
-/** Advance the bracket: pair adjacent winners into the next round, or finish
- * when the final is decided. Throws 'needs_decision' if a game is drawn (the
- * teacher must override it to a winner first — spec §6). */
+/** Advance the bracket. A drawn game never stalls it. By default the first draw
+ * at a bracket slot spawns ONE tiebreak rematch (colours swapped) in the same
+ * round and slot; if that rematch is also drawn, the higher seed advances
+ * (draw-odds). With `resolveDrawsBySeed`, a first draw skips the rematch and the
+ * higher seed advances immediately (the teacher's "send høyest rangert videre"
+ * choice). Returns "tiebreak" when it created rematches (the round keeps playing
+ * — advance again once they finish), else "playoff"/"finished". The teacher can
+ * still override any game manually as an escape hatch. */
 export async function advancePlayoff(
   tournament: Tournament,
-): Promise<"playoff" | "finished"> {
+  opts: { resolveDrawsBySeed?: boolean } = {},
+): Promise<"playoff" | "finished" | "tiebreak"> {
   const rounds = await listRounds(tournament.id);
   const cur = currentPlayoffRound(rounds, tournament.current_round);
   if (!cur) throw new Error("no_playoff_round");
 
-  // Slot order is the bracket structure — updated_at order (the fetch order)
-  // changes as games resolve and would scramble the pairing below.
-  const games = sortBySlot(await listGamesForRound(cur.id));
+  const [roundGames, players] = await Promise.all([
+    listGamesForRound(cur.id),
+    listPlayers(tournament.id),
+  ]);
+  const seedOf = (id: string) =>
+    players.find((p) => p.id === id)?.seed ?? Number.MAX_SAFE_INTEGER;
+
+  // Group games by bracket slot. A slot holds the original game and, if it was
+  // drawn, one tiebreak rematch (both carry the same slot).
+  const bySlot = new Map<number, Game[]>();
+  for (const g of roundGames) {
+    const s = g.slot ?? 0;
+    const list = bySlot.get(s);
+    if (list) list.push(g);
+    else bySlot.set(s, [g]);
+  }
+  const slots = [...bySlot.keys()].sort((a, b) => a - b); // slot order = bracket
+
   const winners: string[] = [];
-  for (const g of games) {
-    const w = winnerOf(g);
-    if (!w) throw new Error("needs_decision");
-    winners.push(w);
+  const tiebreaks: { slot: number; white: string; black: string }[] = [];
+
+  for (const s of slots) {
+    const slotGames = bySlot.get(s)!;
+    const decisive = slotGames.find((g) => winnerOf(g) !== null);
+    if (decisive) {
+      winners.push(winnerOf(decisive)!);
+      continue;
+    }
+    // No winner at this slot — every game here drew (or aborted).
+    const orig = slotGames[0];
+    const white = orig.white_player_id;
+    const black = orig.black_player_id;
+    if (!black) {
+      winners.push(white); // a bye is decisive; guard defensively
+    } else if (slotGames.length >= 2 || opts.resolveDrawsBySeed) {
+      // Either the rematch ALSO drew, or the teacher chose to skip the rematch →
+      // draw-odds: the higher seed (lower number) advances.
+      winners.push(seedOf(white) <= seedOf(black) ? white : black);
+    } else {
+      tiebreaks.push({ slot: s, white: black, black: white }); // swap colours
+    }
+  }
+
+  // Matchups still to be settled → spawn the rematches and keep the round live;
+  // the bracket advances on the next pass once they finish.
+  if (tiebreaks.length > 0) {
+    const tieFen = variantStartFen(tournament.config.variant);
+    for (const tb of tiebreaks) {
+      await createGame({
+        tournamentId: tournament.id,
+        roundId: cur.id,
+        whitePlayerId: tb.white,
+        blackPlayerId: tb.black,
+        startFen: tieFen,
+        slot: tb.slot,
+      });
+    }
+    await broadcast(channels.lobby(tournament.id), events.tournament, {
+      tiebreak: true,
+      playoffRound: tournament.current_round,
+    });
+    return "tiebreak";
   }
 
   await setRoundStatus(cur.id, "done");

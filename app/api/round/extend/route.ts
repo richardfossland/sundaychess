@@ -2,13 +2,15 @@ import { authHost } from "@/lib/server/auth";
 import { extendRoundRpc, listRounds, setRoundStartedAt } from "@/lib/server/store";
 import { broadcast } from "@/lib/server/broadcast";
 import { channels, events } from "@/lib/realtime";
-import { fail, ok, readJson } from "@/lib/server/http";
+import { fail, ok, readJson, hostRateLimit } from "@/lib/server/http";
 
 // POST /api/round/extend — the organizer adds +1 minute to the round timer.
 // Atomic increment of rounds.extended_ms (RPC, 0007): a double-click adds two
 // minutes, and started_at — which is also the chess clocks' t0 — stays fixed
 // so extensions never erase time the players already used.
 export async function POST(req: Request) {
+  const limited = hostRateLimit(req);
+  if (limited) return limited;
   const body = await readJson<{ tournamentId?: string; hostCode?: string }>(req);
   const t = await authHost(body?.tournamentId, body?.hostCode);
   if (!t) return fail(401, "unauthorized");

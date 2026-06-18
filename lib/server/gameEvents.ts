@@ -29,19 +29,27 @@ export async function broadcastPosition(
 }
 
 /** Broadcast a move to the tournament-wide spectate feed so the teacher's
- * live-games grid updates instantly without polling every game channel. */
+ * live-games grid updates instantly without polling every game channel.
+ * Carries the clock snapshot too so the grid's clocks stay live between polls. */
 export async function broadcastSpectate(
   tournamentId: string,
   gameId: string,
   fen: string,
   turn: Turn,
   status: GameStatus,
+  clock?: {
+    whiteMs: number;
+    blackMs: number;
+    turn: Turn;
+    running: boolean;
+  } | null,
 ): Promise<void> {
   await broadcast(channels.spectate(tournamentId), events.position, {
     gameId,
     fen,
     turn,
     status,
+    clock: clock ?? null,
   });
 }
 
@@ -52,8 +60,12 @@ export async function afterGameResolved(
   game: Pick<Game, "id" | "tournament_id">,
   status: GameStatus,
   resultSource: ResultSource,
+  opts?: { skipRecompute?: boolean },
 ): Promise<void> {
-  await recomputeScores(game.tournament_id);
+  // recomputeScores re-aggregates the WHOLE tournament; a batch resolver (e.g.
+  // forceResolveRound across N boards) passes skipRecompute and recomputes once
+  // at the end instead of N identical times.
+  if (!opts?.skipRecompute) await recomputeScores(game.tournament_id);
   // settle the tipping points; no-op until the predictions table exists
   await scorePredictions(game.id, status).catch(() => {});
   await Promise.all([
@@ -64,6 +76,13 @@ export async function afterGameResolved(
     }),
     broadcast(channels.lobby(game.tournament_id), events.tournament, {
       gameResolved: game.id,
+    }),
+    // Also tell the spectate feed so the live-games grid reacts to a game
+    // ending (override/timeout/resign emit no position broadcast) instantly —
+    // no 5s poll wait, and the open spectator view can play a winner animation.
+    broadcast(channels.spectate(game.tournament_id), events.result, {
+      gameId: game.id,
+      status,
     }),
   ]);
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { drawReasonFromFen } from "@/lib/chess/drawReason";
+import { Chess } from "chess.js";
+import { drawReasonFromFen, drawReasonFromPgn } from "@/lib/chess/drawReason";
 
 describe("drawReasonFromFen", () => {
   it("detects insufficient material (K vs K)", () => {
@@ -15,5 +16,22 @@ describe("drawReasonFromFen", () => {
     expect(
       drawReasonFromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
     ).toBe("agreement");
+  });
+});
+
+describe("drawReasonFromPgn", () => {
+  it("detects threefold repetition (which a FEN alone cannot)", () => {
+    // Shuffle both knights out and back twice → start position seen 3×.
+    const c = new Chess();
+    for (const san of ["Nf3", "Nf6", "Ng1", "Ng8", "Nf3", "Nf6", "Ng1", "Ng8"]) {
+      c.move(san);
+    }
+    expect(c.isThreefoldRepetition()).toBe(true);
+    expect(drawReasonFromPgn(c.pgn(), c.fen())).toBe("threefold");
+  });
+
+  it("falls back to the FEN reason when there's no useful history", () => {
+    expect(drawReasonFromPgn("", "8/8/4k3/8/8/4K3/8/8 w - - 0 1")).toBe("insufficient");
+    expect(drawReasonFromPgn("garbage", "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1")).toBe("stalemate");
   });
 });

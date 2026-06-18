@@ -21,6 +21,7 @@ import {
   advancePlayoff,
   maybeStartPlayoff,
   playoffRoundResolved,
+  startCup,
 } from "@/lib/server/playoff";
 
 function tournament(over: Partial<Tournament> = {}): Tournament {
@@ -118,14 +119,42 @@ describe("maybeStartPlayoff", () => {
   });
 });
 
+describe("startCup", () => {
+  it("seeds all active players and builds round 1 (8 → 4 games)", async () => {
+    store.listPlayers.mockResolvedValue(players(8));
+    await startCup(tournament({ status: "lobby", current_round: 0 }));
+    expect(store.setPlayerSeed).toHaveBeenCalledTimes(8);
+    expect(store.createRound).toHaveBeenCalledWith("t", 1, "playoff", "live");
+    expect(store.createGame).toHaveBeenCalledTimes(4);
+    expect(store.updateTournament).toHaveBeenCalledWith("t", {
+      status: "playoff",
+      current_round: 1,
+    });
+  });
+
+  it("pads a non-power-of-two field with byes (6 → 8-bracket)", async () => {
+    store.listPlayers.mockResolvedValue(players(6));
+    await startCup(tournament({ status: "lobby", current_round: 0 }));
+    expect(store.setPlayerSeed).toHaveBeenCalledTimes(6); // only real players seeded
+    expect(store.createGame).toHaveBeenCalledTimes(4); // 8-slot bracket → 4 matches
+    const byes = store.createGame.mock.calls.filter((c) => c[0].blackPlayerId === null);
+    expect(byes.length).toBe(2); // 8 − 6 = 2 first-round byes
+  });
+
+  it("throws when there are too few players", async () => {
+    store.listPlayers.mockResolvedValue(players(1));
+    await expect(startCup(tournament())).rejects.toThrow("not_enough_players");
+  });
+});
+
 describe("advancePlayoff", () => {
   it("pairs winners into the next round", async () => {
     store.listRounds.mockResolvedValue([playoffRound(1)]);
     store.listGamesForRound.mockResolvedValue([
-      game("p1", "p8", "white_win"),
-      game("p4", "p5", "white_win"),
-      game("p2", "p7", "black_win"),
-      game("p3", "p6", "white_win"),
+      game("p1", "p8", "white_win", 0),
+      game("p4", "p5", "white_win", 1),
+      game("p2", "p7", "black_win", 2),
+      game("p3", "p6", "white_win", 3),
     ]);
     const status = await advancePlayoff(tournament({ current_round: 1 }));
     expect(status).toBe("playoff");
@@ -170,23 +199,71 @@ describe("advancePlayoff", () => {
     });
   });
 
-  it("keeps fetch order for legacy rows without slots (all 0)", async () => {
+  it("spawns a tiebreak rematch (colours swapped) for a drawn game", async () => {
     store.listRounds.mockResolvedValue([playoffRound(1)]);
+    store.listPlayers.mockResolvedValue(players(8));
     store.listGamesForRound.mockResolvedValue([
-      game("p1", "p8", "white_win"),
-      game("p4", "p5", "white_win"),
-      game("p2", "p7", "white_win"),
-      game("p3", "p6", "white_win"),
+      game("p1", "p8", "white_win", 0),
+      game("p4", "p5", "draw", 1), // drawn → rematch
+      game("p2", "p7", "black_win", 2),
+      game("p3", "p6", "white_win", 3),
     ]);
-    await advancePlayoff(tournament({ current_round: 1 }));
-    // stable sort on equal keys → original (fetch) order, today's behavior
+    const status = await advancePlayoff(tournament({ current_round: 1 }));
+    expect(status).toBe("tiebreak");
+    expect(store.setRoundStatus).not.toHaveBeenCalled(); // round keeps playing
+    expect(store.createRound).not.toHaveBeenCalled(); // no next round yet
+    expect(store.updateTournament).not.toHaveBeenCalled(); // didn't advance
+    expect(store.createGame).toHaveBeenCalledTimes(1);
+    expect(store.createGame.mock.calls[0][0]).toMatchObject({
+      roundId: "pr1", // SAME round
+      whitePlayerId: "p5", // colours swapped from the drawn original
+      blackPlayerId: "p4",
+      slot: 1, // same bracket slot as the original
+    });
+  });
+
+  it("resolveDrawsBySeed sends the higher seed through with NO rematch", async () => {
+    store.listRounds.mockResolvedValue([playoffRound(1)]);
+    store.listPlayers.mockResolvedValue(
+      players(8).map((p, i) => ({ ...p, seed: i + 1 })), // p1 seed 1 … p8 seed 8
+    );
+    store.listGamesForRound.mockResolvedValue([
+      game("p1", "p8", "white_win", 0),
+      game("p4", "p5", "draw", 1), // drawn — would normally spawn a rematch
+      game("p2", "p7", "black_win", 2),
+      game("p3", "p6", "white_win", 3),
+    ]);
+    const status = await advancePlayoff(tournament({ current_round: 1 }), {
+      resolveDrawsBySeed: true,
+    });
+    expect(status).toBe("playoff"); // advanced immediately, no tiebreak
+    expect(store.setRoundStatus).toHaveBeenCalledWith("pr1", "done");
+    expect(store.createGame).toHaveBeenCalledTimes(2); // semifinals, NOT a rematch
+    // slot 1's draw resolved to the higher seed p4 (seed 4 < p5 seed 5) → SF1 = p1 vs p4
     expect(store.createGame.mock.calls[0][0]).toMatchObject({
       whitePlayerId: "p1",
       blackPlayerId: "p4",
     });
-    expect(store.createGame.mock.calls[1][0]).toMatchObject({
-      whitePlayerId: "p2",
-      blackPlayerId: "p3",
+  });
+
+  it("advances the tiebreak winner once the rematch is decisive", async () => {
+    store.listRounds.mockResolvedValue([playoffRound(1)]);
+    store.listPlayers.mockResolvedValue(players(8));
+    store.listGamesForRound.mockResolvedValue([
+      game("p1", "p8", "white_win", 0),
+      game("p4", "p5", "draw", 1), // original draw
+      game("p5", "p4", "white_win", 1), // rematch decisive → p5
+      game("p2", "p7", "black_win", 2),
+      game("p3", "p6", "white_win", 3),
+    ]);
+    const status = await advancePlayoff(tournament({ current_round: 1 }));
+    expect(status).toBe("playoff");
+    expect(store.setRoundStatus).toHaveBeenCalledWith("pr1", "done");
+    expect(store.createGame).toHaveBeenCalledTimes(2); // semifinals
+    // slot1 resolved to the rematch winner p5 → SF1 = p1 vs p5
+    expect(store.createGame.mock.calls[0][0]).toMatchObject({
+      whitePlayerId: "p1",
+      blackPlayerId: "p5",
     });
   });
 
@@ -209,17 +286,47 @@ describe("advancePlayoff", () => {
     });
   });
 
-  it("refuses to advance past a drawn playoff game", async () => {
+  it("uses draw-odds (higher seed) when the tiebreak is also drawn", async () => {
     store.listRounds.mockResolvedValue([playoffRound(1)]);
-    store.listGamesForRound.mockResolvedValue([
-      game("p1", "p8", "white_win"),
-      game("p4", "p5", "draw"), // no winner
-      game("p2", "p7", "black_win"),
-      game("p3", "p6", "white_win"),
-    ]);
-    await expect(advancePlayoff(tournament({ current_round: 1 }))).rejects.toThrow(
-      "needs_decision",
+    // seed = i+1, so p4 (seed 4) outranks p5 (seed 5).
+    store.listPlayers.mockResolvedValue(
+      players(8).map((p, i) => ({ ...p, seed: i + 1 })),
     );
+    store.listGamesForRound.mockResolvedValue([
+      game("p1", "p8", "white_win", 0),
+      game("p4", "p5", "draw", 1),
+      game("p5", "p4", "draw", 1), // rematch ALSO drawn
+      game("p2", "p7", "black_win", 2),
+      game("p3", "p6", "white_win", 3),
+    ]);
+    const status = await advancePlayoff(tournament({ current_round: 1 }));
+    expect(status).toBe("playoff");
+    expect(store.createGame).toHaveBeenCalledTimes(2);
+    // slot1 → p4 (higher seed) advances by draw-odds: SF1 = p1 vs p4
+    expect(store.createGame.mock.calls[0][0]).toMatchObject({
+      whitePlayerId: "p1",
+      blackPlayerId: "p4",
+    });
+  });
+
+  it("a drawn final spawns a tiebreak, then crowns the higher seed", async () => {
+    store.listRounds.mockResolvedValue([playoffRound(3)]);
+    store.listPlayers.mockResolvedValue(
+      players(8).map((p, i) => ({ ...p, seed: i + 1 })),
+    );
+    // Pass 1: final drawn → rematch spawned, not finished.
+    store.listGamesForRound.mockResolvedValueOnce([game("p1", "p2", "draw", 0)]);
+    expect(await advancePlayoff(tournament({ current_round: 3 }))).toBe("tiebreak");
+    expect(store.updateTournament).not.toHaveBeenCalled();
+    // Pass 2: rematch also drawn → champion is the higher seed (p1).
+    store.listGamesForRound.mockResolvedValueOnce([
+      game("p1", "p2", "draw", 0),
+      game("p2", "p1", "draw", 0),
+    ]);
+    const status = await advancePlayoff(tournament({ current_round: 3 }));
+    expect(status).toBe("finished");
+    expect(store.updateTournament).toHaveBeenCalledWith("t", { status: "finished" });
+    expect(store.createGame).toHaveBeenCalledTimes(1); // only the pass-1 rematch
   });
 });
 
