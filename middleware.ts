@@ -2,15 +2,15 @@ import { type NextRequest } from "next/server";
 
 import { updateHostSession } from "@/lib/supabase/auth-middleware";
 
-// Next "proxy" convention (the renamed-from-middleware request hook — the
-// `middleware` filename is deprecated in this Next version).
+// Edge middleware (Cloudflare/OpenNext needs Edge runtime; Next 16 `proxy.ts`
+// is Node-only and unsupported on Workers, so we use `middleware.ts`).
 //
 // SCOPE: only the host/arrangør surface and the auth callback. Anonymous play —
 // the landing page, /arranger, /play, /solo, /versus, the board/projector at
 // /host/[tournamentId], every /api/* route, and all player code-based flows — is
 // NOT matched here and runs exactly as before. The host gate refreshes the
 // Sunday Account cookie + redirects to /host/login when there is no session.
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   return updateHostSession(request);
 }
 
