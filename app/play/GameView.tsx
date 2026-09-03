@@ -5,6 +5,7 @@ import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import type { GameDetail } from "@/lib/dto";
 import type { GameStatus, Turn } from "@/lib/types";
 import { api, ApiError, NON_JSON } from "@/lib/client/api";
+import { apiKind, errDetail, report } from "@/lib/client/telemetry";
 import { applyMove, legalDestinations } from "@/lib/chess/validateMove";
 import { needsPromotion, type PromoPiece } from "@/lib/chess/promotion";
 import { PromotionPicker } from "@/lib/client/PromotionPicker";
@@ -320,6 +321,8 @@ export const GameView = memo(function GameView({
   // Last PGN we parsed into the move list — lets the poll skip a full chess.js
   // re-parse when the position is unchanged (the common no-op poll).
   const lastPgn = useRef<string>("");
+  // Mirror of `syncFailures` for the telemetry hook in safeLoad — see there.
+  const syncFails = useRef(0);
 
   // game-start jingle (also nudges the AudioContext awake on mount)
   useEffect(() => {
@@ -335,6 +338,15 @@ export const GameView = memo(function GameView({
   const { active: tabActive, claim: claimTab } = useActiveTab(
     `${me.tournamentId}:${me.playerId}`,
   );
+
+  // T5: this tab just became the PASSIVE one. From the student's seat that looks
+  // exactly like "the board stopped working" (it stops polling by design, R5),
+  // so it is one of the likeliest things behind a "det hang seg" report — and
+  // the only way to tell it apart afterwards is to record it. `tabActive`
+  // starts true, so this fires on the flip, never on mount.
+  useEffect(() => {
+    if (!tabActive) report("tab_passive", { gameId });
+  }, [tabActive, gameId]);
 
   const load = useCallback(async () => {
     const d = await api.game(gameId);
@@ -381,9 +393,22 @@ export const GameView = memo(function GameView({
   // failures, e.g. after a channel drop — resets the counter immediately.
   const safeLoad = useCallback(() => {
     return load()
-      .then(() => setSyncFailures(0))
-      .catch(() => setSyncFailures((n) => n + 1));
-  }, [load]);
+      .then(() => {
+        syncFails.current = 0;
+        setSyncFailures(0);
+      })
+      .catch((e) => {
+        setSyncFailures((n) => n + 1);
+        // T5: report the THIRD consecutive failure — the point at which the
+        // student sees a stuck board rather than a blink. Counted in a ref, not
+        // read from state, so the updater stays pure and `safeLoad`'s identity
+        // (and therefore the poll interval) doesn't churn on every failure.
+        syncFails.current += 1;
+        if (syncFails.current === 3) {
+          report(apiKind(e), { ...errDetail(e), gameId });
+        }
+      });
+  }, [load, gameId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -438,11 +463,12 @@ export const GameView = memo(function GameView({
   useEffect(() => {
     if (!pending) return;
     const t = setTimeout(() => {
+      report("watchdog", { gameId, ms: PENDING_CEILING_MS });
       setPending(false);
       safeLoad();
     }, PENDING_CEILING_MS);
     return () => clearTimeout(t);
-  }, [pending, safeLoad]);
+  }, [pending, safeLoad, gameId]);
 
   const flash = (msg: string) => {
     setToast(msg);
@@ -554,7 +580,10 @@ export const GameView = memo(function GameView({
     // channelRegistry recreates the channel itself in the background (R11),
     // but that takes a moment — this immediate fetch catches whatever the
     // drop swallowed instead of waiting for it.
-    if (s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED") safeLoad();
+    if (s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED") {
+      report("channel_error", { status: s, gameId });
+      safeLoad();
+    }
   });
 
   // Attempt a move: optimistic render, then server reconcile / rollback.
@@ -606,6 +635,10 @@ export const GameView = memo(function GameView({
         setTurn(confirmed.split(" ")[1] === "b" ? "b" : "w");
         const code = e instanceof ApiError ? e.code : "";
         const httpStatus = e instanceof ApiError ? e.status : 0;
+        // T5: the move was rolled back. The pair (code, status) is exactly what
+        // the teacher's readout needs to tell "the server said no" apart from
+        // "the network ate it".
+        report("move_rollback", { code, status: httpStatus, gameId });
         if (code === "not_your_turn") flash(no.player.notYourTurn);
         else if (code === "flagged") {
           // My time ran out — the server resolved the game; sync the result.
