@@ -1,8 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
-import { Chess } from "chess.js";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import type { GameDetail } from "@/lib/dto";
 import type { GameStatus, Turn } from "@/lib/types";
@@ -32,7 +30,9 @@ import {
   type ReactionHandle,
 } from "@/lib/client/Reactions";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
-import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
+import { PlayBoard } from "@/lib/client/PlayBoard";
+import { moveCue } from "@/lib/chess/moveCue";
+import { sameDetail } from "@/lib/client/equal";
 import { MoveList, sansFromPgn } from "@/lib/client/MoveList";
 import { ReviewView } from "./ReviewView";
 import { no } from "@/lib/locale/no";
@@ -41,21 +41,6 @@ import { no } from "@/lib/locale/no";
  * Must exceed the API timeout (8 s) so the normal timeout/catch always wins
  * first; this only fires if something truly wedges the request. */
 const PENDING_CEILING_MS = 11000;
-
-/** Piece count from a FEN board field — a drop between positions = capture. */
-function pieceCount(fen: string): number {
-  return (fen.split(" ")[0].match(/[a-zA-Z]/g) ?? []).length;
-}
-
-/** Pick the sound cue for arriving at `fen` from `prevFen`. */
-function moveCue(prevFen: string, fen: string): "move" | "capture" | "check" {
-  try {
-    if (new Chess(fen).inCheck()) return "check";
-  } catch {
-    // unparseable fen → fall through to the count check
-  }
-  return prevFen && pieceCount(fen) < pieceCount(prevFen) ? "capture" : "move";
-}
 
 /** Client copy of a server clock snapshot, stamped with local receipt time. */
 interface ClockState {
@@ -71,6 +56,34 @@ function clockRemaining(c: ClockState, side: Turn): number {
   return c.running && c.turn === side
     ? Math.max(0, base - (Date.now() - c.at))
     : base;
+}
+
+/** A server clock snapshot as it arrives on the wire (no local receipt stamp). */
+type ClockWire = { whiteMs: number; blackMs: number; turn: Turn; running: boolean };
+
+/** How far the server's remaining time may sit from what we already predict
+ * locally before we adopt the new snapshot. A no-op poll (same side still
+ * thinking, nothing else happened) lands within network latency + clock skew of
+ * the local tick; anything a real event caused — a move, a flag, the game
+ * ending — flips `turn`/`running` or jumps far past this. */
+const CLOCK_DRIFT_TOLERANCE_MS = 250;
+
+/** L5: is this snapshot telling us anything we don't already show?
+ *
+ * The server ticks the side to move down live (see lib/chess/clock.ts), so the
+ * running side's `whiteMs`/`blackMs` is DIFFERENT on every 3 s poll even when
+ * nothing happened — which is why the old unconditional `setClock` allocated a
+ * new object (and a new `at`) every poll, busting both `ChessClock` memos and
+ * re-rendering GameView. Comparing against `clockRemaining` instead of the raw
+ * stored value handles both sides in one rule: for the IDLE side it is the
+ * stored number, so this is plain equality; for the RUNNING side it is our own
+ * local prediction, so a poll that merely confirms the tick is a no-op. */
+function clockUnchanged(prev: ClockState, c: ClockWire): boolean {
+  if (prev.turn !== c.turn || prev.running !== c.running) return false;
+  return (
+    Math.abs(c.whiteMs - clockRemaining(prev, "w")) < CLOCK_DRIFT_TOLERANCE_MS &&
+    Math.abs(c.blackMs - clockRemaining(prev, "b")) < CLOCK_DRIFT_TOLERANCE_MS
+  );
 }
 
 /** The clock-flag banners (opponent flagged → claim win; I flagged → out of
@@ -219,15 +232,15 @@ function SidePanel({
   );
 }
 
-// DnD board: render client-only to avoid SSR/window issues.
-const Chessboard = dynamic(
-  () => import("react-chessboard").then((m) => m.Chessboard),
-  { ssr: false },
-);
-
 type Color = "white" | "black";
 
-export function GameView({
+/** L5: `memo`'d. WaitingRoom is this component's always-mounted parent and
+ * re-renders on board polls, presence events and its own state — none of which
+ * the board cares about. Every prop below is a primitive or a stable reference
+ * (see the derivation block in WaitingRoom), so the default shallow comparison
+ * is enough; `<PlayBoard>` inside is a SECOND memo boundary that additionally
+ * absorbs GameView's own re-renders (clock ticks, toasts, sync badges). */
+export const GameView = memo(function GameView({
   me,
   gameId,
   onFinished,
@@ -284,12 +297,15 @@ export function GameView({
   // GameView (and therefore never re-renders the board).
   const reactionRef = useRef<ReactionHandle>(null);
 
-  const takeClock = useCallback(
-    (c: { whiteMs: number; blackMs: number; turn: Turn; running: boolean } | null | undefined) => {
-      if (c) setClock({ ...c, at: Date.now() });
-    },
-    [],
-  );
+  const takeClock = useCallback((c: ClockWire | null | undefined) => {
+    if (!c) return;
+    // Keep the previous snapshot (and its `at` baseline) when this one says
+    // nothing new — see clockUnchanged above. Functional form so the callback
+    // stays dependency-free: `load` and `tryMove` both list it.
+    setClock((prev) =>
+      prev && clockUnchanged(prev, c) ? prev : { ...c, at: Date.now() },
+    );
+  }, []);
 
   // Append a SAN to the move list only when it advances exactly one ply — this
   // dedups against the authoritative rebuild (load) and ignores out-of-order /
@@ -322,7 +338,12 @@ export function GameView({
 
   const load = useCallback(async () => {
     const d = await api.game(gameId);
-    setDetail(d); // names/pgn are always safe to refresh
+    // Names/pgn are always safe to refresh — but L5: only as a NEW object when
+    // a field the UI reads actually changed. This runs every 3 s, and between
+    // two moves every field is identical; adopting the fetched object anyway
+    // re-rendered GameView (and its 64 squares) for nothing. The ply-guarded
+    // position writes below are untouched and remain authoritative.
+    setDetail((prev) => (sameDetail(prev, d) ? prev : d));
     // Ply-guard exactly like the broadcast handler: a slow in-flight GET that
     // resolves AFTER a fresher move (mine or the opponent's) must not roll the
     // board back to a stale ply. Only adopt the fetched position if it's at
@@ -490,8 +511,10 @@ export function GameView({
       // to an older position (the ref tracks the freshest confirmed FEN).
       const fresh = plyOf(p.fen) >= plyOf(confirmedFen.current || fen);
       if (fresh) {
-        // The opponent moved (self-broadcasts are off) — audible cue.
-        if (p.fen !== fen) sound.play(moveCue(fen, p.fen));
+        // The opponent moved (self-broadcasts are off) — audible cue. The SAN
+        // rides along on the broadcast, so the cue costs no FEN parse (L5); it
+        // falls back to parsing when a payload carries no lastMove.san.
+        if (p.fen !== fen) sound.play(moveCue(fen, p.fen, p.lastMove?.san));
         setFen(p.fen);
         setTurn(p.turn);
         takeClock(p.clock);
@@ -548,7 +571,7 @@ export function GameView({
 
       const local = applyMove(fen, { from, to, promotion: piece });
       if (!local.ok) return false;
-      sound.play(moveCue(fen, local.fen));
+      sound.play(moveCue(fen, local.fen, local.san));
 
       setFen(local.fen);
       setTurn(local.turn);
@@ -676,28 +699,50 @@ export function GameView({
   }
 
   // Build square highlight styles (selection, last move, legal dots).
-  const squareStyles: Record<string, React.CSSProperties> = {};
-  if (lastMove) {
-    const hl = { background: "rgba(235,184,75,0.35)" };
-    squareStyles[lastMove.from] = { ...hl };
-    squareStyles[lastMove.to] = { ...hl };
-  }
-  if (selected) {
-    squareStyles[selected] = { background: "rgba(86,192,106,0.45)" };
-  }
-  for (const sq of legal) {
-    squareStyles[sq] = {
-      ...(squareStyles[sq] ?? {}),
-      backgroundImage:
-        "radial-gradient(circle, rgba(86,192,106,0.7) 22%, transparent 24%)",
-    };
-  }
-  // Queued pre-move — distinct orange so it reads differently from a real move.
-  if (preMove && status === "live") {
-    const pm = { background: "rgba(235,140,60,0.55)" };
-    squareStyles[preMove.from] = { ...pm };
-    squareStyles[preMove.to] = { ...pm };
-  }
+  //
+  // L5: the SEVEN primitives below are the complete input to these styles.
+  // `stylesKey` is their digest and is what <PlayBoard> compares — so the
+  // board re-renders exactly when a highlight changes and never merely because
+  // a poll handed GameView a new object. Deriving both from the same tuple in
+  // the same render is what makes them impossible to drift apart.
+  const lastFrom = lastMove?.from ?? null;
+  const lastTo = lastMove?.to ?? null;
+  const preFrom = preMove?.from ?? null;
+  const preTo = preMove?.to ?? null;
+  const stylesKey = [
+    lastFrom ?? "",
+    lastTo ?? "",
+    selected ?? "",
+    legal.join(","),
+    preFrom ?? "",
+    preTo ?? "",
+    status,
+  ].join("|");
+  const squareStyles = useMemo(() => {
+    const styles: Record<string, React.CSSProperties> = {};
+    if (lastFrom && lastTo) {
+      const hl = { background: "rgba(235,184,75,0.35)" };
+      styles[lastFrom] = { ...hl };
+      styles[lastTo] = { ...hl };
+    }
+    if (selected) {
+      styles[selected] = { background: "rgba(86,192,106,0.45)" };
+    }
+    for (const sq of legal) {
+      styles[sq] = {
+        ...(styles[sq] ?? {}),
+        backgroundImage:
+          "radial-gradient(circle, rgba(86,192,106,0.7) 22%, transparent 24%)",
+      };
+    }
+    // Queued pre-move — distinct orange so it reads differently from a real move.
+    if (preFrom && preTo && status === "live") {
+      const pm = { background: "rgba(235,140,60,0.55)" };
+      styles[preFrom] = { ...pm };
+      styles[preTo] = { ...pm };
+    }
+    return styles;
+  }, [lastFrom, lastTo, selected, legal, preFrom, preTo, status]);
 
   // Another tab on this device took over this player's session. Show a prompt
   // instead of a second live board (two boards → conflicting moves → "can't
@@ -889,18 +934,21 @@ export function GameView({
               role="group"
               aria-label={isMyTurn ? `${no.player.yourTurn} – ${no.player.boardLabel}` : no.player.boardLabel}
             >
-              <Chessboard
-                options={{
-                  ...BOARD_BASE_OPTIONS,
-                  position: fen || undefined,
-                  boardOrientation: myColor,
-                  // Draggable on my turn AND the opponent's (to queue a pre-move).
-                  allowDragging: !ended,
-                  onPieceDrop: onDrop,
-                  onSquareClick,
-                  squareStyles,
-                  id: "play-board",
-                }}
+              {/* L5: memo'd wrapper — same board, same handlers, but it only
+                  re-renders when something it DISPLAYS changed. See
+                  lib/client/PlayBoard.tsx for why ignoring the handlers'
+                  identity is safe (they are routed through refs, and every
+                  state they read is a function of the props compared here). */}
+              <PlayBoard
+                id="play-board"
+                fen={fen}
+                orientation={myColor}
+                // Draggable on my turn AND the opponent's (to queue a pre-move).
+                allowDragging={!ended}
+                squareStyles={squareStyles}
+                stylesKey={stylesKey}
+                onDrop={onDrop}
+                onSquareClick={onSquareClick}
               />
             </div>
             <ReactionOverlay ref={reactionRef} />
@@ -1093,4 +1141,4 @@ export function GameView({
       <FullscreenToggle />
     </main>
   );
-}
+});
