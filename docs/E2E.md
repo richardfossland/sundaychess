@@ -67,7 +67,9 @@ npm run e2e
 
 CI pins the CLI at **2.101.0** (`supabase/setup-cli@v1`, `version:` input). Both
 `supabase start`'s service names and the key names in `status -o env` are
-CLI-version surface, so bump that pin and this recipe together.
+CLI-version surface, so bump that pin and this recipe together. (`setup-cli@v1`
+still targets Node 20 and GitHub forces it onto 24 with a warning; newer majors
+resolve `version:` differently, so moving is a change of its own.)
 
 `supabase start`'s `-x` names come from `supabase start --help`; the full set is
 `analytics, db, edge-runtime, functions, imgproxy, inbucket, kong, meta,
