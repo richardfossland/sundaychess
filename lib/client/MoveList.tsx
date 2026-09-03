@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { Chess } from "chess.js";
 
 /** SAN half-move list from a PGN (["e4","e5","Nf3", …]). [] on empty/bad PGN. */
@@ -17,11 +17,14 @@ export function sansFromPgn(pgn: string): string[] {
 
 /** Compact SAN notation panel. `sans` is the half-move sequence; the most recent
  * move is highlighted, and the list scrolls to keep it in view. Read-only — shown
- * to players and spectators for a "follow the game" feel. */
+ * to players and spectators for a "follow the game" feel. Scrolls the list itself
+ * only — never the page. */
 export function MoveList({ sans, title }: { sans: string[]; title?: string }) {
-  const endRef = useRef<HTMLLIElement | null>(null);
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "nearest" });
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
   }, [sans.length]);
 
   const rows: { no: number; white?: string; black?: string }[] = [];
@@ -36,19 +39,15 @@ export function MoveList({ sans, title }: { sans: string[]; title?: string }) {
       data-testid="movelist"
       role="log"
       aria-label={title ?? "Trekkliste"}
+      ref={containerRef}
     >
       {sans.length === 0 ? (
         <span className="movelist-empty muted">–</span>
       ) : (
         <ol className="movelist-rows">
           {rows.map((r, ri) => {
-            const last = ri === rows.length - 1;
             return (
-              <li
-                key={r.no}
-                className="movelist-row"
-                ref={last ? endRef : undefined}
-              >
+              <li key={r.no} className="movelist-row">
                 <span className="movelist-no">{r.no}.</span>
                 <span
                   className={`movelist-san ${ri * 2 + 1 === lastPly ? "movelist-current" : ""}`}
