@@ -44,8 +44,10 @@ export interface PublicGame {
   fen: string;
   status: GameStatus;
   turn: Turn;
-  /** Present only once the game is decided — feeds replay + awards without a
-   * per-game fetch. Live games omit it (don't ship the full history each poll). */
+  /** Present only for a decided game AND only when the caller opted in via
+   * `toPublicGame(g, { withPgn: true })` (the board route's `?full=1`). Feeds
+   * replay + awards without a per-game fetch. Omitted by default so the 5s
+   * board poll never ships every finished game's full move history (R9). */
   pgn?: string;
   /** Bracket/pairing position within the round (0 for pre-0007 rows). */
   slot?: number;
@@ -99,9 +101,10 @@ export function toPublicPlayer(p: Player): PublicPlayer {
   };
 }
 
-export function toPublicGame(g: Game): PublicGame {
+export function toPublicGame(g: Game, opts?: { withPgn?: boolean }): PublicGame {
   const decided =
     g.status === "white_win" || g.status === "black_win" || g.status === "draw";
+  const withPgn = opts?.withPgn ?? false;
   return {
     id: g.id,
     roundId: g.round_id,
@@ -111,7 +114,7 @@ export function toPublicGame(g: Game): PublicGame {
     status: g.status,
     turn: g.turn,
     slot: g.slot ?? 0,
-    ...(decided && g.pgn ? { pgn: g.pgn } : {}),
+    ...(withPgn && decided && g.pgn ? { pgn: g.pgn } : {}),
   };
 }
 
