@@ -142,7 +142,7 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
         : no.versus.draw;
 
   return (
-    <main className="center-screen">
+    <main className="center-screen is-game">
       {outcome && outcome !== "draw" && <Confetti count={120} />}
       <div className="stack" style={{ alignItems: "center", width: "100%", maxWidth: 600, gap: 16 }}>
         {!outcome && (

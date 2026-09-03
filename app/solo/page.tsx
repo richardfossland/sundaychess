@@ -460,7 +460,7 @@ export default function Solo() {
     outcome === "win" ? no.solo.wonSub : outcome === "loss" ? no.solo.lostSub : no.solo.drawSub;
 
   return (
-    <main className="center-screen">
+    <main className="center-screen is-game">
       {outcome === "win" && <Confetti count={120} />}
       <div className="stack" style={{ alignItems: "center", width: "100%", maxWidth: 600, gap: 16 }}>
         <div className="spread" style={{ width: "min(92vw,560px)" }}>

@@ -71,19 +71,26 @@ function clockRemaining(c: ClockState, side: Turn): number {
     : base;
 }
 
-/** The two clock-flag banners (opponent flagged → claim win; I flagged → out of
- * time). Owns its OWN half-second ticker so detecting a flag re-renders only
- * this little component, never the parent GameView (and its board). */
-function ClockFlagBanners({
+/** The clock-flag banners (opponent flagged → claim win; I flagged → out of
+ * time) and the "draw offer sent" banner share ONE fixed-height `.notice-slot`
+ * below the action row, showing at most one message at a time by priority —
+ * I flagged > opponent flagged > my draw offer is pending — so the slot never
+ * changes height as a flag lands, an offer goes out, or it's declined (L3).
+ * Always mounted; visibility:hidden (never unmounted) once the game ends, same
+ * as .turn-slot. Owns its OWN half-second ticker so detecting a flag re-renders
+ * only this little component, never the parent GameView (and its board). */
+function NoticeSlot({
   clock,
   status,
   myTurnLetter,
+  drawSent,
   acting,
   onClaim,
 }: {
   clock: ClockState | null;
   status: GameStatus;
   myTurnLetter: Turn;
+  drawSent: boolean;
   acting: boolean;
   onClaim: () => void;
 }) {
@@ -94,6 +101,7 @@ function ClockFlagBanners({
     return () => clearInterval(t);
   }, [clock, status]);
 
+  const ended = status !== "live";
   const oppTurnLetter: Turn = myTurnLetter === "w" ? "b" : "w";
   const myClockMs = clock ? clockRemaining(clock, myTurnLetter) : null;
   const oppClockMs = clock ? clockRemaining(clock, oppTurnLetter) : null;
@@ -101,13 +109,17 @@ function ClockFlagBanners({
   const meFlagged = status === "live" && myClockMs !== null && myClockMs <= 0;
 
   return (
-    <>
-      {oppFlagged && (
+    <div className="notice-slot" style={ended ? { visibility: "hidden" } : undefined}>
+      {meFlagged ? (
+        <div className="banner banner-error" style={{ width: "100%" }} role="status" aria-live="polite">
+          <span className="banner-line">⏱ {no.player.myTimeOut}</span>
+        </div>
+      ) : oppFlagged ? (
         <div
           className="banner banner-turn"
           style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}
         >
-          <span>{no.player.oppOutOfTime}</span>
+          <span className="banner-line">{no.player.oppOutOfTime}</span>
           <button
             className="btn btn-primary"
             style={{ flexShrink: 0 }}
@@ -117,13 +129,12 @@ function ClockFlagBanners({
             ⏱ {no.player.claimWin}
           </button>
         </div>
-      )}
-      {meFlagged && (
-        <div className="banner banner-error" style={{ width: "100%" }} role="status" aria-live="polite">
-          ⏱ {no.player.myTimeOut}
+      ) : drawSent ? (
+        <div className="banner banner-wait" style={{ width: "100%" }} role="status" aria-live="polite">
+          <span className="banner-line">½ {no.player.drawSent}</span>
         </div>
-      )}
-    </>
+      ) : null}
+    </div>
   );
 }
 
@@ -455,7 +466,7 @@ export function GameView({
   }, [status, gameId]);
 
   // The chess-clock flag state ("krev seier på tid" / "tiden din er ute") is
-  // computed inside <ClockFlagBanners>, which owns its own ticker — so ticking
+  // computed inside <NoticeSlot>, which owns its own ticker — so ticking
   // it twice a second does NOT re-render the board/clocks here.
   const oppTurnLetter: Turn = myTurnLetter === "w" ? "b" : "w";
 
@@ -780,6 +791,15 @@ export function GameView({
           )}
         </div>
       )}
+      {/* L3: a true toast — fixed/out of flow (see .toast in globals.css) so a
+          transient error message can never change .center-screen's height and
+          re-centre (or on /solo, jump) the board underneath it. Auto-clears
+          after 2.2s (see `flash`). */}
+      {toast && (
+        <div className="banner banner-error toast" data-testid="toast" role="status" aria-live="polite">
+          {toast}
+        </div>
+      )}
       <div className="game-grid">
         {/* opponent — left on wide, top on narrow */}
         <div className="game-side panel-opp">
@@ -879,90 +899,53 @@ export function GameView({
             <ReactionOverlay ref={reactionRef} />
           </div>
 
-          {reactionsEnabled && !ended && (
-            <ReactionBar
-              onSend={(emoji) => {
-                reactionRef.current?.add(emoji); // self-broadcast off → show mine locally
-                sendOnGame("reaction", { emoji, by: me.playerId });
-              }}
-            />
-          )}
-
-          {!ended && (
-            <div className="row">
-              <button
-                className="btn btn-ghost"
-                disabled={pending || drawSent || acting}
-                onClick={() =>
-                  runMeta(
-                    api.draw(gameId, me.playerId, me.resumeCode, "offer"),
-                    () => setDrawSent(true),
-                  )
-                }
-              >
-                ½ {no.player.offerDraw}
-              </button>
-              <button
-                className="btn btn-danger"
-                disabled={pending || acting}
-                onClick={() => setConfirmResign(true)}
-              >
-                {no.player.resign}
-              </button>
+          {/* L3: kept mounted (visibility, not unmount) once reactions are
+              enabled for this round, so its removal at game end — which sits
+              below the board but above the result overlay's fade-in — can't
+              read as a flash beneath the overlay. */}
+          {reactionsEnabled && (
+            <div style={ended ? { visibility: "hidden" } : undefined}>
+              <ReactionBar
+                onSend={(emoji) => {
+                  reactionRef.current?.add(emoji); // self-broadcast off → show mine locally
+                  sendOnGame("reaction", { emoji, by: me.playerId });
+                }}
+              />
             </div>
           )}
 
-          <ClockFlagBanners
+          {/* L3: same reasoning — always mounted, visibility:hidden (not
+              unmounted) at game end. */}
+          <div className="row" style={ended ? { visibility: "hidden" } : undefined}>
+            <button
+              className="btn btn-ghost"
+              disabled={pending || drawSent || acting || ended}
+              onClick={() =>
+                runMeta(
+                  api.draw(gameId, me.playerId, me.resumeCode, "offer"),
+                  () => setDrawSent(true),
+                )
+              }
+            >
+              ½ {no.player.offerDraw}
+            </button>
+            <button
+              className="btn btn-danger"
+              disabled={pending || acting || ended}
+              onClick={() => setConfirmResign(true)}
+            >
+              {no.player.resign}
+            </button>
+          </div>
+
+          <NoticeSlot
             clock={clock}
             status={status}
             myTurnLetter={myTurnLetter}
+            drawSent={drawSent}
             acting={acting}
             onClaim={() => runMeta(api.claimTime(gameId, me.playerId, me.resumeCode))}
           />
-
-          {drawSent && !ended && (
-            <div className="banner banner-wait" style={{ width: "100%" }} role="status" aria-live="polite">
-              ½ {no.player.drawSent}
-            </div>
-          )}
-
-          {incomingDraw && !ended && (
-            <div className="card stack" style={{ padding: 16, width: "100%" }}>
-              <p>{no.player.drawOfferedByOpponent}</p>
-              <div className="row">
-                <button
-                  className="btn btn-primary grow"
-                  disabled={acting}
-                  onClick={() =>
-                    runMeta(
-                      api.draw(gameId, me.playerId, me.resumeCode, "accept"),
-                      () => setIncomingDraw(false),
-                    )
-                  }
-                >
-                  {no.player.accept}
-                </button>
-                <button
-                  className="btn grow"
-                  disabled={acting}
-                  onClick={() =>
-                    runMeta(
-                      api.draw(gameId, me.playerId, me.resumeCode, "decline"),
-                      () => setIncomingDraw(false),
-                    )
-                  }
-                >
-                  {no.player.decline}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {toast && (
-            <div className="banner banner-error" data-testid="toast" style={{ width: "100%" }}>
-              {toast}
-            </div>
-          )}
 
           {/* Always mounted (L2) — MoveList already renders a "–" placeholder
               for an empty list, and .movelist now has a fixed height, so it's
@@ -1071,6 +1054,31 @@ export function GameView({
             runMeta(api.resign(gameId, me.playerId, me.resumeCode));
           }}
           onCancel={() => setConfirmResign(false)}
+        />
+      )}
+
+      {/* L3: was an in-flow card below the board (grew the layout by a whole
+          card whenever an offer arrived, sliding the board on a top-aligned
+          screen). A modal dialog — same one used for resign — moves it out of
+          flow entirely; accept/decline are wired to the same handlers as
+          before. */}
+      {incomingDraw && !ended && (
+        <ConfirmDialog
+          message={no.player.drawOfferedByOpponent}
+          confirmLabel={no.player.accept}
+          cancelLabel={no.player.decline}
+          onConfirm={() =>
+            runMeta(
+              api.draw(gameId, me.playerId, me.resumeCode, "accept"),
+              () => setIncomingDraw(false),
+            )
+          }
+          onCancel={() =>
+            runMeta(
+              api.draw(gameId, me.playerId, me.resumeCode, "decline"),
+              () => setIncomingDraw(false),
+            )
+          }
         />
       )}
 
