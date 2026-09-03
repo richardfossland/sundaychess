@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { BoardState } from "@/lib/dto";
-import { api } from "@/lib/client/api";
+import { api, ApiError } from "@/lib/client/api";
 import { channels } from "@/lib/realtime";
 import { useChannel } from "@/lib/client/useChannel";
 
@@ -12,6 +12,15 @@ import { useChannel } from "@/lib/client/useChannel";
 export function useBoardState(tournamentId: string | null, withClocks = false) {
   const [state, setState] = useState<BoardState | null>(null);
   const [error, setError] = useState(false);
+  // The HTTP status behind `error` (0 = network/timeout, i.e. never reached the
+  // server). Callers need it to tell "this tournament is gone" (our own 404)
+  // from a transient blip — a distinction `error: boolean` can't carry.
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  // …and WHO said it. A status alone is not a verdict: an HTML 404 from the
+  // edge arrives here as status 404 with the caller's fallback tag
+  // ("board_failed"), never our own "not_found". Callers that act on a 404 must
+  // check both. null when the failure wasn't an ApiError at all.
+  const [errorCode, setErrorCode] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!tournamentId) return;
@@ -19,8 +28,13 @@ export function useBoardState(tournamentId: string | null, withClocks = false) {
       const next = await api.board(tournamentId, withClocks);
       setState(next);
       setError(false);
-    } catch {
+      setErrorStatus(null);
+      setErrorCode(null);
+    } catch (e) {
+      // Keep the previous `state`: a failed poll must not blank a live board.
       setError(true);
+      setErrorStatus(e instanceof ApiError ? e.status : 0);
+      setErrorCode(e instanceof ApiError ? e.code : null);
     }
   }, [tournamentId, withClocks]);
 
@@ -67,5 +81,5 @@ export function useBoardState(tournamentId: string | null, withClocks = false) {
     return () => clearInterval(id);
   }, [tournamentId, refresh]);
 
-  return { state, error, refresh };
+  return { state, error, errorStatus, errorCode, refresh };
 }

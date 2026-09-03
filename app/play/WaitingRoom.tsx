@@ -99,7 +99,9 @@ export function WaitingRoom({
   // Latch the active game so the result screen survives board refetches until
   // the student dismisses it.
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
-  const { state, refresh } = useBoardState(me.tournamentId);
+  const { state, error, errorStatus, errorCode, refresh } = useBoardState(
+    me.tournamentId,
+  );
   // Advertise that this student is connected (keyed by playerId) so the host can
   // see who's online in the lobby and drop ghosts. Stays active across the
   // waiting view and the in-game child below (this component remains mounted).
@@ -123,6 +125,45 @@ export function WaitingRoom({
       setActiveGameId(null);
     }
   }, [state, activeGameId]);
+
+  // The tournament itself is gone: OUR API said so (404 + our own `not_found`
+  // envelope) and we never got a board. The code check is load-bearing, by this
+  // PR's own rule — an HTML 404 from the edge also arrives as status 404, but
+  // carries the caller tag "board_failed", and it must NOT put a student in
+  // front of a "Logg ut" button that wipes their resume code.
+  // Every OTHER error is deliberately left alone here — `error`/`errorStatus`/
+  // `errorCode` stay in scope for the reconnecting badge (R7); a blip keeps the
+  // last board.
+  const tournamentGone =
+    error && errorStatus === 404 && errorCode === "not_found" && !state;
+
+  if (tournamentGone) {
+    return (
+      <main className="center-screen">
+        <div
+          className="card card-narrow stack text-center scale-in"
+          style={{ alignItems: "center" }}
+        >
+          <div className="brandmark" style={{ justifyContent: "center" }}>
+            <span className="knight">♞</span> Sunday<b>Chess</b>
+          </div>
+          <div style={{ fontSize: 40 }}>🏁</div>
+          <h2 style={{ fontSize: 22 }}>{no.player.tournamentGone}</h2>
+          <p className="muted">{no.player.tournamentGoneBody}</p>
+          <button
+            className="btn btn-primary btn-lg"
+            style={{ marginTop: 6 }}
+            onClick={() => {
+              identity.clearPlayer();
+              onLeave();
+            }}
+          >
+            {no.player.logOut}
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   if (activeGameId) {
     // Round timer (league rounds only) — fed to the player's board.
@@ -216,7 +257,7 @@ export function WaitingRoom({
             onLeave();
           }}
         >
-          Logg ut
+          {no.player.logOut}
         </button>
       </div>
 
