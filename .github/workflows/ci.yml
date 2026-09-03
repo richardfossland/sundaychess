@@ -44,6 +44,4 @@ jobs:
     needs: check
     uses: ./.github/workflows/e2e.yml
     with:
-      # TEMPORARY (T3): one run with the mobile project too, to prove
-      # layout-stability.spec.ts holds at 390px. Reverted before merge.
-      projects: desktop-chromium mobile-chromium
+      projects: desktop-chromium
