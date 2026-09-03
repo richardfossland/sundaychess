@@ -164,12 +164,36 @@ another Playwright project.
 
 ```
 e2e/
-  smoke.spec.ts        two students, two contexts, e4/e5 seen on both boards
+  smoke.spec.ts             two students, two contexts, e4/e5 seen on both boards
+  layout-stability.spec.ts  12 half-moves; scrollY, board box, CLS, pinned list (L1/L2)
+  reconnect.spec.ts         offline mid-game and mid-move; rollback, pending ceiling (R7)
+  server-errors.spec.ts     edge 503/403 HTML vs our own JSON verdict (R1/R3)
+  two-tabs.spec.ts          one identity, several tabs; passive tab, release (R5)
+  game-end.spec.ts          fool's mate; the result must not move the board (L2/L3)
+  public-flow.spec.ts       the same board WITHOUT the seam — the join flow itself
+  lobby-rejoin.spec.ts      the ghost-sweep's 3 min gate, and the way back (R4)
+
   fixtures/match.ts    createMatch (seam) · publicFlowMatch (public routes only)
                        · openAs (seed localStorage → /play → real resume path)
+                       · waitForBoard (shell + all 64 squares)
   pages/board.ts       BoardPage — clickMove/dragMove/pieceAt/turnBanner/boardBox
-  helpers/cls.ts       layout-shift accumulator (installCls before goto)
+                       · turnSlotHeight/movelistPinned/resignButton
+  helpers/cls.ts       layout-shift accumulator (installCls on a page OR a context)
+  helpers/net.ts       countRequests · blockRoute (canned reply + undo) · hangRoute
+  helpers/identity.ts  seedPlayer/seedHostCode (before app code) · readIdentity
 ```
+
+Two conventions the specs above rely on, both deliberate:
+
+* **Serial per file.** Every spec writes to the same Supabase instance, so files
+  that open several tabs or take the network away run `test.describe.configure({
+  mode: "serial" })` and reach for `test.setTimeout(120_000)` when they wait out
+  a shipped timeout (the 8 s fetch deadline, the 11 s pending ceiling, the 30 s
+  lobby sweep tick).
+* **Budgets are derived, never invented.** A poll that waits 12 s for a
+  reconnect is waiting for four 3 s poll cycles; one that waits 6 s for a badge
+  to clear is waiting for two. Where a number does not come from a constant in
+  the app, the comment says what it does come from.
 
 `openAs` fakes no screens: it writes `sjakk:player` via `addInitScript` and lets
 `/play` walk its real path — `attemptResume` → `WaitingRoom` latches the live
