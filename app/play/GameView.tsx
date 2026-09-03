@@ -17,6 +17,7 @@ import { plyOf } from "@/lib/chess/ply";
 import { channels } from "@/lib/realtime";
 import { useChannel } from "@/lib/client/useChannel";
 import { useActiveTab } from "@/lib/client/useActiveTab";
+import { useTabHidden } from "@/lib/client/useTabHidden";
 import type { StoredPlayer } from "@/lib/client/identity";
 import { Confetti, initials } from "@/lib/client/Confetti";
 import { CapturedPieces } from "@/lib/client/CapturedPieces";
@@ -397,13 +398,17 @@ export function GameView({
   // lost. load() only adopts authoritative server state and confirmedFen
   // ply-guards stale broadcasts, so it can't undo my own optimistic move.
   // Guarantees the board un-freezes within ~3 s no matter how state got stuck.
+  // Slower (20 s) while hidden rather than skipped outright (R11): a
+  // backgrounded tab whose channel silently died must still come back current
+  // within a bounded time, not only at the next visibilitychange→visible
+  // refresh — still gated on tabActive, per R5, since a passive tab must never
+  // poll at all (it isn't the live board for this player).
+  const hidden = useTabHidden();
   useEffect(() => {
     if (status !== "live" || !tabActive) return; // passive tab: don't poll
-    const id = setInterval(() => {
-      if (document.visibilityState === "visible") safeLoad();
-    }, 3000);
+    const id = setInterval(safeLoad, hidden ? 20000 : 3000);
     return () => clearInterval(id);
-  }, [status, safeLoad, tabActive]);
+  }, [status, safeLoad, tabActive, hidden]);
 
   // Pending watchdog: an absolute ceiling so the optimistic-move lock can NEVER
   // freeze the board permanently. If `pending` somehow outlives the API timeout
@@ -521,9 +526,12 @@ export function GameView({
       }
     }
   }, (s) => {
-    // Broadcasts silently stopped (channel error/timeout) → refetch truth now;
-    // the ~3 s poll then keeps it fresh until the socket re-joins.
-    if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") safeLoad();
+    // Broadcasts silently stopped (channel error/timeout/CLOSED) → refetch
+    // truth now; the poll then keeps it fresh until the socket re-joins.
+    // channelRegistry recreates the channel itself in the background (R11),
+    // but that takes a moment — this immediate fetch catches whatever the
+    // drop swallowed instead of waiting for it.
+    if (s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED") safeLoad();
   });
 
   // Attempt a move: optimistic render, then server reconcile / rollback.
