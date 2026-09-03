@@ -20,8 +20,9 @@ import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
  * 1–2 s while nothing on the board had changed.
  *
  * So the board must not re-render unless something the board DISPLAYS changed.
- * The value props (`id`, `fen`, `orientation`, `allowDragging`, `stylesKey`)
- * are compared by value; the handler props are deliberately IGNORED, because
+ * The value props (`id`, `fen`, `orientation`, `allowDragging`, `showNotation`,
+ * `stylesKey`) are compared by value; the handler props are deliberately
+ * IGNORED, because
  * GameView memoizes none of them (`tryMove`'s dependency list is unchanged by
  * this PR) and never will — a memoized move handler is exactly the risk the
  * previous owner refused to take.
@@ -92,6 +93,13 @@ export interface PlayBoardProps {
   fen: string;
   orientation: "white" | "black";
   allowDragging: boolean;
+  /** L8: draws file/rank coordinates on the board edge. Optional — omitted
+   * call sites (GameView) get react-chessboard's own default (`true`), same
+   * as before this field existed. LiveGamesView's mini boards pass `false`
+   * (too small to read notation) while its big/single board and the spectate
+   * board pass `true` explicitly; it's a real value prop like the others
+   * (compared in `arePropsEqual`, not just spread through). */
+  showNotation?: boolean;
   /** Highlight styles for this render. Its identity is ignored — `stylesKey`
    * is the thing compared — so it must be derived from exactly the same tuple
    * `stylesKey` is. */
@@ -115,6 +123,10 @@ export function arePropsEqual(
     prev.fen === next.fen &&
     prev.orientation === next.orientation &&
     prev.allowDragging === next.allowDragging &&
+    // react-chessboard defaults `showNotation` to `true`; normalize the
+    // omitted case before comparing so "unset" and "explicitly true" (every
+    // call site as of this PR) never register as a change.
+    (prev.showNotation ?? true) === (next.showNotation ?? true) &&
     prev.stylesKey === next.stylesKey
   );
 }
@@ -124,6 +136,7 @@ export const PlayBoard = memo(function PlayBoard({
   fen,
   orientation,
   allowDragging,
+  showNotation,
   squareStyles,
   onDrop,
   onSquareClick,
@@ -157,12 +170,22 @@ export const PlayBoard = memo(function PlayBoard({
       position: fen || undefined,
       boardOrientation: orientation,
       allowDragging,
+      showNotation,
       onPieceDrop: handleDrop,
       onSquareClick: handleSquareClick,
       squareStyles,
       id,
     }),
-    [fen, orientation, allowDragging, squareStyles, id, handleDrop, handleSquareClick],
+    [
+      fen,
+      orientation,
+      allowDragging,
+      showNotation,
+      squareStyles,
+      id,
+      handleDrop,
+      handleSquareClick,
+    ],
   );
 
   return <Chessboard options={options} />;

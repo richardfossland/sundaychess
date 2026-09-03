@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import dynamic from "next/dynamic";
+import type { CSSProperties } from "react";
 import type { BoardState } from "@/lib/dto";
 import type { GameStatus, Turn } from "@/lib/types";
 import { channels } from "@/lib/realtime";
 import { useChannel } from "@/lib/client/useChannel";
 import { ChessClock } from "@/lib/client/ChessClock";
-import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
+import { PlayBoard } from "@/lib/client/PlayBoard";
 import { no } from "@/lib/locale/no";
 import { variantStartFen } from "@/lib/chess/variants";
 import { plyOf } from "@/lib/chess/ply";
@@ -15,10 +15,16 @@ import { SpectateGame } from "./SpectateGame";
 import { FullscreenToggle } from "@/lib/client/FullscreenToggle";
 import { Confetti } from "@/lib/client/Confetti";
 
-const Chessboard = dynamic(
-  () => import("react-chessboard").then((m) => m.Chessboard),
-  { ssr: false },
-);
+// L8: the grid never highlights squares (that's the single-game spectate
+// view's job) — a stable empty object + constant key so every mini/big board
+// shares one reference and the memo comparison is trivially cheap.
+const NO_SQUARE_STYLES: Record<string, CSSProperties> = {};
+const NO_STYLES_KEY = "";
+// Read-only boards: identity is ignored by <PlayBoard>'s own memo anyway (see
+// lib/client/PlayBoard.tsx), but stable module-level no-ops keep the intent
+// obvious at each call site.
+const NOOP_DROP = () => false;
+const NOOP_CLICK = () => {};
 
 /** Client clock snapshot, stamped with local receipt time so ChessClock can
  * tick the running side down. */
@@ -248,14 +254,16 @@ export function LiveGamesView({
           {Heads(g)}
           <div className="stack" style={{ alignItems: "center" }}>
             <div className="board-shell-lg" style={{ borderRadius: 8, overflow: "hidden" }}>
-              <Chessboard
-                options={{
-                  ...BOARD_BASE_OPTIONS,
-                  position: fenMap[g.id] ?? g.fen,
-                  allowDragging: false,
-                  showNotation: true,
-                  id: `big-${g.id}`,
-                }}
+              <PlayBoard
+                id={`big-${g.id}`}
+                fen={fenMap[g.id] ?? g.fen}
+                orientation="white"
+                allowDragging={false}
+                showNotation
+                squareStyles={NO_SQUARE_STYLES}
+                stylesKey={NO_STYLES_KEY}
+                onDrop={NOOP_DROP}
+                onSquareClick={NOOP_CLICK}
               />
             </div>
           </div>
@@ -306,14 +314,16 @@ export function LiveGamesView({
             >
               {Heads(g)}
               <div style={{ borderRadius: 8, overflow: "hidden" }}>
-                <Chessboard
-                  options={{
-                    ...BOARD_BASE_OPTIONS,
-                    position: fenMap[g.id] ?? g.fen,
-                    allowDragging: false,
-                    showNotation: false,
-                    id: `mini-${g.id}`,
-                  }}
+                <PlayBoard
+                  id={`mini-${g.id}`}
+                  fen={fenMap[g.id] ?? g.fen}
+                  orientation="white"
+                  allowDragging={false}
+                  showNotation={false}
+                  squareStyles={NO_SQUARE_STYLES}
+                  stylesKey={NO_STYLES_KEY}
+                  onDrop={NOOP_DROP}
+                  onSquareClick={NOOP_CLICK}
                 />
               </div>
             </button>
