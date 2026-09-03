@@ -40,7 +40,12 @@ async function handleGet(
   // show grid clocks, so we skip the per-game move-stamp read for them. (Auto-
   // finish of a stale tournament happens in /api/resume — the student entry
   // point — plus the nightly cron, so it's NOT on this hot poll path.)
-  const wantClocks = new URL(req.url).searchParams.get("clocks") === "1";
+  const query = new URL(req.url).searchParams;
+  const wantClocks = query.get("clocks") === "1";
+  // PGN is heavy (a full move-by-move history per decided game) and useless to
+  // the 5s poll — only the finished-tournament recap (awards + replay) needs
+  // it, fetched ONCE via ?full=1. Never on the hot path (R9).
+  const wantFull = query.get("full") === "1";
 
   const t = await getTournament(id);
   if (!t) return fail(404, "not_found");
@@ -106,7 +111,7 @@ async function handleGet(
       score: leagueScore.get(p.id) ?? 0,
     })),
     games: games.map((g) => {
-      const pub = toPublicGame(g);
+      const pub = toPublicGame(g, { withPgn: wantFull });
       const clock = clockByGame.get(g.id);
       return clock ? { ...pub, clock } : pub;
     }),

@@ -179,11 +179,23 @@ export const api = {
   resume: (resumeCode: string, ref: { pin?: string; tournamentId?: string }) =>
     post<ResumeResult>("/api/resume", { resumeCode, ...ref }),
 
-  board: (id: string, withClocks = false) =>
-    getJson<BoardState>(
-      `/api/tournament/${id}${withClocks ? "?clocks=1" : ""}`,
+  // Accepts either the legacy positional boolean (existing pollers, e.g.
+  // useBoardState's `withClocks`) or an options object. `full` asks the server
+  // to include each decided game's PGN (lib/dto.ts toPublicGame) — heavy, so
+  // it must NEVER be set on the 5s board poll; only a one-off fetch (awards /
+  // replay recap) should pass `{ full: true }` (R9).
+  board: (id: string, opts: boolean | { clocks?: boolean; full?: boolean } = false) => {
+    const { clocks, full } =
+      typeof opts === "boolean" ? { clocks: opts, full: false } : opts;
+    const qs = new URLSearchParams();
+    if (clocks) qs.set("clocks", "1");
+    if (full) qs.set("full", "1");
+    const suffix = qs.toString();
+    return getJson<BoardState>(
+      `/api/tournament/${id}${suffix ? `?${suffix}` : ""}`,
       "board_failed",
-    ),
+    );
+  },
 
   game: (id: string) => getJson<GameDetail>(`/api/game/${id}`, "game_failed"),
 

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import type { BoardState, PublicGame } from "@/lib/dto";
+import { api } from "@/lib/client/api";
 import { Confetti, initials } from "@/lib/client/Confetti";
 import { SoundToggle } from "@/lib/client/SoundToggle";
 import { sound } from "@/lib/client/sound";
@@ -64,10 +65,33 @@ export function FinishedView({ state }: { state: BoardState }) {
     return (id: string) => m.get(id) ?? "?";
   }, [players]);
 
+  // The 5s board poll (useBoardState) never carries PGN (R9) — `state.games`
+  // has everything else the podium needs, but awards are computed by replaying
+  // each decided game's move history. Fetch that ONCE, here, when the finished
+  // view first appears, instead of paying for it on every poll. Until it
+  // resolves (or if it fails) `pgnGames` stays null and the award grid below
+  // simply doesn't render — a quiet loading/empty state, not an error.
+  const [pgnGames, setPgnGames] = useState<PublicGame[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .board(tournament.id, { full: true })
+      .then((full) => {
+        if (!cancelled) setPgnGames(full.games);
+      })
+      .catch(() => {
+        // Awards are a nice-to-have recap, not core to the podium — leave
+        // pgnGames null (empty award grid) rather than erroring this screen.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tournament.id]);
+
   const awards = useMemo(
     () =>
       computeAwards(
-        games
+        (pgnGames ?? [])
           .filter((g) => g.pgn)
           .map((g) => ({
             id: g.id,
@@ -77,7 +101,7 @@ export function FinishedView({ state }: { state: BoardState }) {
             pgn: g.pgn as string,
           })),
       ),
-    [games],
+    [pgnGames],
   );
 
   const teamRows = useMemo(
