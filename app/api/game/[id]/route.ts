@@ -2,6 +2,7 @@ import { getGame, getPlayer } from "@/lib/server/store";
 import { gameClock } from "@/lib/server/clock";
 import { lastMoveFromPgn } from "@/lib/chess/lastMove";
 import { fail, ok } from "@/lib/server/http";
+import { isUuid } from "@/lib/codes";
 import type { GameDetail } from "@/lib/dto";
 
 // GET /api/game/[id] — authoritative game state for reconnect/resume (spec §4).
@@ -23,6 +24,10 @@ async function handleGet(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const { id } = await params;
+  // Malformed id (bot probes) is a client error, not an outage: a non-UUID
+  // `.eq("id", id)` throws 22P02 in Postgres. Answer the same "no_game" a
+  // genuinely missing id gets, rather than letting the query throw into 503.
+  if (!isUuid(id)) return fail(404, "no_game");
   const game = await getGame(id);
   if (!game) return fail(404, "no_game");
 

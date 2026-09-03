@@ -36,22 +36,23 @@ vi.mock("@/lib/server/store", () => store);
 import { DELETE } from "@/app/api/host/tournaments/[id]/route";
 import { GET } from "@/app/api/host/tournaments/route";
 
+const TID = "11111111-1111-4111-8111-111111111111";
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
-const req = () => new Request("http://x/api/host/tournaments/t1", { method: "DELETE" });
+const req = () => new Request(`http://x/api/host/tournaments/${TID}`, { method: "DELETE" });
 
 beforeEach(() => vi.clearAllMocks());
 
 describe("DELETE /api/host/tournaments/[id]", () => {
   it("401 when not signed in", async () => {
     auth.requireHost.mockRejectedValue(new auth.AuthError(401, "not_signed_in"));
-    const res = await DELETE(req(), params("t1"));
+    const res = await DELETE(req(), params(TID));
     expect(res.status).toBe(401);
     expect(store.deleteTournamentOwned).not.toHaveBeenCalled();
   });
 
   it("403 when signed in but not allow-listed", async () => {
     auth.requireHost.mockRejectedValue(new auth.AuthError(403, "not_authorized"));
-    const res = await DELETE(req(), params("t1"));
+    const res = await DELETE(req(), params(TID));
     expect(res.status).toBe(403);
     expect(store.deleteTournamentOwned).not.toHaveBeenCalled();
   });
@@ -59,26 +60,36 @@ describe("DELETE /api/host/tournaments/[id]", () => {
   it("404 when the host does not own the tournament (no row deleted)", async () => {
     auth.requireHost.mockResolvedValue({ id: "u1", email: "h@x.no" });
     store.deleteTournamentOwned.mockResolvedValue(false);
-    const res = await DELETE(req(), params("t1"));
+    const res = await DELETE(req(), params(TID));
     expect(res.status).toBe(404);
     // Owner double-gate: the delete is scoped to the signed-in host's id.
-    expect(store.deleteTournamentOwned).toHaveBeenCalledWith("t1", "u1");
+    expect(store.deleteTournamentOwned).toHaveBeenCalledWith(TID, "u1");
   });
 
   it("200 when the owner deletes their own tournament", async () => {
     auth.requireHost.mockResolvedValue({ id: "u1", email: "h@x.no" });
     store.deleteTournamentOwned.mockResolvedValue(true);
-    const res = await DELETE(req(), params("t1"));
+    const res = await DELETE(req(), params(TID));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
-    expect(store.deleteTournamentOwned).toHaveBeenCalledWith("t1", "u1");
+    expect(store.deleteTournamentOwned).toHaveBeenCalledWith(TID, "u1");
   });
 
   it("503 (never throws) on an unexpected store failure", async () => {
     auth.requireHost.mockResolvedValue({ id: "u1", email: "h@x.no" });
     store.deleteTournamentOwned.mockRejectedValue(new Error("db down"));
-    const res = await DELETE(req(), params("t1"));
+    const res = await DELETE(req(), params(TID));
     expect(res.status).toBe(503);
+  });
+
+  // R1b: a malformed id (bot probe, stale link) must not reach Postgres — a
+  // non-UUID `.eq("id", …)` throws 22P02, which used to surface as a false 503.
+  it("404 on a malformed (non-UUID) id, without ever calling the store", async () => {
+    auth.requireHost.mockResolvedValue({ id: "u1", email: "h@x.no" });
+    const res = await DELETE(req(), params("probe"));
+    expect(res.status).toBe(404);
+    expect((await res.json()).error).toBe("not_found");
+    expect(store.deleteTournamentOwned).not.toHaveBeenCalled();
   });
 });
 
