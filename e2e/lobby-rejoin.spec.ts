@@ -1,4 +1,10 @@
-import { expect, test, type APIRequestContext, type BrowserContext } from "@playwright/test";
+import {
+  expect,
+  test,
+  type APIRequestContext,
+  type BrowserContext,
+  type Page,
+} from "@playwright/test";
 
 import { no } from "@/lib/locale/no";
 import type { StoredPlayer } from "@/lib/client/identity";
@@ -59,6 +65,11 @@ async function openLobby(request: APIRequestContext, names: string[]): Promise<L
   return { tournamentId: t.id, hostCode: t.hostCode, players };
 }
 
+/** One player's row on the teacher's board, by the only hook that is theirs
+ *  alone: the kick button LobbyView labels with their name. */
+const inRoster = (page: Page, displayName: string) =>
+  page.getByRole("button", { name: `${no.host.kick} ${displayName}` });
+
 test.describe.configure({ mode: "serial" });
 
 test("a student who vanishes is not swept out of the lobby minutes early", async ({
@@ -79,10 +90,11 @@ test("a student who vanishes is not swept out of the lobby minutes early", async
     const hostPage = await hostCtx.newPage();
     const kicks = countRequests(hostPage, "/api/lobby/kick");
     await hostPage.goto(`/host/${lobby.tournamentId}`);
-    await expect(hostPage.getByText("Ada", { exact: true })).toBeVisible({
-      timeout: 20_000,
-    });
-    await expect(hostPage.getByText("Bo", { exact: true })).toBeVisible();
+    // Addressed by the kick button's aria-label ("Kast ut Ada"): the roster chip
+    // itself reads "AD Ada ✕" — avatar initials, name, kick — so a name is never
+    // an element's whole text, and only the label is one player's alone.
+    await expect(inRoster(hostPage, "Ada")).toBeVisible({ timeout: 20_000 });
+    await expect(inRoster(hostPage, "Bo")).toBeVisible();
 
     // ---- one student on a phone ----
     const studentCtx = await browser.newContext();
@@ -123,7 +135,7 @@ test("a student who vanishes is not swept out of the lobby minutes early", async
     kicks.stop();
 
     // Still in the roster, still shown — just marked offline.
-    await expect(hostPage.getByText("Ada", { exact: true })).toBeVisible();
+    await expect(inRoster(hostPage, "Ada")).toBeVisible();
   } finally {
     await Promise.all(contexts.map((c) => c.close()));
   }
