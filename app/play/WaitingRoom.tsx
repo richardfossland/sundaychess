@@ -137,6 +137,15 @@ export function WaitingRoom({
   const tournamentGone =
     error && errorStatus === 404 && errorCode === "not_found" && !state;
 
+  // A transient fetch error while we still have SOME state: never wipe the
+  // waiting view (or a latched game below) — just flag the hiccup with a
+  // fixed-position badge, exactly like the host board (BoardClient).
+  const showReconnectBadge = error && !!state;
+  // No state at all, and it's not the "tournament is gone" verdict above: a
+  // full connection loss before the first board ever loaded. Give the student
+  // something to act on instead of an infinite spinner.
+  const showReconnectCard = error && !state && !tournamentGone;
+
   if (tournamentGone) {
     return (
       <main className="center-screen">
@@ -159,6 +168,19 @@ export function WaitingRoom({
             }}
           >
             {no.player.logOut}
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (showReconnectCard) {
+    return (
+      <main className="center-screen">
+        <div className="card card-narrow stack text-center" style={{ alignItems: "center" }}>
+          <h2>{no.common.error}</h2>
+          <button className="btn btn-primary btn-lg" onClick={() => refresh()}>
+            {no.common.retry}
           </button>
         </div>
       </main>
@@ -212,6 +234,16 @@ export function WaitingRoom({
 
   return (
     <main className="center-screen">
+      {showReconnectBadge && (
+        <div
+          className="banner banner-wait"
+          style={{ position: "fixed", top: 16, left: 20, zIndex: 40, padding: "6px 12px" }}
+          role="status"
+          aria-live="polite"
+        >
+          {no.player.reconnecting}
+        </div>
+      )}
       <div className="stack" style={{ alignItems: "center", gap: 16, width: "100%", maxWidth: 450 }}>
       <div className="card card-narrow stack text-center scale-in" style={{ alignItems: "center" }}>
         <div className="brandmark" style={{ justifyContent: "center" }}>

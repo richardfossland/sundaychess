@@ -21,6 +21,10 @@ export function useBoardState(tournamentId: string | null, withClocks = false) {
   // ("board_failed"), never our own "not_found". Callers that act on a 404 must
   // check both. null when the failure wasn't an ApiError at all.
   const [errorCode, setErrorCode] = useState<string | null>(null);
+  // Consecutive failed refreshes in a row — reset to 0 the moment one succeeds.
+  // Callers use this to escalate a "reconnecting" badge (R7) without needing
+  // their own counter.
+  const [failures, setFailures] = useState(0);
 
   const refresh = useCallback(async () => {
     if (!tournamentId) return;
@@ -30,11 +34,13 @@ export function useBoardState(tournamentId: string | null, withClocks = false) {
       setError(false);
       setErrorStatus(null);
       setErrorCode(null);
+      setFailures(0);
     } catch (e) {
       // Keep the previous `state`: a failed poll must not blank a live board.
       setError(true);
       setErrorStatus(e instanceof ApiError ? e.status : 0);
       setErrorCode(e instanceof ApiError ? e.code : null);
+      setFailures((n) => n + 1);
     }
   }, [tournamentId, withClocks]);
 
@@ -81,5 +87,5 @@ export function useBoardState(tournamentId: string | null, withClocks = false) {
     return () => clearInterval(id);
   }, [tournamentId, refresh]);
 
-  return { state, error, errorStatus, errorCode, refresh };
+  return { state, error, errorStatus, errorCode, failures, refresh };
 }

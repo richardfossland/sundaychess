@@ -353,6 +353,10 @@ export const no = {
     illegalMove: "Ulovlig trekk",
     notYourTurn: "Det er ikke din tur",
     connection: "Tilkobling ustabil – synkroniserer …",
+    // The small persistent "reconnecting" badge (R7) — distinct copy from
+    // `connection` above, which is a one-shot toast on a failed move.
+    reconnecting: "Kobler til igjen …",
+    refreshNow: "Oppdater",
     logOut: "Logg ut",
     // Resume trouble that is NOT "wrong code" — the session is kept, so every
     // one of these ends by saying the student can just try again.
