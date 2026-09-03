@@ -24,29 +24,42 @@ export function CapturedPieces({
   const capturedBlack = side === "white";
   const fill = capturedBlack ? "#0c0e13" : "#f4f0e7";
   const outline = capturedBlack ? "rgba(255,255,255,.9)" : "rgba(0,0,0,.85)";
+  const hasContent = pieces.length > 0 || adv > 0;
 
-  if (pieces.length === 0 && adv <= 0) {
-    return <span style={{ minHeight: 22, display: "inline-block" }} />;
-  }
-
+  // Both branches (empty and filled) render the SAME box — same display mode,
+  // padding, and border width — so a capture never changes this element's
+  // height (L2: nothing above .board-shell may change height mid-game). Only
+  // colours differ (transparent when empty). `flexWrap:"nowrap"` +
+  // `overflow:"hidden"` cap the height at one row instead of adding rows every
+  // ~8 captures; the +N badge is rendered FIRST so it's never what gets
+  // clipped when a long capture pile overflows the card.
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
         gap: 2,
-        minHeight: 22,
-        flexWrap: "wrap",
-        padding: pieces.length ? "2px 7px" : 0,
+        minHeight: 26,
+        boxSizing: "border-box",
+        flexWrap: "nowrap",
+        overflow: "hidden",
+        maxWidth: "100%",
+        padding: "2px 7px",
         borderRadius: 8,
-        background: pieces.length ? "rgba(255,255,255,0.06)" : "transparent",
-        border: pieces.length ? "1px solid var(--ink-line)" : "none",
+        background: hasContent ? "rgba(255,255,255,0.06)" : "transparent",
+        border: `1px solid ${hasContent ? "var(--ink-line)" : "transparent"}`,
       }}
     >
+      {adv > 0 && (
+        <b style={{ flexShrink: 0, marginRight: 2, fontSize: 13, color: "var(--gold)" }}>
+          +{adv}
+        </b>
+      )}
       {pieces.map((p, i) => (
         <span
           key={i}
           style={{
+            flexShrink: 0,
             fontSize: 20,
             lineHeight: 1,
             color: fill,
@@ -57,9 +70,6 @@ export function CapturedPieces({
           {glyph(p)}
         </span>
       ))}
-      {adv > 0 && (
-        <b style={{ marginLeft: 4, fontSize: 13, color: "var(--gold)" }}>+{adv}</b>
-      )}
     </span>
   );
 }
