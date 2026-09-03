@@ -179,7 +179,15 @@ export async function openAs(
 ): Promise<Page> {
   await context.addInitScript(
     ([key, value]: [string, string]) => {
-      window.localStorage.setItem(key, value);
+      // Init scripts also run on the context's initial `about:blank`, where
+      // localStorage is an opaque origin and every access throws SecurityError.
+      // Unguarded, that throw lands in the trace as a pageError on every single
+      // run — a red herring sitting on top of whatever really failed.
+      try {
+        window.localStorage.setItem(key, value);
+      } catch {
+        // about:blank; the same script runs again on the real document.
+      }
     },
     [PLAYER_KEY, JSON.stringify(player)] as [string, string],
   );
@@ -191,5 +199,23 @@ export async function openAs(
   // 5 s board poll (lib/client/useBoardState.ts) to pick up the live game, plus
   // room for a cold first render of the production bundle.
   await expect(page.getByTestId("board-shell")).toBeVisible({ timeout: 25_000 });
+
+  // …and then for the BOARD, which is not the same event.
+  //
+  // `board-shell` is GameView's own wrapper div: it paints in the render that
+  // receives the game detail. The board inside it is
+  // `dynamic(() => import("react-chessboard"), { ssr: false })`, which renders
+  // null until its lazy component resolves — at least one commit later, even
+  // when the chunk is already in the browser. Returning on the shell alone hands
+  // the spec an empty box, and `pieceAt()` (a plain count, deliberately not a
+  // web-first assertion) reads it as "no piece" instead of "not ready".
+  //
+  // 64 squares is the signal: react-chessboard renders one `[data-square]` div
+  // per square, so the count is complete or it is zero — never half.
+  await expect(
+    page.getByTestId("board-shell").locator("[data-square]"),
+    "the board never mounted inside board-shell",
+  ).toHaveCount(64, { timeout: 20_000 });
+
   return page;
 }

@@ -48,7 +48,13 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   workers: process.env.CI ? 2 : 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["github"], ["list"]] : [["list"]],
+  // CI also writes the HTML report: it is what the workflow uploads on failure,
+  // and it is the only thing that turns the trace/video files in test-results/
+  // into something you can open (`npx playwright show-report`). `open: "never"`
+  // because a runner has no browser to open it in.
+  reporter: process.env.CI
+    ? [["github"], ["list"], ["html", { open: "never" }]]
+    : [["list"]],
 
   use: {
     baseURL: "http://localhost:3000",
