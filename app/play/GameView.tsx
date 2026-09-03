@@ -6,7 +6,7 @@ import { Chess } from "chess.js";
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import type { GameDetail } from "@/lib/dto";
 import type { GameStatus, Turn } from "@/lib/types";
-import { api, ApiError } from "@/lib/client/api";
+import { api, ApiError, NON_JSON } from "@/lib/client/api";
 import { applyMove, legalDestinations } from "@/lib/chess/validateMove";
 import { needsPromotion, type PromoPiece } from "@/lib/chess/promotion";
 import { PromotionPicker } from "@/lib/client/PromotionPicker";
@@ -547,8 +547,11 @@ export function GameView({
         if (code === "not_your_turn") flash(no.player.notYourTurn);
         else if (code === "flagged") {
           // My time ran out — the server resolved the game; sync the result.
-        } else if (code === "timeout" || code === "network") {
-          // Request hung/dropped.
+        } else if (code === "timeout" || code === "network" || code === NON_JSON) {
+          // Request hung/dropped — or the reply was never our API's (an HTML
+          // edge page / WAF challenge / proxy). A 400 from one of those is not
+          // a ruling on the move, so it must not reach the "illegal move"
+          // branch below and accuse the student.
           flash(no.player.connection);
         } else if (httpStatus === 400) {
           // The server genuinely rejected the move's legality (rare — the client

@@ -109,6 +109,22 @@ describe("api error mapping (via post/getJson)", () => {
     await expect(api.board("t1")).rejects.toMatchObject({ status: 404, code: "not_found" });
   });
 
+  it("api.board does NOT report an edge HTML 404 as our own not_found", async () => {
+    // The distinction WaitingRoom's "Turneringen finnes ikke lenger" card (with
+    // its identity-clearing Logg ut button) hangs on: same status 404, but no
+    // envelope → the caller's tag, never "not_found".
+    stubFetch(() =>
+      Promise.resolve({
+        ok: false,
+        status: 404,
+        json: () => Promise.reject(new SyntaxError("Unexpected token '<'")),
+      }),
+    );
+    const err = await api.board("t1").catch((e) => e);
+    expect(err).toMatchObject({ status: 404, code: "board_failed" });
+    expect(err.code).not.toBe("not_found");
+  });
+
   it("api.board maps a non-OK response to its caller code", async () => {
     stubFetch(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) }));
     await expect(api.board("t1")).rejects.toMatchObject({ status: 500, code: "board_failed" });

@@ -99,7 +99,9 @@ export function WaitingRoom({
   // Latch the active game so the result screen survives board refetches until
   // the student dismisses it.
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
-  const { state, error, errorStatus, refresh } = useBoardState(me.tournamentId);
+  const { state, error, errorStatus, errorCode, refresh } = useBoardState(
+    me.tournamentId,
+  );
   // Advertise that this student is connected (keyed by playerId) so the host can
   // see who's online in the lobby and drop ghosts. Stays active across the
   // waiting view and the in-game child below (this component remains mounted).
@@ -124,11 +126,18 @@ export function WaitingRoom({
     }
   }, [state, activeGameId]);
 
-  // The tournament itself is gone (our API answered 404 and we never got a
-  // board): the student would otherwise sit forever on "venter på arrangøren".
-  // Every OTHER error is deliberately left alone here — `error`/`errorStatus`
-  // stay in scope for the reconnecting badge (R7); a blip keeps the last board.
-  if (error && errorStatus === 404 && !state) {
+  // The tournament itself is gone: OUR API said so (404 + our own `not_found`
+  // envelope) and we never got a board. The code check is load-bearing, by this
+  // PR's own rule — an HTML 404 from the edge also arrives as status 404, but
+  // carries the caller tag "board_failed", and it must NOT put a student in
+  // front of a "Logg ut" button that wipes their resume code.
+  // Every OTHER error is deliberately left alone here — `error`/`errorStatus`/
+  // `errorCode` stay in scope for the reconnecting badge (R7); a blip keeps the
+  // last board.
+  const tournamentGone =
+    error && errorStatus === 404 && errorCode === "not_found" && !state;
+
+  if (tournamentGone) {
     return (
       <main className="center-screen">
         <div

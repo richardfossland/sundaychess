@@ -16,6 +16,11 @@ export function useBoardState(tournamentId: string | null, withClocks = false) {
   // server). Callers need it to tell "this tournament is gone" (our own 404)
   // from a transient blip — a distinction `error: boolean` can't carry.
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  // …and WHO said it. A status alone is not a verdict: an HTML 404 from the
+  // edge arrives here as status 404 with the caller's fallback tag
+  // ("board_failed"), never our own "not_found". Callers that act on a 404 must
+  // check both. null when the failure wasn't an ApiError at all.
+  const [errorCode, setErrorCode] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!tournamentId) return;
@@ -24,10 +29,12 @@ export function useBoardState(tournamentId: string | null, withClocks = false) {
       setState(next);
       setError(false);
       setErrorStatus(null);
+      setErrorCode(null);
     } catch (e) {
       // Keep the previous `state`: a failed poll must not blank a live board.
       setError(true);
       setErrorStatus(e instanceof ApiError ? e.status : 0);
+      setErrorCode(e instanceof ApiError ? e.code : null);
     }
   }, [tournamentId, withClocks]);
 
@@ -74,5 +81,5 @@ export function useBoardState(tournamentId: string | null, withClocks = false) {
     return () => clearInterval(id);
   }, [tournamentId, refresh]);
 
-  return { state, error, errorStatus, refresh };
+  return { state, error, errorStatus, errorCode, refresh };
 }
