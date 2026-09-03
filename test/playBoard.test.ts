@@ -37,8 +37,15 @@ describe("PlayBoard arePropsEqual", () => {
     ["orientation", { orientation: "black" as const }],
     ["allowDragging", { allowDragging: false }],
     ["id", { id: "other-board" }],
+    ["showNotation", { showNotation: false }],
   ])("is false when %s changes", (_label, over) => {
     expect(arePropsEqual(props(), props(over))).toBe(false);
+  });
+
+  it("treats omitted showNotation the same as explicit true (react-chessboard's own default, L8)", () => {
+    const a = props(); // showNotation left unset
+    const b = props({ showNotation: true });
+    expect(arePropsEqual(a, b)).toBe(true);
   });
 
   it("IGNORES handler identity — new closures alone must not re-render the board", () => {
@@ -77,6 +84,7 @@ describe("PlayBoard arePropsEqual", () => {
       { orientation: "black" },
       { allowDragging: false },
       { id: "b2" },
+      { showNotation: false },
     ];
     for (const over of changed) {
       expect(arePropsEqual(props(over), props(over))).toBe(true); // equal to itself

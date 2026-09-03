@@ -18,3 +18,15 @@ export function lastMoveFromPgn(
     return null;
   }
 }
+
+/** L8: cheap digest of a last-move pair for a `<PlayBoard>` `stylesKey` — the
+ * spectate board's squareStyles depend on exactly this pair (see
+ * app/host/[tournamentId]/SpectateGame.tsx), so deriving the key from the same
+ * `{from,to}` in the same render is what makes them impossible to drift apart
+ * — the same discipline GameView follows for its own stylesKey (see the
+ * header of lib/client/PlayBoard.tsx). */
+export function lastMoveStylesKey(
+  lastMove: { from: string; to: string } | null,
+): string {
+  return `${lastMove?.from ?? ""}|${lastMove?.to ?? ""}`;
+}

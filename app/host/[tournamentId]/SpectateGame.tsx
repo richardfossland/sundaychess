@@ -1,14 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EvalBar } from "@/lib/client/EvalBar";
 import { CapturedPieces } from "@/lib/client/CapturedPieces";
 import { ChessClock } from "@/lib/client/ChessClock";
 import { HypeCallout } from "@/lib/client/HypeCallout";
 import { ReactionLayer, type FloatingReaction } from "@/lib/client/Reactions";
 import { MoveList, sansFromPgn } from "@/lib/client/MoveList";
-import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
+import { PlayBoard } from "@/lib/client/PlayBoard";
+import { lastMoveStylesKey } from "@/lib/chess/lastMove";
 import { api } from "@/lib/client/api";
 import { SoundToggle } from "@/lib/client/SoundToggle";
 import { FullscreenToggle } from "@/lib/client/FullscreenToggle";
@@ -19,10 +19,12 @@ import { useChannel } from "@/lib/client/useChannel";
 import type { GameStatus, Turn } from "@/lib/types";
 import { no } from "@/lib/locale/no";
 
-const Chessboard = dynamic(
-  () => import("react-chessboard").then((m) => m.Chessboard),
-  { ssr: false },
-);
+// L8: the board is read-only here — PlayBoard's onDrop/onSquareClick identity
+// is ignored by its own memo (lib/client/PlayBoard.tsx), so these could be
+// fresh closures every render, but module-level constants cost nothing and
+// make the "this never does anything" intent explicit at the call site.
+const NOOP_DROP = () => false;
+const NOOP_CLICK = () => {};
 
 type ClockSnap = {
   whiteMs: number;
@@ -105,20 +107,38 @@ export function SpectateGame({
 
   // SpectateGame is FEN-driven (the parent patches `fen` live from broadcasts),
   // so there's no PGN here — fetch it for the move list when the position changes
-  // (one cheap fetch per move, for the single game being spectated).
+  // (one cheap fetch per move, for the single game being spectated). The same
+  // fetch's `lastMove` (L8) drives the board's last-move highlight below.
   const [sans, setSans] = useState<string[]>([]);
+  const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(
+    null,
+  );
   useEffect(() => {
     let live = true;
     api
       .game(gameId)
       .then((d) => {
-        if (live) setSans(sansFromPgn(d.pgn));
+        if (!live) return;
+        setSans(sansFromPgn(d.pgn));
+        setLastMove(d.lastMove ? { from: d.lastMove.from, to: d.lastMove.to } : null);
       })
       .catch(() => {});
     return () => {
       live = false;
     };
   }, [gameId, fen]);
+
+  // L8: routed through <PlayBoard> (same insulation GameView gets from L5) —
+  // squareStyles and stylesKey are derived from the SAME {from,to} pair in the
+  // same render, so they can't drift apart (lib/client/PlayBoard.tsx).
+  const lastFrom = lastMove?.from ?? null;
+  const lastTo = lastMove?.to ?? null;
+  const stylesKey = lastMoveStylesKey(lastMove);
+  const squareStyles = useMemo(() => {
+    if (!lastFrom || !lastTo) return {};
+    const hl = { background: "rgba(235,184,75,0.35)" };
+    return { [lastFrom]: { ...hl }, [lastTo]: { ...hl } };
+  }, [lastFrom, lastTo]);
 
   const addFloat = useCallback((emoji: string) => {
     const id = ++floatSeq.current;
@@ -172,14 +192,16 @@ export function SpectateGame({
           <EvalBar fen={fen} />
           <div className="board-frame">
             <div className="board-shell-lg">
-              <Chessboard
-                options={{
-                  ...BOARD_BASE_OPTIONS,
-                  position: fen,
-                  allowDragging: false,
-                  showNotation: true,
-                  id: "spectate-board",
-                }}
+              <PlayBoard
+                id="spectate-board"
+                fen={fen}
+                orientation="white"
+                allowDragging={false}
+                showNotation
+                squareStyles={squareStyles}
+                stylesKey={stylesKey}
+                onDrop={NOOP_DROP}
+                onSquareClick={NOOP_CLICK}
               />
             </div>
             <HypeCallout fen={fen} />
@@ -199,7 +221,11 @@ export function SpectateGame({
 
         <SpectatePlayer name={white} side="white" fen={fen} baselineFen={baselineFen} clock={clock} />
 
-        {sans.length > 0 && <MoveList sans={sans} />}
+        {/* L8: always mounted, like the player screen after L2 — MoveList
+            already renders a "–" placeholder for an empty list, and .movelist
+            has a fixed height, so the projector layout doesn't shift (board
+            box, scrollY) the moment the first move lands. */}
+        <MoveList sans={sans} />
       </div>
 
       <SoundToggle />
