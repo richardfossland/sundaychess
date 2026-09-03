@@ -81,7 +81,42 @@ observability; the real multi-device Chromebook stress-test).
 ## Deferred — decisions / rig
 - Teacher **override on an already-finished game**: NOT auto-changed — correcting a finished
   result is a legitimate feature; needs a product decision (allow + idempotent vs require-live).
-- Rate limiter → shared store (edge KV/DO) for multi-isolate accuracy (bounded already).
-- Realtime channel authorization (cross-class eavesdropping; low for single origin).
-- The real **multi-device Chromebook stress-test** — only the rig can confirm.
-- Confirm residual **Error 1102** cause via Cloudflare Workers observability (already enabled).
+- Rate limiter → shared store (edge KV/DO) for multi-isolate accuracy (bounded already). Still open.
+- Realtime channel authorization (cross-class eavesdropping; low for single origin). Still open.
+- ~~The real **multi-device Chromebook stress-test** — only the rig can confirm.~~ Prerequisites
+  fixed 2026-09-03 (see below); the rig test itself is now `docs/RIG-TEST.md`.
+- ~~Confirm residual **Error 1102** cause via Cloudflare Workers observability (already enabled).~~
+  Root cause addressed 2026-09-03 (R8, below).
+
+## Closed by the 2026-09-03 stability program
+
+Full root-cause → fix → PR mapping lives in `docs/STABILITY-PROGRAM-2026-09.md`. The two
+entries above that this program actually resolves:
+
+- **Residual Error 1102 suspicion (Deferred, this file).** The move route used to `await`
+  broadcasts + score recomputation before responding; under load the game-ending move (the one
+  a student remembers) could outlast the client's 8 s fetch timeout and roll back client-side
+  even though the server had already committed it — the leading suspected cause of the
+  Cloudflare 1102 reports. Fixed by **R8** (`lib/server/defer.ts`, PR **#69**): the route
+  responds first, broadcasts/score run in `after()`. **R7** (PR **#70**, "Kobler til igjen …"
+  badge) is the second layer — if a client ever does stall, it now says so instead of freezing
+  silently. Cloudflare observability should be watched post-deploy to confirm the report rate
+  drops; that empirical confirmation is the one part of this item that isn't closed by code
+  alone.
+- **iOS Safari realtime re-subscribe after background/network drop**
+  (`docs/TOURNAMENT-ROBUSTNESS-PLAN.md` Tier 2 item 8, flagged 🔎🟡 "needs a device to fully
+  verify"). Closed by **R11** (channel recreated with backoff on `CLOSED`/`CHANNEL_ERROR`/
+  `TIMED_OUT`, PR **#80**) together with **R5** (active-tab heartbeat + TTL re-election so a
+  backgrounded tab's silence can't strand the board, PR **#77**). The device-verification half
+  of that item is now `docs/RIG-TEST.md` §2 "Phone" (wifi-off scenario) and §2 "PC / Mac"
+  (two-tabs takeover).
+- **The real multi-device Chromebook stress-test** (Deferred, this file) is not itself closed —
+  only the rig can confirm it — but every contributing cause this backlog and
+  `docs/TOURNAMENT-ROBUSTNESS-PLAN.md` had flagged as rig-only (lobby ghost-sweep mass-stamping,
+  active-tab strand risk, silent realtime stalls, layout shift under load) now has a code fix:
+  **R4** (#73), **R5** (#77), **R7** (#70), **R11** (#80), **L1–L4/L8** (#63, #72, #78, #79,
+  #86). The rig session in `docs/RIG-TEST.md` is what turns "fixed in code" into "confirmed in
+  the room."
+
+Not touched by this program, still open exactly as listed above: the in-memory rate limiter,
+realtime channel authorization, and the finished-game override product decision.
