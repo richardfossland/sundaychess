@@ -681,7 +681,7 @@ export function GameView({
   // move"). The poll is already paused while passive.
   if (!tabActive) {
     return (
-      <main className="center-screen">
+      <main className="center-screen" data-testid="passive-tab">
         <div
           className="card card-narrow stack text-center"
           style={{ alignItems: "center", gap: 12 }}
@@ -700,7 +700,7 @@ export function GameView({
   if (!detail) {
     if (loadError) {
       return (
-        <main className="center-screen">
+        <main className="center-screen" data-testid="load-error">
           <div className="card card-narrow stack text-center">
             <h2>{no.common.error}</h2>
             <p className="muted">{no.player.gameLoadFailed}</p>
@@ -818,6 +818,7 @@ export function GameView({
             // queued a pre-move on the opponent's turn — the pre-move indicator.
             <div
               className={`banner ${isMyTurn ? "banner-turn" : "banner-wait"}`}
+              data-testid="turn-banner"
               style={{
                 width: "100%",
                 ...(!isMyTurn && preMove ? { borderColor: "rgba(235,140,60,0.6)" } : {}),
@@ -836,6 +837,7 @@ export function GameView({
           <div className="board-frame">
             <div
               className="board-shell"
+              data-testid="board-shell"
               role="group"
               aria-label={isMyTurn ? `${no.player.yourTurn} – ${no.player.boardLabel}` : no.player.boardLabel}
             >
@@ -937,7 +939,11 @@ export function GameView({
             </div>
           )}
 
-          {toast && <div className="banner banner-error" style={{ width: "100%" }}>{toast}</div>}
+          {toast && (
+            <div className="banner banner-error" data-testid="toast" style={{ width: "100%" }}>
+              {toast}
+            </div>
+          )}
 
           {sans.length > 0 && <MoveList sans={sans} />}
         </div>
@@ -981,7 +987,11 @@ export function GameView({
           ) : showReview ? (
             <ReviewView me={me} gameId={gameId} onClose={() => setShowReview(false)} />
           ) : (
-            <div className="result-card stack" style={{ alignItems: "center", gap: 12 }}>
+            <div
+              className="result-card stack"
+              data-testid="result-card"
+              style={{ alignItems: "center", gap: 12 }}
+            >
               <div className="result-emoji">
                 {status === "draw" ? "🤝" : iWon ? "🎉" : "😔"}
               </div>

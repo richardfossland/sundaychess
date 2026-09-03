@@ -36,6 +36,7 @@ export function MoveList({ sans, title }: { sans: string[]; title?: string }) {
   return (
     <div
       className="movelist"
+      data-testid="movelist"
       role="log"
       aria-label={title ?? "Trekkliste"}
       ref={containerRef}

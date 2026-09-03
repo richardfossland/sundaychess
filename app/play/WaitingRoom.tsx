@@ -233,7 +233,7 @@ export function WaitingRoom({
     state?.players.find((p) => p.id === me.playerId)?.team ?? null;
 
   return (
-    <main className="center-screen">
+    <main className="center-screen" data-testid="waiting-room">
       {showReconnectBadge && (
         <div
           className="banner banner-wait"

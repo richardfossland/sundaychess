@@ -147,7 +147,11 @@ export default function Play() {
           <div className="card card-narrow stack text-center">
             <h2>{no.common.error}</h2>
             <p className="muted">{resumeMessage}</p>
-            <button className="btn btn-primary btn-lg" onClick={attemptResume}>
+            <button
+              className="btn btn-primary btn-lg"
+              data-testid="resume-retry"
+              onClick={attemptResume}
+            >
               {no.common.retry}
             </button>
           </div>
@@ -178,7 +182,12 @@ export default function Play() {
           <span className="knight">♞</span> Sunday<b>Chess</b>
         </div>
 
-        <div key={screen} className="stack scale-in" style={{ gap: 16 }}>
+        <div
+          key={screen}
+          className="stack scale-in"
+          data-testid={screen === "join" ? "join-screen" : undefined}
+          style={{ gap: 16 }}
+        >
         {screen === "join" && (
           <>
             <div className="text-center stack" style={{ gap: 4 }}>
