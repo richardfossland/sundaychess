@@ -10,6 +10,7 @@ import { needsPromotion, type PromoPiece } from "@/lib/chess/promotion";
 import { PromotionPicker } from "@/lib/client/PromotionPicker";
 import { Confetti } from "@/lib/client/Confetti";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
+import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
 import { SoundToggle } from "@/lib/client/SoundToggle";
 import { sound } from "@/lib/client/sound";
 import { no } from "@/lib/locale/no";
@@ -160,6 +161,7 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
           <div className="board-shell">
             <Chessboard
               options={{
+                ...BOARD_BASE_OPTIONS,
                 position: fen,
                 // rotate to the side to move — pass the device to that player
                 boardOrientation: turn === "w" ? "white" : "black",
@@ -167,9 +169,6 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
                 onPieceDrop: onDrop,
                 onSquareClick,
                 squareStyles,
-                darkSquareStyle: { backgroundColor: "var(--board-dark)" },
-                lightSquareStyle: { backgroundColor: "var(--board-light)" },
-                animationDurationInMs: 180,
                 id: "versus-board",
               }}
             />

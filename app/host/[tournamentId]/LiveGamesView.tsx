@@ -7,6 +7,7 @@ import type { GameStatus, Turn } from "@/lib/types";
 import { channels } from "@/lib/realtime";
 import { useChannel } from "@/lib/client/useChannel";
 import { ChessClock } from "@/lib/client/ChessClock";
+import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
 import { no } from "@/lib/locale/no";
 import { variantStartFen } from "@/lib/chess/variants";
 import { plyOf } from "@/lib/chess/ply";
@@ -247,11 +248,10 @@ export function LiveGamesView({
             <div className="board-shell-lg" style={{ borderRadius: 8, overflow: "hidden" }}>
               <Chessboard
                 options={{
+                  ...BOARD_BASE_OPTIONS,
                   position: fenMap[g.id] ?? g.fen,
                   allowDragging: false,
                   showNotation: true,
-                  darkSquareStyle: { backgroundColor: "var(--board-dark)" },
-                  lightSquareStyle: { backgroundColor: "var(--board-light)" },
                   id: `big-${g.id}`,
                 }}
               />
@@ -306,11 +306,10 @@ export function LiveGamesView({
               <div style={{ borderRadius: 8, overflow: "hidden" }}>
                 <Chessboard
                   options={{
+                    ...BOARD_BASE_OPTIONS,
                     position: fenMap[g.id] ?? g.fen,
                     allowDragging: false,
                     showNotation: false,
-                    darkSquareStyle: { backgroundColor: "var(--board-dark)" },
-                    lightSquareStyle: { backgroundColor: "var(--board-light)" },
                     id: `mini-${g.id}`,
                   }}
                 />

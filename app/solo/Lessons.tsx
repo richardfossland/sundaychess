@@ -8,6 +8,7 @@ import { Chess } from "chess.js";
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import { LESSONS, checkLessonGoal, type Lesson } from "@/lib/coach/lessons";
 import { legalDestinations } from "@/lib/chess/validateMove";
+import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
 import { Confetti } from "@/lib/client/Confetti";
 import { sound } from "@/lib/client/sound";
 import { no } from "@/lib/locale/no";
@@ -136,7 +137,7 @@ function LessonRunner({
   }
 
   return (
-    <main className="center-screen">
+    <main className="center-screen is-game">
       {status === "done" && <Confetti count={110} />}
       <div className="stack" style={{ alignItems: "center", width: "100%", maxWidth: 560, gap: 14 }}>
         <div className="text-center stack" style={{ gap: 2 }}>
@@ -161,14 +162,13 @@ function LessonRunner({
           <div className="board-shell">
             <Chessboard
               options={{
+                ...BOARD_BASE_OPTIONS,
                 position: fen,
                 boardOrientation: moverColor,
                 allowDragging: status === "playing",
                 onPieceDrop: onDrop,
                 onSquareClick,
                 squareStyles,
-                darkSquareStyle: { backgroundColor: "var(--board-dark)" },
-                lightSquareStyle: { backgroundColor: "var(--board-light)" },
                 animationDurationInMs: 160,
                 id: "lesson-board",
               }}

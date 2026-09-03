@@ -31,6 +31,7 @@ import {
   type ReactionHandle,
 } from "@/lib/client/Reactions";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
+import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
 import { MoveList, sansFromPgn } from "@/lib/client/MoveList";
 import { ReviewView } from "./ReviewView";
 import { no } from "@/lib/locale/no";
@@ -882,6 +883,7 @@ export function GameView({
             >
               <Chessboard
                 options={{
+                  ...BOARD_BASE_OPTIONS,
                   position: fen || undefined,
                   boardOrientation: myColor,
                   // Draggable on my turn AND the opponent's (to queue a pre-move).
@@ -889,9 +891,6 @@ export function GameView({
                   onPieceDrop: onDrop,
                   onSquareClick,
                   squareStyles,
-                  darkSquareStyle: { backgroundColor: "var(--board-dark)" },
-                  lightSquareStyle: { backgroundColor: "var(--board-light)" },
-                  animationDurationInMs: 180,
                   id: "play-board",
                 }}
               />
