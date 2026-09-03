@@ -1,20 +1,13 @@
-// Off-thread chess engine. Solo play posts a position here and gets back the
-// bot's move, so even the strongest ("umulig") search never blocks the UI
-// thread (which would freeze a low-power Chromebook tab). Pure compute — it
-// imports only the bot/search modules (chess.js), never the DOM or React.
+// Off-thread chess engine. The main thread posts a position here and gets back
+// the bot's move, the coach's advice for every legal move, or the position's
+// evaluation — so no search of any kind ever runs on the UI thread (which would
+// freeze a low-power Chromebook tab at the exact moment a piece is dropped).
+//
+// Deliberately a shim: the whole protocol lives in lib/chess/engineProtocol.ts
+// so it is unit-testable in node. This file imports only pure compute modules
+// (chess.js), never the DOM or React.
 
-import {
-  bestMove,
-  bestMoveBySkill,
-  bestMoveStrong,
-  type BotLevel,
-} from "@/lib/chess/bot";
-import type { MoveIntent } from "@/lib/chess/validateMove";
-
-type EngineRequest = { id: number; fen: string } & (
-  | { mode: "skill"; skill: number }
-  | { mode: "level"; level: BotLevel }
-);
+import { handleEngineRequest, type EngineRequest } from "@/lib/chess/engineProtocol";
 
 const ctx = self as unknown as {
   postMessage: (m: unknown) => void;
@@ -22,18 +15,5 @@ const ctx = self as unknown as {
 };
 
 ctx.addEventListener("message", async (e: MessageEvent) => {
-  const req = e.data as EngineRequest;
-  let move: MoveIntent | null = null;
-  try {
-    if (req.mode === "skill") {
-      move = bestMoveBySkill(req.fen, req.skill);
-    } else if (req.level === "impossible") {
-      move = await bestMoveStrong(req.fen);
-    } else {
-      move = bestMove(req.fen, req.level);
-    }
-  } catch {
-    move = null;
-  }
-  ctx.postMessage({ id: req.id, move });
+  ctx.postMessage(await handleEngineRequest(e.data as EngineRequest));
 });
