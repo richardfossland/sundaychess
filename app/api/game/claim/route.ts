@@ -7,6 +7,7 @@ import {
   broadcastPosition,
   broadcastSpectate,
 } from "@/lib/server/gameEvents";
+import { defer } from "@/lib/server/defer";
 import { fail, ok, readJson } from "@/lib/server/http";
 import type { GameStatus } from "@/lib/types";
 
@@ -57,12 +58,14 @@ async function handlePost(req: Request): Promise<Response> {
   const resolved = await resolveGameRpc(game.id, result, "play", true);
   if (!resolved.ok) return fail(409, resolved.conflict ?? "conflict");
 
-  await afterGameResolved(game, result, "play");
-  await broadcastPosition(game.id, game.fen, game.turn, result, null, {
-    ...clock.info,
-    running: false,
-  });
-  await broadcastSpectate(game.tournament_id, game.id, game.fen, game.turn, result);
+  // The win on time is committed; scoring + broadcasts run after the response
+  // so the claimer is not held behind them (see lib/server/defer.ts).
+  const claimClock = { ...clock.info, running: false };
+  defer(async () => {
+    await afterGameResolved(game, result, "play");
+    await broadcastPosition(game.id, game.fen, game.turn, result, null, claimClock);
+    await broadcastSpectate(game.tournament_id, game.id, game.fen, game.turn, result);
+  }, "claim");
 
   return ok({ status: result });
 }
