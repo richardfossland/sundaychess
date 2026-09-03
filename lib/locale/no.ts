@@ -367,7 +367,12 @@ export const no = {
     tournamentGone: "Turneringen finnes ikke lenger",
     tournamentGoneBody:
       "Arrangøren har avsluttet eller slettet den. Logg ut, så kan du bli med i en ny.",
-    premoveSet: "Forhåndstrekk klart – spilles automatisk når det blir din tur (trykk et tomt felt for å avbryte)",
+    // Kept to ONE line at 390px width (the turn banner reserves exactly one
+    // line's height — see .turn-slot in globals.css) — the full explanation
+    // moves to a `title` attribute (premoveSetTitle) instead of wrapping here.
+    premoveSet: "Forhåndstrekk klart – trykk tomt felt for å avbryte",
+    premoveSetTitle:
+      "Forhåndstrekket spilles automatisk når det blir din tur. Trykk et tomt felt på brettet for å avbryte det.",
     premoveCancelled: "Forhåndstrekket ble forkastet",
     gameLoadFailed: "Fant ikke partiet. Prøv igjen eller gå tilbake.",
     sessionExpired: "Den forrige økten din er utløpt. Bli med på nytt.",

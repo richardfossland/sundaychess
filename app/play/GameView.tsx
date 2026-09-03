@@ -183,18 +183,21 @@ function SidePanel({
           </div>
         </div>
         {clock && <ChessClock ms={clock.ms} at={clock.at} running={clock.running} />}
-        {active && (
-          <span
-            style={{
-              width: 9,
-              height: 9,
-              borderRadius: "50%",
-              background: "var(--turn)",
-              boxShadow: "0 0 0 0 color-mix(in srgb, var(--turn) 70%, transparent)",
-              animation: "ping 1.6s var(--ease-out) infinite",
-            }}
-          />
-        )}
+        {/* Always mounted, reserved 9x9 — toggling `active` only changes
+            visibility/animation, never removes the element, so its own
+            width/gap can't come and go and nudge the row (L2). */}
+        <span
+          style={{
+            width: 9,
+            height: 9,
+            flexShrink: 0,
+            borderRadius: "50%",
+            background: "var(--turn)",
+            visibility: active ? "visible" : "hidden",
+            boxShadow: "0 0 0 0 color-mix(in srgb, var(--turn) 70%, transparent)",
+            animation: active ? "ping 1.6s var(--ease-out) infinite" : "none",
+          }}
+        />
       </div>
       <div style={{ marginTop: 8 }}>
         <CapturedPieces fen={fen} side={capSide} baselineFen={baselineFen} />
@@ -803,19 +806,30 @@ export function GameView({
 
         {/* centre: timer + turn banner + board + actions */}
         <div className="game-center">
-          {timer && timer.startedAt && !ended && (
-            <RoundTimer
-              startedAt={timer.startedAt}
-              durationSec={timer.durationSec}
-              extendedMs={timer.extendedMs ?? 0}
-              compact
-            />
+          {timer && timer.startedAt && (
+            // Kept mounted (visibility, not unmount) once the round timer has
+            // ever been present, so its slot's height never disappears out
+            // from under the banner/board when the game ends (L2). Never
+            // rendered at all when no timer is configured for this round —
+            // that's a fixed property of the round, not a mid-game change.
+            <div style={ended ? { visibility: "hidden" } : undefined}>
+              <RoundTimer
+                startedAt={timer.startedAt}
+                durationSec={timer.durationSec}
+                extendedMs={timer.extendedMs ?? 0}
+                compact
+              />
+            </div>
           )}
 
-          {!ended && (
-            // One fixed banner slot (never a second element that pushes the
-            // board down): shows your turn, the opponent's turn, or — when you've
-            // queued a pre-move on the opponent's turn — the pre-move indicator.
+          {/* One fixed banner slot, ALWAYS mounted (L2: visibility:hidden at
+              game end, never unmounted) so nothing above .board-shell can
+              change height mid-game: shows your turn, the opponent's turn, or
+              — when you've queued a pre-move on the opponent's turn — the
+              pre-move indicator. .turn-slot reserves one line of .banner
+              (~57px, see globals.css) and .banner-line clips with an ellipsis
+              instead of wrapping to a second line. */}
+          <div className="turn-slot" style={ended ? { visibility: "hidden" } : undefined}>
             <div
               className={`banner ${isMyTurn ? "banner-turn" : "banner-wait"}`}
               data-testid="turn-banner"
@@ -826,13 +840,18 @@ export function GameView({
               role="status"
               aria-live="polite"
             >
-              {isMyTurn
-                ? `♟ ${no.player.yourTurn}`
-                : preMove
-                  ? `⏩ ${no.player.premoveSet}`
-                  : no.player.opponentTurn}
+              <span
+                className="banner-line"
+                title={!isMyTurn && preMove ? no.player.premoveSetTitle : undefined}
+              >
+                {isMyTurn
+                  ? `♟ ${no.player.yourTurn}`
+                  : preMove
+                    ? `⏩ ${no.player.premoveSet}`
+                    : no.player.opponentTurn}
+              </span>
             </div>
-          )}
+          </div>
 
           <div className="board-frame">
             <div
@@ -945,7 +964,11 @@ export function GameView({
             </div>
           )}
 
-          {sans.length > 0 && <MoveList sans={sans} />}
+          {/* Always mounted (L2) — MoveList already renders a "–" placeholder
+              for an empty list, and .movelist now has a fixed height, so it's
+              the same block from the very first render, not something that
+              pops in and grows over the first ~6 moves. */}
+          <MoveList sans={sans} />
         </div>
 
         {/* me — right on wide, bottom on narrow */}
