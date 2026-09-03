@@ -9,6 +9,7 @@ import {
 import { computeClocks } from "@/lib/chess/clock";
 import { computeScores, computeStandings } from "@/lib/tournament/score";
 import { fail, ok } from "@/lib/server/http";
+import { isUuid } from "@/lib/codes";
 import type { PublicGame } from "@/lib/dto";
 import {
   toBoardTournament,
@@ -35,6 +36,11 @@ async function handleGet(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const { id } = await params;
+  // A malformed id (bot probes, stale links) is a client error, not an outage:
+  // Postgres throws 22P02 on a non-UUID `.eq("id", id)`, and that must not
+  // surface as a 503 — "no such tournament" is the truthful, cheap answer.
+  if (!isUuid(id)) return fail(404, "not_found");
+
   // Live-grid clocks are only rendered by the host projector, which asks for
   // them with ?clocks=1. Students poll this same endpoint every 5s and don't
   // show grid clocks, so we skip the per-game move-stamp read for them. (Auto-

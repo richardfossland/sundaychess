@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Player, Tournament, TournamentStatus } from "@/lib/types";
 
+// R1b regression: POST /api/resume with a non-UUID tournamentId made
+// getTournament throw Postgres 22P02, which the route's catch-all mapped to a
+// false 503 — a fatal bug here specifically, because the client's resume
+// catch WIPES the stored session on anything it can't classify as transient.
 const { store } = vi.hoisted(() => ({
   store: {
     getPlayerByResume: vi.fn(),
@@ -18,9 +22,14 @@ vi.mock("@/lib/server/lifecycle", () => ({
 import { POST } from "@/app/api/resume/route";
 import { __resetRateLimiter } from "@/lib/server/http";
 
+// Tournament ids must be UUID-shaped now that the route validates them before
+// ever calling the store (R1b) — a plain "t1" would 400 before reaching any
+// of these mocks.
+const VALID_ID = "11111111-1111-4111-8111-111111111111";
+
 const player = (over: Partial<Player> = {}): Player => ({
   id: "p1",
-  tournament_id: "t1",
+  tournament_id: VALID_ID,
   display_name: "Ada",
   resume_code: "AAAA-AA",
   score: 0,
@@ -33,7 +42,7 @@ const player = (over: Partial<Player> = {}): Player => ({
 
 const tournament = (status: TournamentStatus): Tournament =>
   ({
-    id: "t1",
+    id: VALID_ID,
     join_pin: "123456",
     host_code: "HOST-01",
     host_user_id: null,
@@ -64,10 +73,10 @@ describe("POST /api/resume", () => {
     // to a student the lobby sweep had already kicked.
     store.getTournament.mockResolvedValue(tournament("lobby"));
     store.getPlayerByResume.mockResolvedValue(player({ status: "left" }));
-    const res = await POST(req({ resumeCode: "AAAA-AA", tournamentId: "t1" }));
+    const res = await POST(req({ resumeCode: "AAAA-AA", tournamentId: VALID_ID }));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
-      tournamentId: "t1",
+      tournamentId: VALID_ID,
       playerId: "p1",
       displayName: "Ada",
       tournamentStatus: "lobby",
@@ -78,20 +87,46 @@ describe("POST /api/resume", () => {
   it("reports 'active' for a normal resume", async () => {
     store.getTournament.mockResolvedValue(tournament("league"));
     store.getPlayerByResume.mockResolvedValue(player());
-    const res = await POST(req({ resumeCode: "AAAA-AA", tournamentId: "t1" }));
+    const res = await POST(req({ resumeCode: "AAAA-AA", tournamentId: VALID_ID }));
     expect((await res.json()).playerStatus).toBe("active");
   });
 
   it("400s on a too-short code without touching the store", async () => {
-    const res = await POST(req({ resumeCode: "AB", tournamentId: "t1" }));
+    const res = await POST(req({ resumeCode: "AB", tournamentId: VALID_ID }));
     expect(res.status).toBe(400);
     expect(store.getTournament).not.toHaveBeenCalled();
   });
 
   it("returns a structured 503 (never throws) when an internal call fails", async () => {
     store.getTournament.mockRejectedValue(new Error("db down"));
-    const res = await POST(req({ resumeCode: "AAAA-AA", tournamentId: "t1" }));
+    const res = await POST(req({ resumeCode: "AAAA-AA", tournamentId: VALID_ID }));
     expect(res.status).toBe(503);
     expect((await res.json()).error).toBe("server_error");
+  });
+
+  // R1b: a malformed tournamentId (bot probe, stale link) is a bad request,
+  // not an outage — it must never reach getTournament/Postgres (22P02 → a
+  // false 503 that, on THIS route, also wipes the student's stored session).
+  it("400s a malformed (non-UUID) tournamentId without ever calling getTournament", async () => {
+    const res = await POST(req({ resumeCode: "AAAA-AA", tournamentId: "probe" }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("bad_request");
+    expect(store.getTournament).not.toHaveBeenCalled();
+  });
+
+  it("404s a valid-shaped tournamentId that doesn't exist (unchanged behavior)", async () => {
+    store.getTournament.mockResolvedValue(null);
+    const res = await POST(req({ resumeCode: "AAAA-AA", tournamentId: VALID_ID }));
+    expect(res.status).toBe(404);
+    expect((await res.json()).error).toBe("not_found");
+    expect(store.getTournament).toHaveBeenCalledWith(VALID_ID);
+  });
+
+  it("still resumes by pin when tournamentId is omitted", async () => {
+    store.getTournamentByPin.mockResolvedValue(tournament("lobby"));
+    store.getPlayerByResume.mockResolvedValue(player());
+    const res = await POST(req({ resumeCode: "AAAA-AA", pin: "402815" }));
+    expect(res.status).toBe(200);
+    expect(store.getTournamentByPin).toHaveBeenCalledWith("402815");
   });
 });

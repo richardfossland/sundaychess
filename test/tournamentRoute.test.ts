@@ -5,6 +5,11 @@ import type { Game, Player, Round, Tournament } from "@/lib/types";
 // client (students + the host projector). PGN must stay OFF by default and
 // only ride along when the caller explicitly asks for the finished-tournament
 // recap via ?full=1 — verify both sides of that gate here.
+//
+// R1b: GET /api/tournament/probe (bot scans, stale links) made the store
+// throw Postgres 22P02 for a non-UUID id, which the route's catch-all mapped
+// to a false 503. Verify the isUuid guard rejects it BEFORE any store call,
+// and that the existing (valid-id, not-found) behavior is unchanged.
 
 const getTournament = vi.fn();
 const listGames = vi.fn();
@@ -24,11 +29,16 @@ vi.mock("@/lib/server/store", () => ({
 
 import { GET } from "@/app/api/tournament/[id]/route";
 
+// Tournament ids must be UUID-shaped now that the route validates them before
+// ever calling the store (R1b) — a plain "t1" would 404 before reaching any
+// of these mocks.
+const VALID_ID = "11111111-1111-4111-8111-111111111111";
+
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 function makeTournament(over: Partial<Tournament> = {}): Tournament {
   return {
-    id: "t1",
+    id: VALID_ID,
     join_pin: "123456",
     host_code: "HOST",
     host_user_id: null,
@@ -44,7 +54,7 @@ function makeTournament(over: Partial<Tournament> = {}): Tournament {
 function makeRound(over: Partial<Round> = {}): Round {
   return {
     id: "r1",
-    tournament_id: "t1",
+    tournament_id: VALID_ID,
     number: 1,
     phase: "league",
     status: "done",
@@ -56,7 +66,7 @@ function makeRound(over: Partial<Round> = {}): Round {
 function makePlayer(id: string, over: Partial<Player> = {}): Player {
   return {
     id,
-    tournament_id: "t1",
+    tournament_id: VALID_ID,
     display_name: id,
     resume_code: `C-${id}`,
     score: 0,
@@ -71,7 +81,7 @@ function makePlayer(id: string, over: Partial<Player> = {}): Player {
 function makeGame(over: Partial<Game> = {}): Game {
   return {
     id: "g1",
-    tournament_id: "t1",
+    tournament_id: VALID_ID,
     round_id: "r1",
     white_player_id: "white",
     black_player_id: "black",
@@ -90,8 +100,8 @@ function req(url: string): Request {
   return new Request(url);
 }
 
-function ctx() {
-  return { params: Promise.resolve({ id: "t1" }) };
+function ctx(id: string = VALID_ID) {
+  return { params: Promise.resolve({ id }) };
 }
 
 beforeEach(() => {
@@ -106,27 +116,27 @@ beforeEach(() => {
 
 describe("GET /api/tournament/[id] — pgn only on ?full=1 (R9)", () => {
   it("omits pgn by default (the 5s poll path)", async () => {
-    const res = await GET(req("http://x/api/tournament/t1"), ctx());
+    const res = await GET(req(`http://x/api/tournament/${VALID_ID}`), ctx());
     const body = (await res.json()) as { games: { pgn?: string }[] };
     expect(body.games).toHaveLength(1);
     expect(body.games[0].pgn).toBeUndefined();
   });
 
   it("includes pgn for decided games when ?full=1", async () => {
-    const res = await GET(req("http://x/api/tournament/t1?full=1"), ctx());
+    const res = await GET(req(`http://x/api/tournament/${VALID_ID}?full=1`), ctx());
     const body = (await res.json()) as { games: { pgn?: string }[] };
     expect(body.games[0].pgn).toBe("1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7#");
   });
 
   it("still omits pgn for a live game even with ?full=1", async () => {
     listGames.mockResolvedValue([makeGame({ status: "live" })]);
-    const res = await GET(req("http://x/api/tournament/t1?full=1"), ctx());
+    const res = await GET(req(`http://x/api/tournament/${VALID_ID}?full=1`), ctx());
     const body = (await res.json()) as { games: { pgn?: string }[] };
     expect(body.games[0].pgn).toBeUndefined();
   });
 
   it("does not fetch move stamps for a plain ?full=1 request without ?clocks=1", async () => {
-    await GET(req("http://x/api/tournament/t1?full=1"), ctx());
+    await GET(req(`http://x/api/tournament/${VALID_ID}?full=1`), ctx());
     expect(listMoveStampsForGames).not.toHaveBeenCalled();
   });
 
@@ -139,7 +149,7 @@ describe("GET /api/tournament/[id] — pgn only on ?full=1 (R9)", () => {
       makeGame({ id: "live1", status: "live", pgn: "" }),
       makeGame({ id: "done1", status: "draw" }),
     ]);
-    const res = await GET(req("http://x/api/tournament/t1?clocks=1&full=1"), ctx());
+    const res = await GET(req(`http://x/api/tournament/${VALID_ID}?clocks=1&full=1`), ctx());
     const body = (await res.json()) as {
       games: { id: string; pgn?: string; clock?: unknown }[];
     };
@@ -148,5 +158,22 @@ describe("GET /api/tournament/[id] — pgn only on ?full=1 (R9)", () => {
     expect(live?.clock).toBeTruthy();
     expect(live?.pgn).toBeUndefined();
     expect(done?.pgn).toBe("1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7#");
+  });
+});
+
+describe("GET /api/tournament/[id] — malformed id guard (R1b)", () => {
+  it("404s a malformed (non-UUID) id without ever calling the store", async () => {
+    const res = await GET(req("http://x/api/tournament/probe"), ctx("probe"));
+    expect(res.status).toBe(404);
+    expect((await res.json()).error).toBe("not_found");
+    expect(getTournament).not.toHaveBeenCalled();
+  });
+
+  it("404s a valid-shaped id that doesn't exist (unchanged behavior)", async () => {
+    getTournament.mockResolvedValue(null);
+    const res = await GET(req(`http://x/api/tournament/${VALID_ID}`), ctx());
+    expect(res.status).toBe(404);
+    expect((await res.json()).error).toBe("not_found");
+    expect(getTournament).toHaveBeenCalledWith(VALID_ID);
   });
 });
