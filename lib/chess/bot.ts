@@ -130,23 +130,44 @@ function ordered(moves: VMove[]): VMove[] {
     .map((x) => x.m);
 }
 
-function negamax(chess: Chess, depth: number, alpha: number, beta: number): number {
+/** Remaining nodes this search may visit. Shared (mutated) down the recursion,
+ * exactly like lib/chess/search.ts's budget. */
+type Budget = { n: number };
+
+/** Generous default budget: high enough that no depth this bot ever runs
+ * (≤ 3 plies via skillToParams, 2 for the eval bar) comes near it, low enough
+ * that a pathological position can never lock a Chromebook tab. */
+const DEFAULT_NODE_BUDGET = 400_000;
+
+function negamax(
+  chess: Chess,
+  depth: number,
+  alpha: number,
+  beta: number,
+  budget: Budget,
+): number {
   if (chess.isGameOver()) {
     if (chess.isCheckmate()) return -MATE - depth; // prefer quicker mates
     return 0; // stalemate / draw
   }
-  if (depth === 0) return evaluate(chess);
+  // Out of budget → stand pat on the static eval. Bounded, never a wrong-shaped
+  // result: it is the same value this node would return at depth 0.
+  if (depth === 0 || budget.n <= 0) return evaluate(chess);
 
   let best = -Infinity;
   for (const m of ordered(chess.moves({ verbose: true }) as unknown as VMove[])) {
+    if (budget.n <= 0) break;
+    budget.n--;
     chess.move({ from: m.from, to: m.to, promotion: (m.promotion ?? "q") as "q" });
-    const score = -negamax(chess, depth - 1, -beta, -alpha);
+    const score = -negamax(chess, depth - 1, -beta, -alpha, budget);
     chess.undo();
     if (score > best) best = score;
     if (best > alpha) alpha = best;
     if (alpha >= beta) break;
   }
-  return best;
+  // Every child was cut off by the budget before scoring → fall back to the
+  // static eval rather than returning -Infinity.
+  return best === -Infinity ? evaluate(chess) : best;
 }
 
 function toIntent(m: VMove): MoveIntent {
@@ -161,6 +182,9 @@ function toIntent(m: VMove): MoveIntent {
  * - `depth`: negamax search depth in plies (clamped to ≥ 1).
  * - `noise`: centipawns of uniform random slop added per candidate, so the bot
  *   sometimes prefers a slightly worse move (weaker, more human play).
+ * - `nodeBudget`: hard ceiling on nodes visited for this one move (default
+ *   DEFAULT_NODE_BUDGET). The search stands pat on the static eval once spent,
+ *   so it always terminates.
  *
  * Pure given `rng` (defaults to Math.random) so it is unit-testable.
  */
@@ -168,6 +192,7 @@ export function chooseMove(
   fen: string,
   params: BotParams,
   rng: () => number = Math.random,
+  nodeBudget?: number,
 ): MoveIntent | null {
   let chess: Chess;
   try {
@@ -186,11 +211,15 @@ export function chooseMove(
   const depth = Math.max(1, Math.floor(params.depth));
   const noise = Math.max(0, params.noise);
 
+  // One budget for the whole choice, so the total work per move is bounded even
+  // if the position explodes combinatorially.
+  const budget: Budget = { n: nodeBudget ?? DEFAULT_NODE_BUDGET };
+
   let best = moves[0];
   let bestScore = -Infinity;
   for (const m of moves) {
     chess.move({ from: m.from, to: m.to, promotion: (m.promotion ?? "q") as "q" });
-    const score = -negamax(chess, depth - 1, -Infinity, Infinity) + rng() * noise;
+    const score = -negamax(chess, depth - 1, -Infinity, Infinity, budget) + rng() * noise;
     chess.undo();
     if (score > bestScore) {
       bestScore = score;
@@ -262,11 +291,13 @@ export function bestMove(
 }
 
 /** Position evaluation for the spectator eval bar. Returns centipawns from
- * White's perspective (+ = White better) and a mate flag. Uses a shallow
- * negamax for stability. */
+ * White's perspective (+ = White better) and a mate flag. Uses a shallow,
+ * node-budgeted negamax for stability. Runs in the engine Web Worker (see
+ * lib/client/useEval.ts) — never on the render path. */
 export function evaluateFen(
   fen: string,
   depth = 2,
+  nodeBudget = DEFAULT_NODE_BUDGET,
 ): { cp: number; mate: 1 | -1 | null } {
   let chess: Chess;
   try {
@@ -281,7 +312,7 @@ export function evaluateFen(
     }
     return { cp: 0, mate: null }; // draw
   }
-  const stm = negamax(chess, depth, -Infinity, Infinity);
+  const stm = negamax(chess, depth, -Infinity, Infinity, { n: nodeBudget });
   const white = chess.turn() === "w" ? stm : -stm;
   if (Math.abs(white) > MATE - 10000) return { cp: white, mate: white > 0 ? 1 : -1 };
   return { cp: white, mate: null };

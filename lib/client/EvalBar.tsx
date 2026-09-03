@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
 import type { CSSProperties } from "react";
-import { evaluateFen } from "@/lib/chess/bot";
+import { barFromEval } from "@/lib/chess/evalBar";
+import { useEval } from "@/lib/client/useEval";
 
 const EASE = "cubic-bezier(0.34, 1.12, 0.64, 1)"; // gentle spring
 const DUR = "0.7s";
@@ -10,18 +10,13 @@ const DUR = "0.7s";
 /** Chess-engine evaluation bar (lichess/chess.com style) — White fills from the
  * bottom by win-probability, with a glowing boundary line and a gold pointer +
  * value pill that glides up/down to where the evaluation sits. Big-screen
- * spectator only (never on the player's phone). */
+ * spectator only (never on the player's phone).
+ *
+ * The search runs in the engine Web Worker (useEval), never in render: this bar
+ * sits next to a projector board that must not drop a frame when a move lands.
+ * Until the first evaluation arrives the bar sits neutral and unlabelled. */
 export function EvalBar({ fen }: { fen: string }) {
-  const { cp, mate } = useMemo(() => evaluateFen(fen), [fen]);
-  const p = mate != null ? (mate > 0 ? 1 : 0) : 1 / (1 + Math.pow(10, -cp / 400));
-  const whitePct = Math.max(2, Math.min(98, p * 100));
-  const label =
-    mate != null
-      ? mate > 0
-        ? "#"
-        : "−#"
-      : `${cp >= 0 ? "+" : "−"}${Math.abs(cp / 100).toFixed(1)}`;
-  const whiteAhead = p >= 0.5;
+  const { whitePct, label, whiteAhead } = barFromEval(useEval(fen));
 
   const ride: CSSProperties = {
     bottom: `${whitePct}%`,

@@ -1,14 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Chess } from "chess.js";
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import type { BotLevel } from "@/lib/chess/bot";
-import { requestBotMove } from "@/lib/client/engine";
-import { moveAdvice, type AdviceKind } from "@/lib/chess/coach";
+import { requestAdvice, requestBotMove } from "@/lib/client/engine";
+import {
+  moveAdvice,
+  type Advice,
+  type AdviceKind,
+  type AdviceMap,
+} from "@/lib/chess/coach";
 import {
   botSkillForPlayer,
   outcomeToScore,
@@ -127,6 +132,44 @@ export default function Solo() {
 
   const refresh = () => setFen(chess.current.fen());
 
+  // ---- coach advice, precomputed off the main thread ----
+  // Every legal move of a position, classified, keyed by the FEN it belongs to.
+  const adviceRef = useRef<Record<string, AdviceMap>>({});
+  const wantAdvice = Boolean(coachCfg && (coachCfg.warn || coachCfg.tag));
+
+  // The moment the position becomes the student's, ask the engine worker to
+  // classify every legal move. It used to run a depth-2 negamax over ALL legal
+  // moves synchronously inside tryMove — tens to hundreds of milliseconds of
+  // frozen tab at the exact instant the piece was dropped, on the cheapest
+  // Chromebook in the room. Now the answer is already waiting.
+  useEffect(() => {
+    if (!wantAdvice || phase !== "game") return;
+    if (thinking || outcome || awaitRetry || turn !== myLetter) return;
+    if (adviceRef.current[fen]) return;
+    // Keyed by fen, so even a late answer is still the right answer — nothing
+    // to cancel, and a takeback lands back on a position we already know.
+    void requestAdvice(fen).then((m) => {
+      if (m) adviceRef.current[fen] = m;
+    });
+  }, [fen, wantAdvice, phase, thinking, outcome, awaitRetry, turn, myLetter]);
+
+  /**
+   * Advice for from→to. Normally a lookup in the map the worker computed when
+   * this turn began — no search on the move path at all.
+   *
+   * If the map is not there (the student moved before the worker answered, or
+   * the worker is unavailable) we run the synchronous search for this ONE move.
+   * That is NOT a cheap fallback — judging a single move still means searching
+   * every legal move to know what the best one was, so it costs about what the
+   * whole map costs. We take it anyway: the beginner coach's entire promise is
+   * to warn BEFORE a blunder, and silently skipping the check would break that
+   * promise exactly when the student is moving fastest. Rare by construction,
+   * and never on the common path.
+   */
+  function adviceFor(fenBefore: string, from: string, to: string): Advice {
+    return adviceRef.current[fenBefore]?.[from + to] ?? moveAdvice(fenBefore, { from, to });
+  }
+
   // After an adaptive game, move the device rating toward/away from the bot's
   // rating (auto-tune toward a ~50% win rate) and persist it. Pure update lives
   // in lib/chess/skill.ts; this only handles state + storage side effects.
@@ -204,7 +247,7 @@ export default function Solo() {
     if (
       !skipWarn &&
       coachCfg?.warn &&
-      moveAdvice(fenBefore, { from, to }).kind === "blunder"
+      adviceFor(fenBefore, from, to).kind === "blunder"
     ) {
       setWarnMove({ from, to, promotion });
       return false;
@@ -227,7 +270,7 @@ export default function Solo() {
     // "Bli bedre" coach: tag the move; on a blunder, PAUSE before the bot
     // replies and offer a do-over.
     if (coachCfg?.tag) {
-      const adv = moveAdvice(fenBefore, { from, to });
+      const adv = adviceFor(fenBefore, from, to);
       setCoachTag(adv.kind);
       if (adv.kind === "blunder" && !chess.current.isGameOver()) {
         setAwaitRetry(true);
@@ -271,6 +314,7 @@ export default function Solo() {
     setCoachTag(null);
     setAwaitRetry(false);
     setReviewPgn(null);
+    adviceRef.current = {};
     // Lock the bot's strength for this game to the player's current rating, so
     // the matchup is an even ~50% (it re-tunes from the post-game rating).
     botSkill.current = botSkillForPlayer(rating);
