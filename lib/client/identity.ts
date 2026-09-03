@@ -5,6 +5,7 @@
 // refetched from the server on mount.
 
 import { INITIAL_RATING, clampSkill, type RatingState } from "@/lib/chess/skill";
+import { safeGet, safeRemove, safeSet } from "@/lib/client/storage";
 
 const HOST_KEY = (id: string) => `sjakk:host:${id}`;
 const PLAYER_KEY = "sjakk:player"; // single active student session per browser
@@ -19,45 +20,36 @@ export interface StoredPlayer {
 
 export const identity = {
   saveHostCode(tournamentId: string, hostCode: string) {
-    try {
-      localStorage.setItem(HOST_KEY(tournamentId), hostCode);
-    } catch (e) {
-      // Persistence lost (private mode / quota) → crash-recovery won't work for
-      // this device. Surface it instead of failing silently.
-      console.warn("[identity] localStorage write failed", e);
+    // Persistence lost (private mode / quota / blocked storage) → crash-recovery
+    // won't work for this device. Surface it instead of failing silently.
+    if (!safeSet(HOST_KEY(tournamentId), hostCode)) {
+      console.warn("[identity] localStorage write failed");
     }
   },
   hostCode(tournamentId: string): string | null {
-    try {
-      return localStorage.getItem(HOST_KEY(tournamentId));
-    } catch {
-      return null;
-    }
+    return safeGet(HOST_KEY(tournamentId));
   },
   savePlayer(p: StoredPlayer) {
-    try {
-      localStorage.setItem(PLAYER_KEY, JSON.stringify(p));
-    } catch (e) {
-      // Persistence lost (private mode / quota) → crash-recovery won't work for
-      // this device. Surface it instead of failing silently.
-      console.warn("[identity] localStorage write failed", e);
+    // Persistence lost (private mode / quota / blocked storage) → crash-recovery
+    // won't work for this device. Surface it instead of failing silently.
+    if (!safeSet(PLAYER_KEY, JSON.stringify(p))) {
+      console.warn("[identity] localStorage write failed");
     }
   },
   player(): StoredPlayer | null {
+    const raw = safeGet(PLAYER_KEY);
+    if (!raw) return null;
     try {
-      const raw = localStorage.getItem(PLAYER_KEY);
-      return raw ? (JSON.parse(raw) as StoredPlayer) : null;
+      return JSON.parse(raw) as StoredPlayer;
     } catch {
       return null;
     }
   },
   clearPlayer() {
-    try {
-      localStorage.removeItem(PLAYER_KEY);
-    } catch (e) {
-      // Persistence lost (private mode / quota) → crash-recovery won't work for
-      // this device. Surface it instead of failing silently.
-      console.warn("[identity] localStorage write failed", e);
+    // Persistence lost (private mode / quota / blocked storage) → crash-recovery
+    // won't work for this device. Surface it instead of failing silently.
+    if (!safeRemove(PLAYER_KEY)) {
+      console.warn("[identity] localStorage write failed");
     }
   },
 
@@ -65,9 +57,9 @@ export const identity = {
    *  authoritative and never sent to the server. Falls back to the initial
    *  rating if absent or corrupt. */
   soloRating(): RatingState {
+    const raw = safeGet(SOLO_RATING_KEY);
+    if (!raw) return { ...INITIAL_RATING };
     try {
-      const raw = localStorage.getItem(SOLO_RATING_KEY);
-      if (!raw) return { ...INITIAL_RATING };
       const parsed = JSON.parse(raw) as Partial<RatingState>;
       const rating = clampSkill(Number(parsed.rating));
       const games = Number.isFinite(parsed.games) ? Math.max(0, Math.floor(parsed.games as number)) : 0;
@@ -77,12 +69,10 @@ export const identity = {
     }
   },
   saveSoloRating(state: RatingState) {
-    try {
-      localStorage.setItem(SOLO_RATING_KEY, JSON.stringify(state));
-    } catch (e) {
-      // Persistence lost (private mode / quota) → crash-recovery won't work for
-      // this device. Surface it instead of failing silently.
-      console.warn("[identity] localStorage write failed", e);
+    // Persistence lost (private mode / quota / blocked storage) → crash-recovery
+    // won't work for this device. Surface it instead of failing silently.
+    if (!safeSet(SOLO_RATING_KEY, JSON.stringify(state))) {
+      console.warn("[identity] localStorage write failed");
     }
   },
 };

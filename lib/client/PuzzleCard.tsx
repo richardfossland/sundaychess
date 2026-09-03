@@ -7,6 +7,7 @@ import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import { PUZZLES, puzzleTurn } from "@/lib/puzzles";
 import { legalDestinations } from "@/lib/chess/validateMove";
 import { sound } from "@/lib/client/sound";
+import { safeGet, safeSet } from "@/lib/client/storage";
 import { no } from "@/lib/locale/no";
 
 const Chessboard = dynamic(
@@ -16,9 +17,11 @@ const Chessboard = dynamic(
 
 const SOLVED_KEY = "sundaychess:puzzles-solved";
 
-function readSolved(): number {
-  if (typeof window === "undefined") return 0;
-  return parseInt(localStorage.getItem(SOLVED_KEY) ?? "0", 10) || 0;
+/** Exported for tests. Falls back to 0 on the server, when storage is
+ *  unavailable (e.g. Safari "Block All Cookies"), or when the value is
+ *  missing/unparsable. */
+export function readSolved(): number {
+  return parseInt(safeGet(SOLVED_KEY) ?? "0", 10) || 0;
 }
 
 /** Mate-in-1 trainer for players who are waiting (bye / between rounds).
@@ -66,11 +69,7 @@ export function PuzzleCard() {
         setWrong(false);
         sound.play("win");
         const n = readSolved() + 1;
-        try {
-          localStorage.setItem(SOLVED_KEY, String(n));
-        } catch {
-          // private mode — counter stays in-memory
-        }
+        safeSet(SOLVED_KEY, String(n)); // best-effort; counter stays in-memory otherwise
         setSolvedCount(n);
       } else {
         // legal but not mate → reset and nudge
