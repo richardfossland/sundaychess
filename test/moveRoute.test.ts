@@ -9,6 +9,23 @@ const applyMoveRpc = vi.fn();
 const authPlayer = vi.fn();
 const afterGameResolved = vi.fn();
 const broadcastPosition = vi.fn();
+const broadcastSpectate = vi.fn();
+// R8: side-effects are handed to defer() and run AFTER the response. Capture
+// them instead of running them, so a test can assert the response is already
+// complete BEFORE any broadcast/scoring happens, then drain the queue and check
+// the deferred work got exactly the arguments it used to get inline.
+const { deferred } = vi.hoisted(() => ({
+  deferred: [] as Array<() => Promise<void>>,
+}));
+vi.mock("@/lib/server/defer", () => ({
+  defer: (task: () => Promise<void>) => {
+    deferred.push(task);
+  },
+}));
+async function drainDeferred(): Promise<void> {
+  const queue = deferred.splice(0);
+  for (const task of queue) await task();
+}
 // clock path: defaults (set in beforeEach) configure no clockSec → gameClock()
 // returns null and the flag-fall branch is skipped (clock logic itself is
 // covered by clock.test.ts)
@@ -32,7 +49,7 @@ vi.mock("@/lib/server/auth", () => ({
 vi.mock("@/lib/server/gameEvents", () => ({
   afterGameResolved: (...a: unknown[]) => afterGameResolved(...a),
   broadcastPosition: (...a: unknown[]) => broadcastPosition(...a),
-  broadcastSpectate: vi.fn(),
+  broadcastSpectate: (...a: unknown[]) => broadcastSpectate(...a),
 }));
 
 import { POST } from "@/app/api/move/route";
@@ -79,8 +96,10 @@ function req(body: unknown): Request {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  deferred.length = 0;
   applyMoveRpc.mockResolvedValue({ ok: true, ply: 1, status: "live" });
   broadcastPosition.mockResolvedValue(undefined);
+  broadcastSpectate.mockResolvedValue(undefined);
   afterGameResolved.mockResolvedValue(undefined);
   getTournament.mockResolvedValue({ id: "t", config: {} });
   resolveGameRpc.mockResolvedValue({ ok: true });
@@ -138,7 +157,29 @@ describe("POST /api/move", () => {
       newTurn: "b",
       newStatus: "live",
     });
+    // R8: the player already has the full answer while NOTHING has broadcast yet.
+    expect(broadcastPosition).not.toHaveBeenCalled();
+    expect(broadcastSpectate).not.toHaveBeenCalled();
+
+    await drainDeferred();
     expect(broadcastPosition).toHaveBeenCalledOnce();
+    expect(broadcastPosition.mock.calls[0]).toEqual([
+      "g1",
+      json.fen,
+      "b",
+      "live",
+      { from: "e2", to: "e4", san: "e4" },
+      null,
+    ]);
+    expect(broadcastSpectate).toHaveBeenCalledOnce();
+    expect(broadcastSpectate.mock.calls[0]).toEqual([
+      "t",
+      "g1",
+      json.fen,
+      "b",
+      "live",
+      null,
+    ]);
     expect(afterGameResolved).not.toHaveBeenCalled();
   });
 
@@ -162,6 +203,12 @@ describe("POST /api/move", () => {
     const json = await res.json();
     expect(json.status).toBe("black_win");
     expect(applyMoveRpc.mock.calls[0][0]).toMatchObject({ newStatus: "black_win" });
+    // R8: the mate result reaches the player BEFORE recomputeScores + 5 broadcasts.
+    expect(afterGameResolved).not.toHaveBeenCalled();
+
+    await drainDeferred();
+    expect(broadcastPosition).toHaveBeenCalledOnce();
+    expect(broadcastSpectate).toHaveBeenCalledOnce();
     expect(afterGameResolved).toHaveBeenCalledOnce();
     expect(afterGameResolved.mock.calls[0].slice(1)).toEqual(["black_win", "play"]);
   });
@@ -182,7 +229,13 @@ describe("POST /api/move", () => {
     expect(res.status).toBe(409);
     expect((await res.json()).error).toBe("flagged");
     expect(resolveGameRpc).toHaveBeenCalledWith("g1", "black_win", "play", true);
-    expect(afterGameResolved).toHaveBeenCalledOnce();
+    expect(afterGameResolved).not.toHaveBeenCalled();
     expect(applyMoveRpc).not.toHaveBeenCalled();
+
+    await drainDeferred();
+    expect(afterGameResolved).toHaveBeenCalledOnce();
+    expect(afterGameResolved.mock.calls[0].slice(1)).toEqual(["black_win", "play"]);
+    expect(broadcastPosition).toHaveBeenCalledOnce();
+    expect(broadcastSpectate).toHaveBeenCalledOnce();
   });
 });

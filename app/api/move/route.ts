@@ -13,6 +13,7 @@ import {
   broadcastPosition,
   broadcastSpectate,
 } from "@/lib/server/gameEvents";
+import { defer } from "@/lib/server/defer";
 import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
 import type { GameStatus, Turn } from "@/lib/types";
 
@@ -76,15 +77,21 @@ async function handleMove(req: Request): Promise<Response> {
       : "draw";
     const resolved = await resolveGameRpc(game.id, result, "play", true);
     if (resolved.ok) {
-      await afterGameResolved(game, result, "play");
-      await broadcastPosition(game.id, game.fen, game.turn, result, null, {
-        ...clock.info,
-        running: false,
-      });
-      await broadcastSpectate(game.tournament_id, game.id, game.fen, game.turn, result, {
-        ...clock.info,
-        running: false,
-      });
+      // The loss on time is committed; the notifications are a hint layer, so
+      // they run after the response (see lib/server/defer.ts).
+      const flagClock = { ...clock.info, running: false };
+      defer(async () => {
+        await afterGameResolved(game, result, "play");
+        await broadcastPosition(game.id, game.fen, game.turn, result, null, flagClock);
+        await broadcastSpectate(
+          game.tournament_id,
+          game.id,
+          game.fen,
+          game.turn,
+          result,
+          flagClock,
+        );
+      }, "move:flagged");
     }
     return fail(409, "flagged");
   }
@@ -137,32 +144,37 @@ async function handleMove(req: Request): Promise<Response> {
     : null;
 
   // 6. Broadcast the new authoritative position (hint to refetch/sync) — to the
-  //    players' game channel and the teacher's tournament-wide spectate feed.
-  await broadcastPosition(
-    game.id,
-    applied.fen,
-    applied.turn as Turn,
-    applied.status,
-    {
-      from: body.from,
-      to: body.to,
-      san: applied.san,
-    },
-    newClock,
-  );
-  await broadcastSpectate(
-    game.tournament_id,
-    game.id,
-    applied.fen,
-    applied.turn as Turn,
-    applied.status,
-    newClock,
-  );
-
-  // 7. If the game ended on this move, run resolution side-effects.
-  if (applied.status !== "live") {
-    await afterGameResolved(game, applied.status, "play");
-  }
+  //    players' game channel and the teacher's tournament-wide spectate feed —
+  //    and, if the game ended on this move, run the resolution side-effects.
+  //
+  //    All of it runs AFTER the response (lib/server/defer.ts): the move is
+  //    already committed by the RPC above, so making the player wait on up to
+  //    ~20 s of broadcasts and score recomputation only risked their 8 s client
+  //    timeout rolling the board back on the very move that ended the game.
+  const lastMove = { from: body.from, to: body.to, san: applied.san };
+  defer(async () => {
+    await Promise.all([
+      broadcastPosition(
+        game.id,
+        applied.fen,
+        applied.turn as Turn,
+        applied.status,
+        lastMove,
+        newClock,
+      ),
+      broadcastSpectate(
+        game.tournament_id,
+        game.id,
+        applied.fen,
+        applied.turn as Turn,
+        applied.status,
+        newClock,
+      ),
+    ]);
+    if (applied.status !== "live") {
+      await afterGameResolved(game, applied.status, "play");
+    }
+  }, "move");
 
   return ok({
     fen: applied.fen,
