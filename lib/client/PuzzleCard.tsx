@@ -6,6 +6,7 @@ import { Chess } from "chess.js";
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import { PUZZLES, puzzleTurn } from "@/lib/puzzles";
 import { legalDestinations } from "@/lib/chess/validateMove";
+import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
 import { sound } from "@/lib/client/sound";
 import { safeGet, safeSet } from "@/lib/client/storage";
 import { no } from "@/lib/locale/no";
@@ -136,14 +137,13 @@ export function PuzzleCard() {
       <div style={{ width: "100%", borderRadius: 8, overflow: "hidden" }}>
         <Chessboard
           options={{
+            ...BOARD_BASE_OPTIONS,
             position: fen,
             boardOrientation: orientation,
             allowDragging: !solved,
             onPieceDrop: onDrop,
             onSquareClick,
             squareStyles,
-            darkSquareStyle: { backgroundColor: "var(--board-dark)" },
-            lightSquareStyle: { backgroundColor: "var(--board-light)" },
             animationDurationInMs: 150,
             id: `puzzle-${puzzle.id}`,
           }}

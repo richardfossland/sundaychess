@@ -8,6 +8,7 @@ import { ChessClock } from "@/lib/client/ChessClock";
 import { HypeCallout } from "@/lib/client/HypeCallout";
 import { ReactionLayer, type FloatingReaction } from "@/lib/client/Reactions";
 import { MoveList, sansFromPgn } from "@/lib/client/MoveList";
+import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
 import { api } from "@/lib/client/api";
 import { SoundToggle } from "@/lib/client/SoundToggle";
 import { FullscreenToggle } from "@/lib/client/FullscreenToggle";
@@ -173,11 +174,10 @@ export function SpectateGame({
             <div className="board-shell-lg">
               <Chessboard
                 options={{
+                  ...BOARD_BASE_OPTIONS,
                   position: fen,
                   allowDragging: false,
                   showNotation: true,
-                  darkSquareStyle: { backgroundColor: "var(--board-dark)" },
-                  lightSquareStyle: { backgroundColor: "var(--board-light)" },
                   id: "spectate-board",
                 }}
               />

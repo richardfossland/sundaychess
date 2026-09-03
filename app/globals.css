@@ -754,6 +754,12 @@ a:focus-visible,
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
+  /* L4: `manipulation`, not `none` — on phones this 94vw board IS the main
+   * scroll surface, so a touch-drag that starts on an empty square must
+   * still scroll the page underneath it. `manipulation` only drops
+   * double-tap-to-zoom, which we don't want on a board anyway. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* responsive game layout: board centre, player info stacked (narrow) or on the
@@ -815,6 +821,9 @@ a:focus-visible,
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
+  /* L4: same reasoning as .board-shell — see there. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .board-shell-sm {
   width: min(90vw, 360px);

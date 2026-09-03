@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Chess } from "chess.js";
+import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
 import { no } from "@/lib/locale/no";
 
 const Chessboard = dynamic(
@@ -120,12 +121,11 @@ export function ReplayBoard({
         <div className="board-shell" style={{ width: "min(94vw, 62vh, 560px)" }}>
           <Chessboard
             options={{
+              ...BOARD_BASE_OPTIONS,
               position: fen,
               boardOrientation: orientation,
               allowDragging: false,
               squareStyles,
-              darkSquareStyle: { backgroundColor: "var(--board-dark)" },
-              lightSquareStyle: { backgroundColor: "var(--board-light)" },
               animationDurationInMs: 150,
               id: "replay-board",
             }}
