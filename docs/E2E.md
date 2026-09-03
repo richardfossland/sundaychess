@@ -65,6 +65,10 @@ npm run e2e:build
 npm run e2e
 ```
 
+CI pins the CLI at **2.101.0** (`supabase/setup-cli@v1`, `version:` input). Both
+`supabase start`'s service names and the key names in `status -o env` are
+CLI-version surface, so bump that pin and this recipe together.
+
 `supabase start`'s `-x` names come from `supabase start --help`; the full set is
 `analytics, db, edge-runtime, functions, imgproxy, inbucket, kong, meta,
 realtime, rest, storage, studio, vector`. The app needs `db`, `kong`, `rest` and
@@ -88,6 +92,71 @@ npx playwright show-report                    # after a failure
 `reuseExistingServer` is on locally: a `next start` already listening on :3000 is
 adopted. If you changed app code, rerun `npm run e2e:build` — otherwise the suite
 happily tests the previous build.
+
+## In CI
+
+The suite runs on a GitHub runner, against a **real local Supabase** started by
+the CLI on that same runner — no hosted project, no shared database, nothing that
+outlives the job.
+
+| when | workflow | projects | job |
+| ---- | -------- | -------- | --- |
+| every PR + push to `main` | `ci.yml` → `e2e` | `desktop-chromium` | `needs: check` |
+| 03:00 UTC nightly (+ manual) | `nightly.yml` → `e2e` | `desktop-chromium`, `mobile-chromium` | — |
+
+Both call the same reusable workflow, `.github/workflows/e2e.yml`, with a
+different `projects` input. One file, so a service name or an env mapping cannot
+drift between the PR gate and the nightly.
+
+`needs: check` is deliberate: the browser job pays for a Supabase boot, a
+production build and a browser download, and none of that is worth spending on a
+branch whose `npm run check` is already red.
+
+What the job does, in order — the order is load-bearing:
+
+1. `supabase start -x studio,inbucket,imgproxy,edge-runtime,analytics,vector,functions,storage`.
+   First start applies `supabase/migrations/*` and then `supabase/seed.sql`
+   (empty on purpose). `db`, `rest`, `realtime`, `kong` and `meta` stay up; the
+   browser opens its Realtime socket straight at `127.0.0.1:54321`, because the
+   browser and the database are on the same runner.
+2. `supabase status -o env` → `NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` in `$GITHUB_ENV`.
+   **Before the build**, because `NEXT_PUBLIC_*` are inlined at compile time — a
+   build that ran first would ship a bundle pointing at nothing.
+3. `npm run e2e:build`, then `npx playwright test --project=…`. Playwright's
+   `webServer` starts `npm run e2e:server` itself, so `E2E_SEAM=1` is carried by
+   that script and never by the workflow. `reuseExistingServer` is `!CI`, so CI
+   always gets a fresh `next start`.
+
+The Playwright browsers are cached on the resolved `@playwright/test` version —
+binaries and library are an unsupported pair when they disagree, so a version
+bump misses the cache by design. The OS packages (`install-deps`) are reinstalled
+every run: they live in the runner image, not in the cache.
+
+### When it goes red
+
+The job uploads `playwright-report/` and `test-results/` as
+`playwright-<run id>-<attempt>` (7 days) on failure only. Download it, unzip, and:
+
+```bash
+npx playwright show-report path/to/playwright-report   # report + embedded traces
+npx playwright show-trace path/to/test-results/**/trace.zip
+```
+
+`trace`, `video` and `screenshot` are all `retain-on-failure`, so a green run
+uploads nothing and a red one carries the whole timeline.
+
+A failing step also dumps `supabase status` and the last 120 lines of every
+`supabase_*` container — Realtime refusing a join, or PostgREST rejecting the
+service key, appears there and nowhere in the Playwright output.
+
+### Not covered yet
+
+The suite drives `next start`. The thing we actually deploy is the OpenNext
+Worker, and the `build` job only proves it *bundles*. A second e2e lane against
+`wrangler dev` (or a preview deploy) would close that gap — its own follow-up,
+because it needs a different `webServer` and a Worker-shaped env, not just
+another Playwright project.
 
 ## Layout
 
