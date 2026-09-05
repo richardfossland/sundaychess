@@ -4,9 +4,20 @@ import { useEffect, useState } from "react";
 
 /** Small fixed-corner button to enter/exit fullscreen — for a distraction-free
  * projector or play view. Uses the Fullscreen API on the document root; the
- * click is the required user gesture. Sits just above the sound toggle. */
+ * click is the required user gesture. Sits just above the sound toggle.
+ * Renders nothing where the API doesn't exist at all (iPhone Safari has no
+ * `Element.requestFullscreen` — showing a button that can never work is worse
+ * than no button). */
 export function FullscreenToggle() {
   const [isFull, setIsFull] = useState(false);
+  // Read once on mount, not at module scope: `document` doesn't exist during
+  // SSR, and this component is always "use client" anyway.
+  const [supported, setSupported] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSupported(typeof document.documentElement.requestFullscreen === "function");
+  }, []);
 
   useEffect(() => {
     // setState lives in the event handler (not the effect body), so it tracks
@@ -25,6 +36,8 @@ export function FullscreenToggle() {
       console.warn("[fullscreen] request failed", e);
     }
   };
+
+  if (!supported) return null;
 
   return (
     <button

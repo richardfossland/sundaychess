@@ -11,6 +11,7 @@ import { recordPresence, sweepCandidates } from "@/lib/client/lobbyKick";
 import { channels } from "@/lib/realtime";
 import { initials } from "@/lib/client/Confetti";
 import { teamColor } from "@/lib/tournament/teams";
+import { FullscreenToggle } from "@/lib/client/FullscreenToggle";
 import { no } from "@/lib/locale/no";
 
 /** A player who has been continuously disconnected for this long while still in
@@ -265,6 +266,8 @@ export function LobbyView({
           )}
         </section>
       </div>
+
+      <FullscreenToggle />
     </main>
   );
 }

@@ -8,6 +8,7 @@ import { no } from "@/lib/locale/no";
 import { RoundTimer } from "@/lib/client/RoundTimer";
 import { useCountdown } from "@/lib/client/useCountdown";
 import { JoinChip } from "@/lib/client/JoinChip";
+import { FullscreenToggle } from "@/lib/client/FullscreenToggle";
 import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
 import { OverrideModal } from "./OverrideModal";
 import { CodesModal } from "./CodesModal";
@@ -366,6 +367,8 @@ export function LeagueView({
           onClose={() => setShowCodes(false)}
         />
       )}
+
+      <FullscreenToggle />
     </main>
   );
 }
