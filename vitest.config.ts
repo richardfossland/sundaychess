@@ -13,6 +13,10 @@ export default defineConfig({
     },
   },
   test: {
+    // The engine specs are NODE-budgeted, not time-budgeted (lib/chess/search.ts):
+    // a full default budget takes 5–35 s on a loaded machine, so vitest's 5 s
+    // default made `npm run check` red/flaky on main. Give them real headroom.
+    testTimeout: 60_000,
     environment: "node",
     include: ["test/**/*.test.ts"],
   },
