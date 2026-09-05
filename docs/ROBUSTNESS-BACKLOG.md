@@ -124,7 +124,7 @@ realtime channel authorization, and the finished-game override product decision.
 ## Closed by db(0013) — 2026-09-05
 
 Two more items from the "Deferred (low value / need migrations)" list in Batch 4, closed by
-migration `0013_revoke_cleanup_exec_casual_guard.sql`, PR **#PR_NUMBER**:
+migration `0013_revoke_cleanup_exec_casual_guard.sql`, PR **#91**:
 
 - **Casual-game retention tightening (DB migration).** Casual (1v1) sessions are created with
   `status: "league"` (`lib/server/casual.ts`), so they rode 0010's league/playoff auto-finish
