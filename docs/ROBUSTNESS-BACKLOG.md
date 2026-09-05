@@ -120,3 +120,26 @@ entries above that this program actually resolves:
 
 Not touched by this program, still open exactly as listed above: the in-memory rate limiter,
 realtime channel authorization, and the finished-game override product decision.
+
+## Closed by db(0013) — 2026-09-05
+
+Two more items from the "Deferred (low value / need migrations)" list in Batch 4, closed by
+migration `0013_revoke_cleanup_exec_casual_guard.sql`, PR **#PR_NUMBER**:
+
+- **Casual-game retention tightening (DB migration).** Casual (1v1) sessions are created with
+  `status: "league"` (`lib/server/casual.ts`), so they rode 0010's league/playoff auto-finish
+  (12h) and the 1-day casual delete clause even while a game inside them was still `live` — a
+  student mid-lesson could have their session deleted out from under them (`404 not_found` on
+  resume). `cleanup_old_tournaments()` is re-defined so the casual delete clause never fires
+  while a live game exists for that tournament, and the casual retention window is raised from 1
+  day to 7 (owner-approved).
+- **Anon-exposed `security definer` cleanup RPCs (new finding, not previously in this file).**
+  `public.cleanup_old_tournaments()` (0010) and `public.cleanup_client_events()` (0012) are
+  `security definer` functions in `public`, the schema PostgREST exposes over the REST API.
+  Postgres grants EXECUTE to PUBLIC on every new function by default and no earlier migration
+  revoked it, so `POST /rest/v1/rpc/cleanup_old_tournaments` with the public anon key could run a
+  definer-rights DELETE/UPDATE across every tournament in the shared project. 0013 revokes
+  EXECUTE from `public`/`anon`/`authenticated` on both functions; neither is ever called by the
+  app (only pg_cron), so this has no effect on the app itself. This is **not** the same as the
+  still-open "realtime channel authorization" item above (that one is about Supabase Realtime
+  broadcast/presence channel access boundaries, cross-class eavesdropping — untouched by 0013).

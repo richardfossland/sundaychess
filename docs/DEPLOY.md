@@ -46,6 +46,22 @@ Env summary:
 > instance. Cloudflare may run multiple isolates — see the hardening backlog in
 > RIG-TEST.md before relying on them at scale.
 
+## Database migrations (manual, shared Supabase project)
+
+The owner runs `supabase/migrations/*.sql` by hand in the Supabase Dashboard SQL
+editor (this project shares a Supabase instance with SundayTicTacToe — chess
+lives in `public`, TTT in schema `tictactoe` — so there is no automated
+`supabase db push` to prod). Each file is written to be idempotent/re-runnable.
+
+👤 **Run `0013_revoke_cleanup_exec_casual_guard.sql` after `0012_client_events.sql`.**
+It revokes the anon/authenticated `EXECUTE` grant that Postgres implicitly gave
+`public.cleanup_old_tournaments()` / `public.cleanup_client_events()` (both
+`security definer`, both callable — before this — via
+`POST /rest/v1/rpc/cleanup_old_tournaments` with the public anon key), and
+re-defines `cleanup_old_tournaments()` so a casual 1v1 session is never deleted
+while one of its games is still `live`, with the casual retention window raised
+from 1 day to 7. See the migration file's header comment for the full findings.
+
 ## Fallback — Vercel
 
 `vercel` (or connect the repo), set the same env vars, then CNAME
