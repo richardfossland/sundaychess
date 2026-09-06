@@ -91,7 +91,7 @@ describe("POST /api/round/extend", () => {
     expect(setRoundStartedAt).not.toHaveBeenCalled();
     expect(broadcast).not.toHaveBeenCalled();
     await drainDeferred();
-    expect(broadcast).toHaveBeenCalledWith(`lobby:${T_ID}`, "tournament", {
+    expect(broadcast).toHaveBeenCalledWith(`chess:lobby:${T_ID}`, "tournament", {
       timerExtended: "r1",
     });
   });

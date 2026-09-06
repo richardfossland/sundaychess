@@ -90,7 +90,7 @@ describe("POST /api/join", () => {
     });
     expect(broadcast).not.toHaveBeenCalled();
     await drainDeferred();
-    expect(broadcast).toHaveBeenCalledWith(`lobby:${T_ID}`, "roster", {
+    expect(broadcast).toHaveBeenCalledWith(`chess:lobby:${T_ID}`, "roster", {
       joined: "33333333-3333-4333-8333-333333333333",
     });
   });
