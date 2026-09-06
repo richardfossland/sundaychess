@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { CSSProperties } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import { legalDestinations } from "@/lib/chess/validateMove";
 import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
 import { Confetti } from "@/lib/client/Confetti";
 import { sound } from "@/lib/client/sound";
+import { safeGet, safeSet } from "@/lib/client/storage";
 import { no } from "@/lib/locale/no";
 
 const Chessboard = dynamic(
@@ -18,9 +19,38 @@ const Chessboard = dynamic(
   { ssr: false },
 );
 
+/** Lesson ids the player has solved, comma-separated. Best-effort: storage can
+ *  be blocked (Safari "Block All Cookies"), in which case progress simply
+ *  stays in memory for the session — see lib/client/storage.ts. */
+const DONE_KEY = "sjakk:lessons-done";
+
+function readDone(): string[] {
+  const raw = safeGet(DONE_KEY);
+  if (!raw) return [];
+  return raw.split(",").filter(Boolean);
+}
+
+function fill(template: string, values: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (m, key) => String(values[key] ?? m));
+}
+
 /** Solo "Lær"-mode: a list of one-move lessons, each run on a guided board. */
 export function Lessons({ onExit }: { onExit: () => void }) {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  // Safe to read storage in the initializer: this screen only mounts after the
+  // player taps "Lær sjakk" on the solo page, so it never renders during SSR
+  // and can't produce a hydration mismatch. safeGet degrades to null when
+  // storage is blocked, and the list simply shows no ticks.
+  const [done, setDone] = useState<string[]>(readDone);
+
+  const markDone = useCallback((id: string) => {
+    setDone((prev) => {
+      if (prev.includes(id)) return prev;
+      const next = [...prev, id];
+      safeSet(DONE_KEY, next.join(",")); // best-effort; state stays in memory either way
+      return next;
+    });
+  }, []);
 
   if (activeIdx === null) {
     return (
@@ -29,19 +59,36 @@ export function Lessons({ onExit }: { onExit: () => void }) {
           <div className="text-center stack" style={{ gap: 4 }}>
             <p className="eyebrow">{no.coach.lessonsTitle}</p>
             <p className="faint" style={{ fontSize: 13 }}>{no.coach.lessonsIntro}</p>
+            <p className="faint" style={{ fontSize: 12 }}>
+              {fill(no.coach.lessonsProgress, { n: done.length, total: LESSONS.length })}
+            </p>
           </div>
           <div className="stack" style={{ gap: 8 }}>
-            {LESSONS.map((l, i) => (
-              <button
-                key={l.id}
-                className="card stack"
-                style={{ padding: 14, textAlign: "left", cursor: "pointer", gap: 2 }}
-                onClick={() => setActiveIdx(i)}
-              >
-                <b style={{ fontSize: 16 }}>{l.title}</b>
-                <span className="faint" style={{ fontSize: 13 }}>{l.blurb}</span>
-              </button>
-            ))}
+            {LESSONS.map((l, i) => {
+              const solved = done.includes(l.id);
+              return (
+                <button
+                  key={l.id}
+                  className="card row"
+                  style={{ padding: 14, textAlign: "left", cursor: "pointer", gap: 10, alignItems: "flex-start" }}
+                  onClick={() => setActiveIdx(i)}
+                >
+                  <span
+                    aria-hidden={!solved}
+                    aria-label={solved ? no.coach.lessonSolvedLabel : undefined}
+                    style={{ width: 18, flex: "0 0 18px", fontSize: 15, lineHeight: "22px", textAlign: "center" }}
+                  >
+                    {solved ? "✓" : ""}
+                  </span>
+                  <span className="stack" style={{ gap: 2 }}>
+                    <b style={{ fontSize: 16 }}>
+                      {i + 1}. {l.title}
+                    </b>
+                    <span className="faint" style={{ fontSize: 13 }}>{l.blurb}</span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
           <button className="btn btn-ghost btn-block" onClick={onExit}>
             {no.solo.back}
@@ -55,7 +102,10 @@ export function Lessons({ onExit }: { onExit: () => void }) {
     <LessonRunner
       key={LESSONS[activeIdx].id}
       lesson={LESSONS[activeIdx]}
+      index={activeIdx}
+      total={LESSONS.length}
       hasNext={activeIdx < LESSONS.length - 1}
+      onSolved={markDone}
       onNext={() => setActiveIdx((i) => (i === null ? null : i + 1))}
       onList={() => setActiveIdx(null)}
     />
@@ -64,12 +114,18 @@ export function Lessons({ onExit }: { onExit: () => void }) {
 
 function LessonRunner({
   lesson,
+  index,
+  total,
   hasNext,
+  onSolved,
   onNext,
   onList,
 }: {
   lesson: Lesson;
+  index: number;
+  total: number;
   hasNext: boolean;
+  onSolved: (id: string) => void;
   onNext: () => void;
   onList: () => void;
 }) {
@@ -96,16 +152,22 @@ function LessonRunner({
     if (checkLessonGoal(lesson.goal, lesson.fen, { from, to })) {
       setStatus("done");
       sound.play("win");
+      onSolved(lesson.id);
     } else {
+      // Leave the wrong move ON the board with the hint showing, and wait for a
+      // tap. An automatic bounce-back after a second snatched the position away
+      // before a 10-year-old could see what went wrong.
       setStatus("retry");
       sound.play("lose");
-      // bounce back to the start position so they can try again
-      setTimeout(() => {
-        setFen(lesson.fen);
-        setStatus("playing");
-      }, 1000);
     }
     return true;
+  }
+
+  function retry() {
+    setFen(lesson.fen);
+    setSelected(null);
+    setLegal([]);
+    setStatus("playing");
   }
 
   function onDrop({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean {
@@ -141,6 +203,9 @@ function LessonRunner({
       {status === "done" && <Confetti count={110} />}
       <div className="stack" style={{ alignItems: "center", width: "100%", maxWidth: 560, gap: 14 }}>
         <div className="text-center stack" style={{ gap: 2 }}>
+          <p className="faint" style={{ fontSize: 12 }}>
+            {fill(no.coach.lessonProgress, { n: index + 1, total })}
+          </p>
           <p className="eyebrow">{lesson.title}</p>
           <p className="faint" style={{ fontSize: 13 }}>{lesson.blurb}</p>
         </div>
@@ -154,7 +219,7 @@ function LessonRunner({
           {status === "done"
             ? no.coach.lessonDone
             : status === "retry"
-              ? no.coach.lessonRetry
+              ? `${no.coach.lessonRetry} ${no.coach.hint}: ${lesson.hint}`
               : `${no.coach.hint}: ${lesson.hint}`}
         </div>
 
@@ -177,6 +242,11 @@ function LessonRunner({
         </div>
 
         <div className="row">
+          {status === "retry" && (
+            <button className="btn btn-primary" onClick={retry}>
+              {no.coach.lessonTryAgain}
+            </button>
+          )}
           {status === "done" && hasNext && (
             <button className="btn btn-primary" onClick={onNext}>
               {no.coach.next}
