@@ -7,13 +7,15 @@ between get their coverage.
 ## What runs
 
 `playwright.config.ts` drives the **production build** through `next start` —
-not `next dev`, and not wrangler. Two projects run by default:
+not `next dev`, and not wrangler. Three projects are defined; only the first
+two run by default (in CI and a plain `npm run e2e`) — the third only runs
+when `E2E_WEBKIT=1` is set:
 
-| project            | engine   | viewport | why                                  |
-| ------------------ | -------- | -------- | ------------------------------------ |
-| `desktop-chromium` | Chromium | 1440×900 | the teacher's laptop                 |
-| `mobile-chromium`  | Chromium | 390×844  | the borrowed phone (touch, iPhone 13)|
-| `mobile-webkit`    | WebKit   | 390×844  | opt-in: `E2E_WEBKIT=1`               |
+| project            | engine   | viewport | why                                  | runs by default? |
+| ------------------ | -------- | -------- | ------------------------------------- | ----------------- |
+| `desktop-chromium` | Chromium | 1440×900 | the teacher's laptop                 | yes               |
+| `mobile-chromium`  | Chromium | 390×844  | the borrowed phone (touch, iPhone 13)| yes               |
+| `mobile-webkit`    | WebKit   | 390×844  | Safari-class engine on iOS           | no — `E2E_WEBKIT=1` |
 
 Specs never shorten the app's timings. The shipped constants are an 8 s fetch
 timeout (`lib/client/api.ts`), an 11 s pending watchdog and a 3 s game poll

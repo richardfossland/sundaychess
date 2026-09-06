@@ -37,7 +37,7 @@
 
 1. The spec's `SundaySuite.app/sjakk` route-segment mount is impossible — the
    suite site is static HTML on Cloudflare Pages. → Own deployment at
-   **`sjakk.sundaysuite.app`**.
+   **`chess.sundaysuite.app`**.
 2. The spec's "reuse the Supabase project" clashes with the church-tenant
    `sundayplan` project. → **Dedicated Supabase project**, code-identity schema,
    no `church_id`.

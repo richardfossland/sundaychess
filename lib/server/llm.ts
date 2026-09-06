@@ -28,7 +28,15 @@ const ANTHROPIC_VERSION = "2023-06-01";
 const MAX_TOKENS = 600;
 // Hard cap on the narration call so a hung Anthropic request can never stall the
 // review response on a Worker — on timeout we just fall back to the template.
-const NARRATE_TIMEOUT_MS = 12_000;
+//
+// MUST stay comfortably under the CLIENT's own timeout (lib/client/api.ts
+// DEFAULT_TIMEOUT = 8000 ms): the route that calls narrateReview does its own
+// DB reads first (auth + game + player lookups), so if this budget were close
+// to 8s the client could abort and retry — or just show a spinner-then-error —
+// before the server ever gets a chance to fall back to the template. 6s here
+// leaves headroom for those reads plus response serialization within the
+// client's 8s window.
+const NARRATE_TIMEOUT_MS = 6_000;
 // Hard ceiling on the narrated paragraph after sanitizing — defence in depth so
 // a misbehaving model can never flood the UI.
 const MAX_SUMMARY_CHARS = 1200;
@@ -138,6 +146,13 @@ export function parseReviewResponse(json: unknown): string | null {
   };
   // A safety refusal yields no usable narration — fall back.
   if (obj.stop_reason === "refusal") return null;
+  // Truncated by the token cap: the narration may end mid-sentence, which
+  // reads worse than the templated summary. Fall back instead of shipping a
+  // clipped paragraph.
+  if (obj.stop_reason === "max_tokens") {
+    console.warn("[llm] max_tokens");
+    return null;
+  }
   if (!Array.isArray(obj.content)) return null;
 
   const text = obj.content
@@ -182,7 +197,12 @@ export async function narrateReview(
       body: JSON.stringify(body),
       signal: ctrl.signal,
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      // No body logged (may carry request/account details) — just enough to
+      // tell "key rotated (401)" apart from "keyless by design" in the logs.
+      console.warn("[llm]", res.status);
+      return null;
+    }
     const json = await res.json().catch(() => null);
     return parseReviewResponse(json);
   } catch {
