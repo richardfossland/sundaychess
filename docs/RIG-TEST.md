@@ -136,6 +136,91 @@ school cart behaves differently from a developer laptop — that's the point.
   flicker or reflow (L8, `lib/client/PlayBoard.tsx` — the grid's boards are
   memoized so an unrelated game's move can't re-render the whole grid).
 
+## 2b. Runde 2 scenarios (2026-09-06)
+
+New manual scenarios from the second stability pass (`docs/STABILITY-PROGRAM-2026-09.md`
+§"Runde 2") — same rule as above: these need real devices/eyes, not vitest.
+
+### Phone / backgrounded tab
+
+- [ ] **"Din tur" i bakgrunn.** Background the tab (switch app, or lock the
+  phone screen without ending the session) while it's your turn and the
+  opponent then moves. Foreground again: the tab title should have alternated
+  "▶ Din tur! – SundayChess" ↔ the normal title, and — only if you'd already
+  tapped 🔔 to opt in — a notification and a short vibration should have
+  fired once. Confirm nothing fires if you never tapped 🔔 (no auto-permission
+  prompt, ever), and that returning to the tab replays the move sound once.
+
+### Host / projector
+
+- [ ] **Vertskode skjult, "Vis vertskode" reveals it.** Open the lobby on the
+  projector: the host/vertskode must not be visible by default. Tap "Vis
+  vertskode" — a chip appears with the code and a "Kopier" button, and
+  auto-hides again after ~20 s. Confirm a passer-by glancing at the projector
+  before that tap sees nothing usable.
+- [ ] **Maskerte elevkoder.** Open "Vis koder" (host codes list): every resume
+  code should render masked (`••••-••`-style) by default; tapping a row
+  reveals only that row's code, with its own "Kopier" button.
+- [ ] **Cup-runde tid ute → "Avslutt runden".** In a playoff/cup round, let
+  the round timer expire while at least one game is still live. Confirm the
+  ⏰ banner and an "Avslutt runden" button appear on `BracketView` (not just
+  the league view), and that it's a themed confirm dialog, not a browser
+  `confirm()` popup.
+- [ ] **"Ta inn igjen" for fraværende elev.** Mark a student "borte" mid-league
+  (`OverrideModal`, scope "Ute av turneringen"). Confirm they collapse under
+  "Ute av turneringen (n)" in the standings card; expand it, press "Ta inn
+  igjen", confirm the dialog. The *current* round stays untouched; the student
+  is paired again only from the next round.
+- [ ] **"Avslutt etter denne runden".** In an ongoing league (not the last
+  round), press the ghost "Avslutt etter denne runden" button next to "Neste
+  runde" and confirm. The league should finish (or hand off to the playoff)
+  as soon as the round in progress resolves — `config.leagueRounds` must not
+  drop below the round just played.
+- [ ] **Lærernotat.** Open the ✎ note button next to the tournament title
+  (Lobby or League view), type a note (≤280 chars), save. Confirm it shows on
+  `HostDashboard`'s tournament card and on the finished screen's print-only
+  header — and, on a **student** device, confirm it never appears anywhere
+  (the public board endpoint strips it).
+- [ ] **Utskrift av resultater.** On the finished screen, press "Skriv ut /
+  lagre som PDF". Confirm the print preview shows the full standings + a
+  per-round pairings recap in black-on-white, with toolbars/toggles/confetti
+  hidden, and that any walkover/absent/override game shows its
+  `resultSource` marker instead of looking like a normal result.
+- [ ] **Hurtigstart.** From `/arranger`, press "⚡ Rask start" and confirm a
+  league (5 rounds, no playoff) is created immediately with an
+  auto-generated "Turnering DD.MM" title — no wizard steps shown. Separately,
+  step through "Tilpass turnering …" and confirm single-select steps
+  (format, variant, playoff on/off, timer, clock, reactions, teams)
+  auto-advance ~150 ms after a tap, with "Neste" hidden on those steps.
+
+### Player / waiting room
+
+- [ ] **Venterom viser "Runde n av N · x partier igjen".** With a round live
+  and at least one other game still in progress, confirm a waiting/finished
+  player's screen shows that exact progress line, falling back to "Venter på
+  at arrangøren starter runde n+1" once every game in the round has resolved.
+
+### Draw offer / dialogs
+
+- [ ] **Remistilbud: Escape lukker uten å avslå.** Offer a draw from one
+  board; on the other board, press Escape (or click the backdrop). Confirm
+  the dialog closes but the offer is still pending (not declined) — a new
+  "Svar på remistilbudet" ghost button should appear so the player can
+  reopen it. Confirm the explicit "Avslå" button still actually declines.
+- [ ] **Tastatur i dialoger (fokusfelle / Escape).** Open any dialog built on
+  the shared `Modal` (`ConfirmDialog`, promotion picker, draw offer, result
+  overlay). Tab repeatedly and confirm focus cycles only within the dialog
+  (never escapes to the page behind it); confirm Escape closes it and focus
+  returns to whatever opened it. Open a `ConfirmDialog` **from inside** a host
+  modal (nested) and confirm Escape closes only the top one. Confirm the
+  promotion picker's Escape **cancels** the pending move rather than silently
+  committing a queen.
+- [ ] **Reduced-motion (ingen konfetti).** Enable "reduce motion" at the OS
+  level (macOS: Accessibility → Display; Android: Settings → Accessibility).
+  Reload and win/checkmate a game (host, solo, or versus). Confirm no
+  confetti animation plays and the board itself renders without piece-slide
+  animation, while the win banner/text still appears.
+
 ## 3. Reading the Diagnostikk modal afterwards
 
 After a rig session (or any real one), open the tournament's host page on the
