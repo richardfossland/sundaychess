@@ -63,9 +63,15 @@ export function defaultConfig(title: string): { title: string; config: Tournamen
   };
 }
 
+/** Same cap the config route enforces server-side (app/api/tournament/[id]/
+ * config/route.ts and app/api/tournament/route.ts) — kept here too so the
+ * textarea's own counter can't drift from what actually gets saved. */
+export const MAX_NOTES = 280;
+
 export function Wizard({ onExit }: { onExit?: () => void }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
+  const [notes, setNotes] = useState("");
   const [format, setFormat] = useState<"league" | "cup">("league");
   const [leagueRounds, setLeagueRounds] = useState(5);
   const [variant, setVariant] = useState<VariantKey>("standard");
@@ -148,6 +154,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
     setBusy(true);
     setError(null);
     const cup = format === "cup";
+    const trimmedNotes = notes.trim().slice(0, MAX_NOTES);
     const config: TournamentConfig = {
       format,
       leagueRounds,
@@ -158,6 +165,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
       variant,
       clockSec: clockMin === 0 ? null : clockMin * 60,
       teams: teamCount === 0 ? [] : TEAM_NAMES.slice(0, teamCount) as unknown as string[],
+      ...(trimmedNotes ? { notes: trimmedNotes } : {}),
     };
     try {
       const t = await api.createTournament({ title: title.trim(), config });
@@ -204,6 +212,25 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
           />
           <span className="muted" style={{ fontSize: 12 }}>
             {no.wizard.titleHint}
+          </span>
+
+          {/* Private note-to-self — optional, ≤280 chars, NEVER shown to
+              students (see lib/dto.ts's toBoardTournament). */}
+          <label htmlFor="wn" style={{ marginTop: 10 }}>
+            {no.wizard.notesLabel}
+          </label>
+          <textarea
+            id="wn"
+            className="input"
+            rows={2}
+            maxLength={MAX_NOTES}
+            placeholder={no.wizard.notesPlaceholder}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            style={{ resize: "vertical", minHeight: 60 }}
+          />
+          <span className="faint" style={{ fontSize: 12, alignSelf: "flex-end" }}>
+            {notes.length} / {MAX_NOTES}
           </span>
         </div>
       )}
@@ -460,6 +487,9 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
           <p className="eyebrow">{no.wizard.reviewStep}</p>
           {title.trim() && (
             <ReviewRow label={no.wizard.titleStep} value={title.trim()} onEdit={() => jumpTo("title")} />
+          )}
+          {notes.trim() && (
+            <ReviewRow label={no.wizard.reviewNotes} value={notes.trim()} onEdit={() => jumpTo("title")} />
           )}
           <ReviewRow
             label={no.wizard.reviewFormat}

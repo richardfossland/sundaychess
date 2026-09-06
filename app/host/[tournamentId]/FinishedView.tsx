@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import type { BoardState, PublicGame } from "@/lib/dto";
 import { api } from "@/lib/client/api";
+import { identity } from "@/lib/client/identity";
 import { Confetti, initials } from "@/lib/client/Confetti";
 import { SoundToggle } from "@/lib/client/SoundToggle";
 import { FullscreenToggle } from "@/lib/client/FullscreenToggle";
@@ -108,6 +109,29 @@ export function FinishedView({ state }: { state: BoardState }) {
     };
   }, [tournament.id]);
 
+  // Teacher's private note-to-self (config.notes) — NEVER rides on the public
+  // board poll (lib/dto.ts's toBoardTournament strips it), so it's fetched
+  // separately through the host-code-gated config route, same as the print
+  // header's own host-only paper. Silently absent if the host code isn't on
+  // this device (e.g. a colleague projecting from a shared account/PIN).
+  const [notes, setNotes] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const hostCode = identity.hostCode(tournament.id);
+    if (!hostCode) return;
+    api
+      .getTournamentConfig(tournament.id, hostCode)
+      .then((r) => {
+        if (!cancelled) setNotes(r.notes);
+      })
+      .catch(() => {
+        // Print-only nicety — never worth erroring the finished screen for.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tournament.id]);
+
   const awards = useMemo(
     () =>
       computeAwards(
@@ -166,6 +190,11 @@ export function FinishedView({ state }: { state: BoardState }) {
         <p style={{ fontSize: 13 }}>
           {new Date().toLocaleDateString("no", { day: "2-digit", month: "long", year: "numeric" })}
         </p>
+        {/* Teacher's own reminder (class, lesson, …) — never shown to
+            students on the projector; this print-only block is host-only
+            paper, fetched below like the awards' PGN (never on the 5s poll —
+            see lib/dto.ts's toBoardTournament). */}
+        {notes && <p style={{ fontSize: 13, marginTop: 4 }}>{notes}</p>}
       </div>
 
       <div className="stack text-center" style={{ alignItems: "center", maxWidth: 680, gap: 18 }}>
