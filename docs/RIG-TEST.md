@@ -199,6 +199,17 @@ after killing a tab" paths are now covered by `e2e/smoke.spec.ts` and
 - [ ] Teacher override + "tving fullføring" (force draws) work.
 - [ ] An 8-player bracket seeds by (score, Buchholz) and resolves to a single
       winner; a drawn playoff game blocks advance until the teacher overrides it.
+- [ ] **Elev markert borte → læreren tar inn igjen → paret neste runde.** Mid-
+      league, mark one student's game "borte" with scope "Ute av turneringen"
+      (`OverrideModal`). Confirm their board shows `no.player.outOfTournament`
+      with the "si fra til læreren" hint. On the host board, the student now
+      appears collapsed under "Ute av turneringen (n)" in the standings card
+      (`LeagueView.tsx`); expand it and press "Ta inn igjen", confirm the
+      dialog ("Fra neste runde blir {navn} paret igjen."). The CURRENT round
+      is untouched (they stay out of it), but once the teacher advances to
+      the next round the student is paired again like everyone else, and
+      their board leaves the waiting/eliminated view on its own (no action
+      needed from the student).
 
 ## 7. Deploy (see docs/DEPLOY.md)
 
