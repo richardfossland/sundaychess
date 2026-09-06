@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { no } from "@/lib/locale/no";
 import { api } from "@/lib/client/api";
 import { identity } from "@/lib/client/identity";
+import { MAX_ROUNDS, MIN_ROUNDS } from "@/lib/tournament/roundsAdvice";
 import type { TournamentConfig } from "@/lib/types";
 
 type StepKey =
@@ -24,6 +25,44 @@ type VariantKey = "standard" | "no_queens" | "pawn_war";
 
 export const TEAM_NAMES = ["Rød", "Blå", "Grønn", "Gul"] as const;
 
+// How long after picking an option a single-select step auto-advances. Long
+// enough to see the selection land, short enough not to feel like a delay.
+const AUTO_ADVANCE_MS = 150;
+
+// Steps where there's only one thing to pick, so a tap can just move on
+// instead of waiting for an explicit "Neste". Title/rounds (free-input) and
+// size/review are excluded — see the "Rounds step a11y" PR note for why
+// `size` was left out too (out of scope for this pass).
+const AUTO_ADVANCE_STEPS: ReadonlySet<StepKey> = new Set([
+  "format",
+  "variant",
+  "playoff",
+  "timer",
+  "clock",
+  "reactions",
+  "teams",
+]);
+
+/** The wizard's out-of-the-box defaults — same values the "rounds" step's
+ * useState initializers use below. Extracted so "Rask start" (page.tsx) can
+ * create a tournament with these without walking the wizard at all. */
+export function defaultConfig(title: string): { title: string; config: TournamentConfig } {
+  return {
+    title: title.trim(),
+    config: {
+      format: "league",
+      leagueRounds: 5,
+      playoff: false,
+      playoffSize: 0,
+      roundTimerSec: null,
+      reactions: false,
+      variant: "standard",
+      clockSec: null,
+      teams: [],
+    },
+  };
+}
+
 export function Wizard({ onExit }: { onExit?: () => void }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
@@ -39,6 +78,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cup skips rounds/playoff config (everyone goes straight into the bracket);
   // the 'size' step only exists when a league playoff is enabled.
@@ -50,17 +90,58 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
       ? ["title", "format", "rounds", "variant", "playoff", "size", "timer", "clock", "reactions", "teams", "review"]
       : ["title", "format", "rounds", "variant", "playoff", "timer", "clock", "reactions", "teams", "review"];
   }, [playoff, format]);
+  // Mirrors `steps` for the auto-advance timeout below, whose callback runs
+  // after a delay — by then `steps` may have been recomputed (e.g. toggling
+  // playoff inserts/removes the "size" step), so the timeout must read the
+  // latest value rather than the one captured when it was scheduled.
+  const stepsRef = useRef(steps);
+  useEffect(() => {
+    stepsRef.current = steps;
+  }, [steps]);
   const key = steps[Math.min(step, steps.length - 1)];
   const isLast = step >= steps.length - 1;
+  const autoAdvancing = AUTO_ADVANCE_STEPS.has(key);
+
+  function clearPendingAdvance() {
+    if (advanceTimer.current) {
+      clearTimeout(advanceTimer.current);
+      advanceTimer.current = null;
+    }
+  }
+
+  // Cleanup on unmount (e.g. the host backs out to the chooser mid-step).
+  useEffect(() => clearPendingAdvance, []);
 
   function next() {
+    clearPendingAdvance();
     setError(null);
     if (isLast) void create();
     else setStep((s) => Math.min(s + 1, steps.length - 1));
   }
   function back() {
+    clearPendingAdvance();
     setError(null);
     setStep((s) => Math.max(0, s - 1));
+  }
+  /** Review step's "Endre" links — jump straight to a given step. */
+  function jumpTo(k: StepKey) {
+    const idx = steps.indexOf(k);
+    if (idx < 0) return;
+    clearPendingAdvance();
+    setError(null);
+    setStep(idx);
+  }
+  /** Sets a single-select step's value, then advances after a short delay —
+   * clicking the option IS the "confirm and move on" action, replacing the
+   * step's "Neste" button (see AUTO_ADVANCE_STEPS). */
+  function selectAndAdvance<T>(setter: (v: T) => void, value: T) {
+    setter(value);
+    setError(null);
+    clearPendingAdvance();
+    advanceTimer.current = setTimeout(() => {
+      advanceTimer.current = null;
+      setStep((s) => Math.min(s + 1, stepsRef.current.length - 1));
+    }, AUTO_ADVANCE_MS);
   }
 
   async function create() {
@@ -136,7 +217,8 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
             <button
               className={`btn btn-block ${format === "league" ? "btn-primary" : "btn-ghost"}`}
               style={{ textAlign: "left", padding: "12px 16px" }}
-              onClick={() => setFormat("league")}
+              aria-pressed={format === "league"}
+              onClick={() => selectAndAdvance(setFormat, "league")}
             >
               <b>🏅 {no.wizard.formatLeague}</b>
               <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
@@ -146,7 +228,8 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
             <button
               className={`btn btn-block ${format === "cup" ? "btn-primary" : "btn-ghost"}`}
               style={{ textAlign: "left", padding: "12px 16px" }}
-              onClick={() => setFormat("cup")}
+              aria-pressed={format === "cup"}
+              onClick={() => selectAndAdvance(setFormat, "cup")}
             >
               <b>🏆 {no.wizard.formatCup}</b>
               <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
@@ -159,37 +242,38 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
 
       {key === "rounds" && (
         <div className="stack">
-          <label className="field" style={{ gap: 4 }}>
+          <p className="field" id="rounds-label" style={{ gap: 4 }}>
             {no.wizard.roundsStep}
-          </label>
-          <div className="row" style={{ justifyContent: "center", gap: 18 }}>
+          </p>
+          <div
+            className="row"
+            role="group"
+            aria-labelledby="rounds-label"
+            style={{ justifyContent: "center", gap: 18 }}
+          >
             <button
               className="btn"
-              onClick={() => setLeagueRounds((r) => Math.max(3, r - 1))}
-              aria-label="færre"
+              onClick={() => setLeagueRounds((r) => Math.max(MIN_ROUNDS, r - 1))}
+              aria-label={no.wizard.roundsFewer}
             >
               −
             </button>
-            <span className="pin-hero" style={{ fontSize: 64 }}>
+            <span className="pin-hero" style={{ fontSize: 64 }} aria-live="polite">
               {leagueRounds}
             </span>
             <button
               className="btn"
-              onClick={() => setLeagueRounds((r) => Math.min(7, r + 1))}
-              aria-label="flere"
+              onClick={() => setLeagueRounds((r) => Math.min(MAX_ROUNDS, r + 1))}
+              aria-label={no.wizard.roundsMore}
             >
               +
             </button>
           </div>
-          <input
-            type="range"
-            min={3}
-            max={7}
-            value={leagueRounds}
-            onChange={(e) => setLeagueRounds(Number(e.target.value))}
-          />
           <span className="muted text-center" style={{ fontSize: 13 }}>
             {no.wizard.roundsHint}
+          </span>
+          <span className="muted text-center" style={{ fontSize: 12 }}>
+            {no.wizard.roundsRuleOfThumb}
           </span>
         </div>
       )}
@@ -205,7 +289,8 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
                 key={v}
                 className={`btn btn-block ${variant === v ? "btn-primary" : "btn-ghost"}`}
                 style={{ textAlign: "left", padding: "12px 16px" }}
-                onClick={() => setVariant(v)}
+                aria-pressed={variant === v}
+                onClick={() => selectAndAdvance(setVariant, v)}
               >
                 <b>{no.wizard.variants[v]}</b>
                 <span
@@ -230,13 +315,15 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
           <div className="row">
             <button
               className={`btn grow btn-lg ${!playoff ? "btn-primary" : "btn-ghost"}`}
-              onClick={() => setPlayoff(false)}
+              aria-pressed={!playoff}
+              onClick={() => selectAndAdvance(setPlayoff, false)}
             >
               {no.wizard.playoffOff}
             </button>
             <button
               className={`btn grow btn-lg ${playoff ? "btn-primary" : "btn-ghost"}`}
-              onClick={() => setPlayoff(true)}
+              aria-pressed={playoff}
+              onClick={() => selectAndAdvance(setPlayoff, true)}
             >
               {no.wizard.playoffOn}
             </button>
@@ -254,6 +341,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
               <button
                 key={n}
                 className={`btn grow btn-lg ${playoffSize === n ? "btn-primary" : "btn-ghost"}`}
+                aria-pressed={playoffSize === n}
                 onClick={() => setPlayoffSize(n)}
               >
                 {n}
@@ -276,7 +364,8 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
               <button
                 key={m}
                 className={`btn grow btn-lg ${timerMin === m ? "btn-primary" : "btn-ghost"}`}
-                onClick={() => setTimerMin(m)}
+                aria-pressed={timerMin === m}
+                onClick={() => selectAndAdvance(setTimerMin, m)}
               >
                 {m === 0 ? no.wizard.timerOff : `${m} ${no.wizard.min}`}
               </button>
@@ -298,7 +387,8 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
               <button
                 key={m}
                 className={`btn grow btn-lg ${clockMin === m ? "btn-primary" : "btn-ghost"}`}
-                onClick={() => setClockMin(m)}
+                aria-pressed={clockMin === m}
+                onClick={() => selectAndAdvance(setClockMin, m)}
               >
                 {m === 0 ? no.wizard.clockOff : `⏱ ${m} ${no.wizard.min}`}
               </button>
@@ -320,7 +410,8 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
               <button
                 key={n}
                 className={`btn grow btn-lg ${teamCount === n ? "btn-primary" : "btn-ghost"}`}
-                onClick={() => setTeamCount(n)}
+                aria-pressed={teamCount === n}
+                onClick={() => selectAndAdvance(setTeamCount, n)}
               >
                 {n === 0 ? no.wizard.teamsOff : `${n} lag`}
               </button>
@@ -345,13 +436,15 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
           <div className="row">
             <button
               className={`btn grow btn-lg ${!reactions ? "btn-primary" : "btn-ghost"}`}
-              onClick={() => setReactions(false)}
+              aria-pressed={!reactions}
+              onClick={() => selectAndAdvance(setReactions, false)}
             >
               {no.wizard.reactionsOff}
             </button>
             <button
               className={`btn grow btn-lg ${reactions ? "btn-primary" : "btn-ghost"}`}
-              onClick={() => setReactions(true)}
+              aria-pressed={reactions}
+              onClick={() => selectAndAdvance(setReactions, true)}
             >
               👍😄🔥 {no.wizard.reactionsOn}
             </button>
@@ -366,53 +459,58 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
         <div className="stack">
           <p className="eyebrow">{no.wizard.reviewStep}</p>
           {title.trim() && (
-            <div className="spread">
-              <span className="muted">{no.wizard.titleStep}</span>
-              <b>{title.trim()}</b>
-            </div>
+            <ReviewRow label={no.wizard.titleStep} value={title.trim()} onEdit={() => jumpTo("title")} />
           )}
-          <div className="spread">
-            <span className="muted">{no.wizard.reviewFormat}</span>
-            <b>{format === "cup" ? `🏆 ${no.wizard.formatCup}` : `🏅 ${no.wizard.formatLeague}`}</b>
-          </div>
+          <ReviewRow
+            label={no.wizard.reviewFormat}
+            value={format === "cup" ? `🏆 ${no.wizard.formatCup}` : `🏅 ${no.wizard.formatLeague}`}
+            onEdit={() => jumpTo("format")}
+          />
           {format === "league" && (
-            <div className="spread">
-              <span className="muted">{no.wizard.reviewRounds}</span>
-              <b>{leagueRounds}</b>
-            </div>
+            <ReviewRow label={no.wizard.reviewRounds} value={leagueRounds} onEdit={() => jumpTo("rounds")} />
           )}
           {variant !== "standard" && (
-            <div className="spread">
-              <span className="muted">{no.wizard.reviewVariant}</span>
-              <b>{no.wizard.variants[variant]}</b>
-            </div>
+            <ReviewRow
+              label={no.wizard.reviewVariant}
+              value={no.wizard.variants[variant]}
+              onEdit={() => jumpTo("variant")}
+            />
           )}
           {format === "league" && (
-            <div className="spread">
-              <span className="muted">{no.wizard.reviewPlayoff}</span>
-              <b>{playoff ? `${playoffSize}` : no.wizard.none}</b>
-            </div>
+            <ReviewRow
+              label={no.wizard.reviewPlayoff}
+              value={playoff ? `${playoffSize}` : no.wizard.none}
+              onEdit={() => jumpTo("playoff")}
+            />
           )}
-          <div className="spread">
-            <span className="muted">{no.wizard.reviewTimer}</span>
-            <b>{timerMin === 0 ? no.wizard.none : `${timerMin} ${no.wizard.min}`}</b>
-          </div>
+          <ReviewRow
+            label={no.wizard.reviewTimer}
+            value={timerMin === 0 ? no.wizard.none : `${timerMin} ${no.wizard.min}`}
+            onEdit={() => jumpTo("timer")}
+          />
           {clockMin > 0 && (
-            <div className="spread">
-              <span className="muted">{no.wizard.reviewClock}</span>
-              <b>⏱ {clockMin} {no.wizard.min}</b>
-            </div>
+            <ReviewRow
+              label={no.wizard.reviewClock}
+              value={
+                <>
+                  ⏱ {clockMin} {no.wizard.min}
+                </>
+              }
+              onEdit={() => jumpTo("clock")}
+            />
           )}
           {teamCount > 0 && (
-            <div className="spread">
-              <span className="muted">{no.wizard.reviewTeams}</span>
-              <b>{TEAM_NAMES.slice(0, teamCount).join(", ")}</b>
-            </div>
+            <ReviewRow
+              label={no.wizard.reviewTeams}
+              value={TEAM_NAMES.slice(0, teamCount).join(", ")}
+              onEdit={() => jumpTo("teams")}
+            />
           )}
-          <div className="spread">
-            <span className="muted">{no.wizard.reviewReactions}</span>
-            <b>{reactions ? no.wizard.reactionsOn : no.wizard.reactionsOff}</b>
-          </div>
+          <ReviewRow
+            label={no.wizard.reviewReactions}
+            value={reactions ? no.wizard.reactionsOn : no.wizard.reactionsOff}
+            onEdit={() => jumpTo("reactions")}
+          />
         </div>
       )}
 
@@ -430,10 +528,39 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
             ← {no.common.back}
           </button>
         )}
-        <button className="btn btn-primary grow" onClick={next} disabled={busy}>
-          {busy ? <span className="spin" /> : isLast ? no.common.create : no.common.next}
-        </button>
+        {/* Single-select steps advance on tap (selectAndAdvance) — no "Neste"
+            needed there; free-input steps (title, rounds), "size" and
+            "review" keep it. */}
+        {!autoAdvancing && (
+          <button className="btn btn-primary grow" onClick={next} disabled={busy}>
+            {busy ? <span className="spin" /> : isLast ? no.common.create : no.common.next}
+          </button>
+        )}
       </div>
+    </div>
+  );
+}
+
+/** One row in the review step: a label, its current value, and an "Endre"
+ * link that jumps straight back to the step that set it. */
+function ReviewRow({
+  label,
+  value,
+  onEdit,
+}: {
+  label: string;
+  value: React.ReactNode;
+  onEdit: () => void;
+}) {
+  return (
+    <div className="spread">
+      <span className="muted">{label}</span>
+      <span className="row" style={{ gap: 10, alignItems: "center" }}>
+        <b>{value}</b>
+        <button type="button" className="btn btn-sm btn-ghost" onClick={onEdit}>
+          {no.wizard.edit}
+        </button>
+      </span>
     </div>
   );
 }
