@@ -359,6 +359,14 @@ a:focus-visible,
   font-size: 17px;
   border-radius: 13px;
 }
+/* Compact button for dense inline rows (e.g. a tournament list's
+ * manage/delete actions) where a full 44px touch target would crowd the row. */
+.btn-sm {
+  padding: 7px 13px;
+  font-size: 13px;
+  min-height: 32px;
+  border-radius: 9px;
+}
 .btn-block {
   width: 100%;
   display: flex;
@@ -464,6 +472,14 @@ a:focus-visible,
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--ink-line);
   color: var(--txt-dim);
+}
+/* Static success banner (e.g. "check your inbox" after a magic link is sent).
+ * Same green as .banner-turn, without the "your move" sweep animation — this
+ * is a one-off confirmation, not a live turn indicator. */
+.banner-ok {
+  background: color-mix(in srgb, var(--turn) 18%, var(--ink-2));
+  border: 1px solid color-mix(in srgb, var(--turn) 45%, transparent);
+  color: #d4f3da;
 }
 .banner-error {
   background: color-mix(in srgb, var(--danger) 18%, var(--ink-2));

@@ -12,17 +12,6 @@
 
 import type { MoveTag, PlayerReview } from "@/lib/chess/analysis";
 
-/** Norwegian labels for each move tag (single move, lower-case mid-sentence). */
-export const TAG_LABEL_NO: Record<MoveTag, string> = {
-  best: "beste trekk",
-  good: "godt trekk",
-  inaccuracy: "unøyaktighet",
-  mistake: "feil",
-  blunder: "tabbe",
-  missed_mate: "oversett matt",
-  found_mate: "sjakkmatt",
-};
-
 /** Compact, structured facts the coach narrates around. Both the templated
  * summary and the LLM prompt are built from THIS — single source of truth. */
 export interface ReviewFacts {

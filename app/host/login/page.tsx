@@ -89,7 +89,7 @@ export default function HostLoginPage() {
         </div>
 
         <button className="btn btn-block btn-lg" onClick={signInWithGoogle}>
-          {no.hostAuth.sunday}
+          {no.hostAuth.google}
         </button>
 
         <Link href="/arranger" className="btn btn-ghost btn-block">

@@ -32,14 +32,22 @@ What none of that can do is put a real phone to sleep, project onto an actual
 screen, run over a school's actual Wi-Fi, or tell you whether a drag *feels*
 right with a finger instead of `page.mouse`. That is what is left below.
 
-## 1. Provision the dedicated Supabase project
+## 1. Provision the shared Supabase project
 
-Per the plan, SundayChess uses its **own** Supabase project (not the
-church-tenant `sundayplan`).
+SundayChess does **not** get its own Supabase project. It shares one project
+with the other code-identity (non-church-tenant) apps — SundayTicTacToe among
+them — the same way `docs/TOURNAMENT-ROBUSTNESS-PLAN.md` describes for
+chess/market/turnering/quiz/harvest. Chess's tables live in the **`public`**
+schema of that shared project; SundayTicTacToe's live in its own dedicated
+`tictactoe` schema on the same project. Neither app touches the other's
+schema, and this is **not** the church-tenant `sundayplan` project.
 
-1. Create a new Supabase project (e.g. `sundaysjakk`). Realtime is enabled by
-   default (`supabase/config.toml` → `[realtime] enabled = true`).
-2. Apply the migrations:
+1. Use the existing shared Supabase project (or create one if this is a fresh
+   environment — see the sibling apps' `docs/DEPLOY.md` for how the project is
+   provisioned). Realtime is enabled by default
+   (`supabase/config.toml` → `[realtime] enabled = true`).
+2. Apply chess's migrations (these only touch the `public` schema; they never
+   collide with `tictactoe` or the other apps' tables):
    ```bash
    supabase link --project-ref <ref>
    supabase db push        # applies supabase/migrations/*, through 0012
