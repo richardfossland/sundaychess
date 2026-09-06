@@ -9,6 +9,7 @@ import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import { LESSONS, checkLessonGoal, type Lesson } from "@/lib/coach/lessons";
 import { legalDestinations } from "@/lib/chess/validateMove";
 import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
+import { useReducedMotion } from "@/lib/client/useReducedMotion";
 import { Confetti } from "@/lib/client/Confetti";
 import { sound } from "@/lib/client/sound";
 import { safeGet, safeSet } from "@/lib/client/storage";
@@ -135,6 +136,7 @@ function LessonRunner({
   const [selected, setSelected] = useState<string | null>(null);
   const [legal, setLegal] = useState<string[]>([]);
   const [status, setStatus] = useState<"playing" | "done" | "retry">("playing");
+  const reducedMotion = useReducedMotion();
 
   function attempt(from: string, to: string): boolean {
     if (status !== "playing") return false;
@@ -231,6 +233,7 @@ function LessonRunner({
                 position: fen,
                 boardOrientation: moverColor,
                 allowDragging: status === "playing",
+                showAnimations: !reducedMotion,
                 onPieceDrop: onDrop,
                 onSquareClick,
                 squareStyles,

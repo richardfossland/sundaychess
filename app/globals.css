@@ -659,8 +659,11 @@ a:focus-visible,
 }
 .chip-kick {
   margin-left: 2px;
-  width: 20px;
-  height: 20px;
+  /* 32px min — the previous 20px circle was well under the ~44px touch-target
+     guideline; this is the largest it can go without the chip pill itself
+     growing awkwardly tall. */
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -676,6 +679,23 @@ a:focus-visible,
   color: #fff;
   background: var(--danger, #d4524e);
   border-color: var(--danger, #d4524e);
+}
+
+/* Projector / large-monitor type scale: standings + rosters are read from
+   across a classroom on this screen, not held in a hand — bump the body copy
+   past what's comfortable up close. (.game-grid's own board-shell bump at
+   this breakpoint lives further down, next to the rest of that layout.) */
+@media (min-width: 1500px) {
+  .table th {
+    font-size: 15px;
+  }
+  .table td {
+    font-size: 20px;
+  }
+  .chip {
+    font-size: 15px;
+    padding: 10px 18px 10px 11px;
+  }
 }
 
 /* generic round avatar */
@@ -848,6 +868,43 @@ a:focus-visible,
 @media (min-width: 1500px) {
   .game-grid .board-shell {
     width: min(46vw, 82vh, 1040px);
+  }
+}
+/* Landscape phone: below this height the mobile single-column stack — timer,
+   turn banner, board, resign/draw, notice slot, move list, both side panels —
+   adds up to well over the available height, pushing resign/draw off the
+   bottom of the screen with no visible way to scroll to them. Go two columns
+   instead: the board stays put on the left, everything else moves to a
+   narrower column on the right, so the actions are a lot closer to the top of
+   that stack instead of the very end of one long one.
+   `.game-center` (a plain box, not a grid child of `.game-grid` today) is
+   flattened with `display: contents` so its own children — the round timer,
+   turn banner, board, resign/draw row, notice slot and move list — become
+   individually placeable grid items right alongside the two `.game-side`
+   panels. No JSX changes needed: same DOM, just re-laid-out. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .game-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 300px);
+    align-items: start;
+    gap: 6px 14px;
+    max-height: 100dvh;
+    overflow-y: auto;
+  }
+  .game-grid .game-center {
+    display: contents;
+  }
+  /* The board is the one piece that stays in the left column — centred
+     against the height of everything stacked in the right column, via a
+     span comfortably larger than that stack will ever be. */
+  .game-grid .board-frame {
+    grid-column: 1;
+    grid-row: span 20;
+    align-self: center;
+    justify-self: center;
+  }
+  .game-grid > *:not(.board-frame) {
+    grid-column: 2;
   }
 }
 /* spectator/projector board — much larger on a big screen */
@@ -1298,6 +1355,9 @@ a:focus-visible,
 }
 
 /* ============ utility ============ */
+/* .visually-hidden lives with the modal styles further down (introduced
+   there for ConfirmDialog's dismissLabel) — RoundTimer's announcer reuses it
+   rather than defining a second copy. */
 .big-code {
   font-family: var(--mono);
   font-size: 32px;
@@ -1324,8 +1384,12 @@ a:focus-visible,
   right: 14px;
   bottom: 14px;
   z-index: 60;
-  width: 42px;
-  height: 42px;
+  /* 44px — was 42px at opacity 0.75 (sub-AA against the page and under the
+     ~44px touch-target guideline). Full opacity by default now too: a fixed
+     corner control that's only readable on hover doesn't work on a touch
+     device (no hover state at all). */
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -1333,11 +1397,10 @@ a:focus-visible,
   background: color-mix(in srgb, var(--ink-soft) 80%, transparent);
   border: 1px solid var(--ink-line-strong);
   cursor: pointer;
-  opacity: 0.75;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  opacity: 1;
+  transition: transform 0.15s ease;
 }
 .sound-toggle:hover {
-  opacity: 1;
   transform: scale(1.06);
 }
 /* Fullscreen toggle — same pill as the sound toggle, stacked just above it. */
@@ -1346,8 +1409,8 @@ a:focus-visible,
   right: 14px;
   bottom: 64px;
   z-index: 60;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -1356,11 +1419,10 @@ a:focus-visible,
   border: 1px solid var(--ink-line-strong);
   color: inherit;
   cursor: pointer;
-  opacity: 0.75;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  opacity: 1;
+  transition: transform 0.15s ease;
 }
 .fullscreen-toggle:hover {
-  opacity: 1;
   transform: scale(1.06);
 }
 /* Notify opt-in toggle — same pill, stacked above the fullscreen toggle.
@@ -1371,8 +1433,8 @@ a:focus-visible,
   right: 14px;
   bottom: 114px;
   z-index: 60;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -1381,11 +1443,10 @@ a:focus-visible,
   border: 1px solid var(--ink-line-strong);
   color: inherit;
   cursor: pointer;
-  opacity: 0.75;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  opacity: 1;
+  transition: transform 0.15s ease;
 }
 .notify-toggle:hover {
-  opacity: 1;
   transform: scale(1.06);
 }
 

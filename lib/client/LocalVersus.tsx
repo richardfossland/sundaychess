@@ -8,9 +8,11 @@ import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import { legalDestinations } from "@/lib/chess/validateMove";
 import { needsPromotion, type PromoPiece } from "@/lib/chess/promotion";
 import { PromotionPicker } from "@/lib/client/PromotionPicker";
+import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { Confetti } from "@/lib/client/Confetti";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
 import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
+import { useReducedMotion } from "@/lib/client/useReducedMotion";
 import { SoundToggle } from "@/lib/client/SoundToggle";
 import { sound } from "@/lib/client/sound";
 import { no } from "@/lib/locale/no";
@@ -31,6 +33,10 @@ type Outcome = "white" | "black" | "draw";
 export function LocalVersus({ onExit }: { onExit: () => void }) {
   const chess = useRef(new Chess());
   const [fen, setFen] = useState(START);
+  // Mirrors chess.current.history().length — kept as state (not read from the
+  // ref during render) so "Angre"/"Nytt parti" can safely gate on it in JSX.
+  // Synced everywhere `refresh()` is (see there).
+  const [historyLen, setHistoryLen] = useState(0);
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [legal, setLegal] = useState<string[]>([]);
@@ -38,9 +44,16 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
   const [replayPgn, setReplayPgn] = useState<string | null>(null);
   // A promoting move waiting for the player to choose a piece.
   const [promo, setPromo] = useState<{ from: string; to: string } | null>(null);
+  const reducedMotion = useReducedMotion();
+  // "Nytt parti" mid-game asks first — only when there's an actual game in
+  // progress to lose (newGame() below resets the board with no way back).
+  const [confirmNewGame, setConfirmNewGame] = useState(false);
 
   const turn: Turn = fen.split(" ")[1] === "b" ? "b" : "w";
-  const refresh = () => setFen(chess.current.fen());
+  const refresh = () => {
+    setFen(chess.current.fen());
+    setHistoryLen(chess.current.history().length);
+  };
 
   function settle(): boolean {
     const c = chess.current;
@@ -83,7 +96,7 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
 
   function newGame() {
     chess.current = new Chess();
-    setFen(chess.current.fen());
+    refresh();
     setLastMove(null);
     setSelected(null);
     setLegal([]);
@@ -166,6 +179,7 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
                 // rotate to the side to move — pass the device to that player
                 boardOrientation: turn === "w" ? "white" : "black",
                 allowDragging: !outcome,
+                showAnimations: !reducedMotion,
                 onPieceDrop: onDrop,
                 onSquareClick,
                 squareStyles,
@@ -176,10 +190,17 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
         </div>
 
         <div className="row">
-          <button className="btn btn-ghost" onClick={undo}>
+          <button
+            className="btn btn-ghost"
+            onClick={undo}
+            disabled={historyLen === 0}
+          >
             ↶ {no.solo.undo}
           </button>
-          <button className="btn" onClick={newGame}>
+          <button
+            className="btn"
+            onClick={() => (historyLen > 0 ? setConfirmNewGame(true) : newGame())}
+          >
             {no.versus.newGame}
           </button>
           <button className="btn btn-ghost" onClick={onExit}>
@@ -232,6 +253,18 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
             tryMove(from, to, piece);
           }}
           onCancel={() => setPromo(null)}
+        />
+      )}
+
+      {confirmNewGame && (
+        <ConfirmDialog
+          message={no.versus.newGameConfirm}
+          confirmLabel={no.versus.newGame}
+          onConfirm={() => {
+            setConfirmNewGame(false);
+            newGame();
+          }}
+          onCancel={() => setConfirmNewGame(false)}
         />
       )}
 

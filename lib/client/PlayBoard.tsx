@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import dynamic from "next/dynamic";
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
+import { useReducedMotion } from "@/lib/client/useReducedMotion";
 
 /**
  * L5: the player's board, insulated from its parent's re-renders.
@@ -152,6 +153,12 @@ export const PlayBoard = memo(function PlayBoard({
     clickRef.current = onSquareClick;
   });
 
+  // Internal hook state, not a prop — `arePropsEqual` above never sees it, but
+  // that's fine: `memo` only gates re-renders triggered by the PARENT passing
+  // new props, never this component's own state updates, so a live OS setting
+  // change still flips `showAnimations` below on the next matchMedia event.
+  const reduced = useReducedMotion();
+
   const handleDrop = useCallback(
     (args: PieceDropHandlerArgs) => dropRef.current(args),
     [],
@@ -171,6 +178,7 @@ export const PlayBoard = memo(function PlayBoard({
       boardOrientation: orientation,
       allowDragging,
       showNotation,
+      showAnimations: !reduced,
       onPieceDrop: handleDrop,
       onSquareClick: handleSquareClick,
       squareStyles,
@@ -181,6 +189,7 @@ export const PlayBoard = memo(function PlayBoard({
       orientation,
       allowDragging,
       showNotation,
+      reduced,
       squareStyles,
       id,
       handleDrop,

@@ -74,6 +74,20 @@ function gridMin(liveCount: number): number {
   return 220;
 }
 
+/** Names + clocks shrink at the same tiers as the boards (gridMin above) —
+ * otherwise the header text stays board-agnostic and starts to crowd or
+ * overflow its card once a round packs many small boards onto one screen. */
+function headerFontSize(liveCount: number): number {
+  if (liveCount <= 3) return 16;
+  if (liveCount <= 6) return 14;
+  return 12;
+}
+
+/** Boards shown at once before "Vis alle" is needed — a busy first round can
+ * have well over a dozen games live simultaneously, and a projector grid that
+ * dense stops being readable from across a classroom. */
+const LIVE_GRID_CAP = 8;
+
 export function LiveGamesView({
   state,
   onStale,
@@ -119,6 +133,8 @@ export function LiveGamesView({
   const [openResult, setOpenResult] = useState<GameStatus | null>(null);
   // A brief "X vant!" flash over the grid when any game finishes in live mode.
   const [winFlash, setWinFlash] = useState<string | null>(null);
+  // Past LIVE_GRID_CAP boards, stay collapsed until the host asks for more.
+  const [showAll, setShowAll] = useState(false);
 
   // Expire the overlay. One timer, armed for the oldest patch — when it fires,
   // everything past its TTL is dropped and the authoritative fen shows again.
@@ -270,6 +286,10 @@ export function LiveGamesView({
   const live = games
     .filter((g) => g.status === "live" && g.blackPlayerId && !finished.has(g.id))
     .sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0) || a.id.localeCompare(b.id));
+  // What's actually on screen — capped until the host asks to see the rest.
+  // Board size/header font are keyed off THIS count, not `live.length`, so the
+  // grid never sizes for boards that aren't rendered.
+  const visible = showAll ? live : live.slice(0, LIVE_GRID_CAP);
 
   if (openId) {
     const g = games.find((x) => x.id === openId);
@@ -295,7 +315,10 @@ export function LiveGamesView({
 
   // The header card markup for one game (names + clocks).
   const Heads = (g: (typeof live)[number]) => (
-    <div className="spread" style={{ marginBottom: 8, fontSize: 14, alignItems: "center" }}>
+    <div
+      className="spread"
+      style={{ marginBottom: 8, fontSize: headerFontSize(visible.length), alignItems: "center" }}
+    >
       <span className="row" style={{ gap: 6 }}>
         <b>{nameById(g.whitePlayerId)}</b>
         <SideClock clk={clockOf(g)} side="w" />
@@ -364,38 +387,47 @@ export function LiveGamesView({
           </p>
         )
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: `repeat(auto-fill, minmax(${gridMin(live.length)}px, 1fr))`,
-            gap: 20,
-            justifyContent: "center",
-          }}
-        >
-          {live.map((g) => (
-            <button
-              key={g.id}
-              onClick={() => { setOpenId(g.id); setOpenResult(null); }}
-              className="card reveal"
-              style={{ padding: 12, cursor: "pointer", textAlign: "left", color: "inherit" }}
-            >
-              {Heads(g)}
-              <div style={{ borderRadius: 8, overflow: "hidden" }}>
-                <PlayBoard
-                  id={`mini-${g.id}`}
-                  fen={fenOf(g)}
-                  orientation="white"
-                  allowDragging={false}
-                  showNotation={false}
-                  squareStyles={NO_SQUARE_STYLES}
-                  stylesKey={NO_STYLES_KEY}
-                  onDrop={NOOP_DROP}
-                  onSquareClick={NOOP_CLICK}
-                />
-              </div>
-            </button>
-          ))}
-        </div>
+        <>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(auto-fill, minmax(${gridMin(visible.length)}px, 1fr))`,
+              gap: 20,
+              justifyContent: "center",
+            }}
+          >
+            {visible.map((g) => (
+              <button
+                key={g.id}
+                onClick={() => { setOpenId(g.id); setOpenResult(null); }}
+                className="card reveal"
+                style={{ padding: 12, cursor: "pointer", textAlign: "left", color: "inherit" }}
+              >
+                {Heads(g)}
+                <div style={{ borderRadius: 8, overflow: "hidden" }}>
+                  <PlayBoard
+                    id={`mini-${g.id}`}
+                    fen={fenOf(g)}
+                    orientation="white"
+                    allowDragging={false}
+                    showNotation={false}
+                    squareStyles={NO_SQUARE_STYLES}
+                    stylesKey={NO_STYLES_KEY}
+                    onDrop={NOOP_DROP}
+                    onSquareClick={NOOP_CLICK}
+                  />
+                </div>
+              </button>
+            ))}
+          </div>
+          {live.length > LIVE_GRID_CAP && (
+            <div className="text-center" style={{ marginTop: 20 }}>
+              <button className="btn btn-ghost" onClick={() => setShowAll((v) => !v)}>
+                {showAll ? no.host.showFewerGames : no.host.showAllGames(live.length)}
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Brief "X vant!" celebration over the grid as each game finishes — does

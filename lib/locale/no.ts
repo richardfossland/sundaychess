@@ -20,6 +20,12 @@ export const no = {
     notFoundTitle: "Fant ikke siden",
     notFoundBody: "Lenken kan være utløpt eller feil. Sjekk PIN-en, eller gå tilbake.",
     home: "Til forsiden",
+    // Fixed-corner toggles (SoundToggle/FullscreenToggle) — same two labels on
+    // every screen that renders them, so they live here rather than per-page.
+    muteSound: "Slå av lyd",
+    unmuteSound: "Slå på lyd",
+    enterFullscreen: "Fullskjerm",
+    exitFullscreen: "Avslutt fullskjerm",
   },
 
   landing: {
@@ -58,6 +64,7 @@ export const no = {
     draw: "Remis",
     flip: "Snu brettet",
     newGame: "Nytt parti",
+    newGameConfirm: "Starte nytt parti? Det pågående partiet blir borte.",
     rematch: "⚔︎ Omkamp",
     start: "Start",
     back: "Tilbake",
@@ -103,6 +110,10 @@ export const no = {
     bracketRecap: "Slik gikk det",
     roundOver: "Runden er ferdig!",
     backToArranging: "Tilbake til arrangering",
+    // LiveGamesView caps the projector grid at 8 boards by default (more than
+    // that per screen becomes unreadable) — this expands/collapses the rest.
+    showAllGames: (n: number) => `Vis alle (${n})`,
+    showFewerGames: "Vis færre",
     playRematch: "Spill omkamp",
     advanceBySeed: "Send høyest rangert videre",
     drawChoiceHint:
@@ -150,6 +161,10 @@ export const no = {
     join: "Bli med",
     liveToggle: "Live",
     boardToggle: "Tavle",
+    // SpectateGame's own back button — distinct from `liveToggle` above (that
+    // one SWITCHES a mode; this one LEAVES the single-game view for the grid),
+    // even though they used to share the same copy.
+    backToGames: "Alle partier",
     spectateWon: "vant!",
     spectateDraw: "Remis",
     kick: "Kast ut",
@@ -162,6 +177,10 @@ export const no = {
     bracket: "Sluttspill",
     timer: "Rundetid",
     timeUp: "Tiden er ute",
+    // Screen-reader-only announcement (RoundTimer) — the visible countdown
+    // itself is aria-live="off" (it ticks every second; announcing every
+    // tick would be unusable), so this fires once, at the 60s mark.
+    timerOneMinuteLeft: "Ett minutt igjen",
     addMinute: "+1 min",
     timeUpSuggestion: "Tiden er ute – vil du avslutte runden?",
     endRound: "Avslutt runden",
@@ -556,6 +575,7 @@ export const no = {
     computer: "Datamaskinen",
     you: "Du",
     newGame: "Nytt parti",
+    newGameConfirm: "Starte nytt parti? Det pågående partiet blir borte.",
     undo: "Angre",
     back: "Tilbake",
     youWon: "Du vant!",

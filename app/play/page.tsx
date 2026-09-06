@@ -175,7 +175,7 @@ export default function Play() {
             </button>
           </div>
         ) : (
-          <span className="spin" />
+          <span className="spin" role="status" aria-label={no.common.loading} />
         )}
       </main>
     );
@@ -264,6 +264,11 @@ export default function Play() {
                 onKeyDown={(e) => e.key === "Enter" && goName()}
               />
             </div>
+            {error && (
+              <div className="banner banner-error" role="alert">
+                {error}
+              </div>
+            )}
             <button className="btn btn-primary btn-block btn-lg" onClick={goName}>
               {no.player.join} →
             </button>
@@ -306,6 +311,11 @@ export default function Play() {
                 {no.player.nameHint}
               </span>
             </div>
+            {error && (
+              <div className="banner banner-error" role="alert">
+                {error}
+              </div>
+            )}
             <button
               className="btn btn-primary btn-block btn-lg"
               disabled={busy || !name.trim()}
@@ -372,6 +382,11 @@ export default function Play() {
                 onChange={(e) => setCode(e.target.value)}
               />
             </div>
+            {error && (
+              <div className="banner banner-error" role="alert">
+                {error}
+              </div>
+            )}
             <button
               className="btn btn-primary btn-block btn-lg"
               disabled={busy || !code.trim() || !isValidPin(pin)}
@@ -385,8 +400,6 @@ export default function Play() {
           </>
         )}
         </div>
-
-        {error && <div className="banner banner-error">{error}</div>}
       </div>
     </main>
   );

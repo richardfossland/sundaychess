@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Chess } from "chess.js";
 import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
+import { useReducedMotion } from "@/lib/client/useReducedMotion";
 import { no } from "@/lib/locale/no";
 
 const Chessboard = dynamic(
@@ -90,6 +91,8 @@ export function ReplayBoard({
     return () => window.removeEventListener("keydown", onKey);
   }, [total, onClose]);
 
+  const reducedMotion = useReducedMotion();
+
   if (!plies) {
     return (
       <div className="stack text-center" style={{ alignItems: "center", gap: 12 }}>
@@ -125,6 +128,7 @@ export function ReplayBoard({
               position: fen,
               boardOrientation: orientation,
               allowDragging: false,
+              showAnimations: !reducedMotion,
               squareStyles,
               animationDurationInMs: 150,
               id: "replay-board",

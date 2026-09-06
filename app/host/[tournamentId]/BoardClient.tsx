@@ -78,7 +78,7 @@ export function BoardClient({ tournamentId }: { tournamentId: string }) {
           role="status"
           aria-live="polite"
         >
-          {no.common.loading}
+          {no.player.reconnecting}
         </div>
       )}
       {/* One fixed toolbar, not two — the live/board toggle only exists once a
@@ -94,6 +94,7 @@ export function BoardClient({ tournamentId }: { tournamentId: string }) {
               <button
                 className={`btn ${mode === "board" ? "btn-primary" : "btn-ghost"}`}
                 style={{ padding: "8px 14px" }}
+                aria-pressed={mode === "board"}
                 onClick={() => setMode("board")}
               >
                 {no.host.boardToggle}
@@ -101,6 +102,7 @@ export function BoardClient({ tournamentId }: { tournamentId: string }) {
               <button
                 className={`btn ${mode === "live" ? "btn-primary" : "btn-ghost"}`}
                 style={{ padding: "8px 14px" }}
+                aria-pressed={mode === "live"}
                 onClick={() => setMode("live")}
               >
                 ● {no.host.liveToggle}

@@ -29,6 +29,7 @@ import { Confetti } from "@/lib/client/Confetti";
 import { EvalBar } from "@/lib/client/EvalBar";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
 import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
+import { useReducedMotion } from "@/lib/client/useReducedMotion";
 import { SoundToggle } from "@/lib/client/SoundToggle";
 import { sound } from "@/lib/client/sound";
 import { no } from "@/lib/locale/no";
@@ -104,6 +105,10 @@ export default function Solo() {
 
   const chess = useRef(new Chess());
   const [fen, setFen] = useState(START);
+  // Mirrors chess.current.history().length — kept as state (not read from the
+  // ref during render) so "Angre"/"Nytt parti" can safely gate on it in JSX.
+  // Synced everywhere `refresh()` is (see there).
+  const [historyLen, setHistoryLen] = useState(0);
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
   const [thinking, setThinking] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -123,6 +128,10 @@ export default function Solo() {
   const [coachTag, setCoachTag] = useState<AdviceKind | null>(null);
   const [awaitRetry, setAwaitRetry] = useState(false); // "bli bedre" blunder pause
   const [reviewPgn, setReviewPgn] = useState<string | null>(null);
+  const reducedMotion = useReducedMotion();
+  // "Nytt parti" mid-game asks first — only when there's an actual game in
+  // progress to lose (start() below resets the board with no way back).
+  const [confirmNewGame, setConfirmNewGame] = useState(false);
   const coachCfg: CoachCfg | null = mode === "coach" ? COACH[coachLevel] : null;
 
   const myLetter = playerColor === "white" ? "w" : "b";
@@ -130,7 +139,10 @@ export default function Solo() {
   const turn = fen.split(" ")[1] === "b" ? "b" : "w";
   const isMyTurn = !thinking && !outcome && !awaitRetry && turn === myLetter;
 
-  const refresh = () => setFen(chess.current.fen());
+  const refresh = () => {
+    setFen(chess.current.fen());
+    setHistoryLen(chess.current.history().length);
+  };
 
   // ---- coach advice, precomputed off the main thread ----
   // Every legal move of a position, classified, keyed by the FEN it belongs to.
@@ -304,7 +316,7 @@ export default function Solo() {
       colorPref === "random" ? (Math.random() < 0.5 ? "white" : "black") : colorPref;
     setPlayerColor(color);
     chess.current = new Chess();
-    setFen(chess.current.fen());
+    refresh();
     setLastMove(null);
     setOutcome(null);
     setSelected(null);
@@ -382,12 +394,14 @@ export default function Solo() {
           <div className="row">
             <button
               className={`btn grow ${mode === "normal" ? "btn-primary" : "btn-ghost"}`}
+              aria-pressed={mode === "normal"}
               onClick={() => setMode("normal")}
             >
               {no.coach.modeNormal}
             </button>
             <button
               className={`btn grow ${mode === "coach" ? "btn-primary" : "btn-ghost"}`}
+              aria-pressed={mode === "coach"}
               onClick={() => {
                 setMode("coach");
                 setLevel(COACH[coachLevel].bot);
@@ -404,6 +418,7 @@ export default function Solo() {
                 <button
                   key={c}
                   className={`btn grow ${colorPref === c ? "btn-primary" : "btn-ghost"}`}
+                  aria-pressed={colorPref === c}
                   onClick={() => setColorPref(c)}
                 >
                   {c === "white" ? `♔ ${no.solo.white}` : c === "black" ? `♚ ${no.solo.black}` : no.solo.random}
@@ -423,6 +438,7 @@ export default function Solo() {
                     key={l.key}
                     className={`btn ${level === l.key ? "btn-primary" : "btn-ghost"}`}
                     style={{ padding: "10px 8px" }}
+                    aria-pressed={level === l.key}
                     onClick={() => setLevel(l.key)}
                   >
                     {l.label}
@@ -456,6 +472,7 @@ export default function Solo() {
                       whiteSpace: "normal",
                       width: "100%",
                     }}
+                    aria-pressed={coachLevel === l.key}
                     onClick={() => {
                       setCoachLevel(l.key);
                       setLevel(COACH[l.key].bot);
@@ -546,6 +563,7 @@ export default function Solo() {
                   position: fen,
                   boardOrientation: playerColor,
                   allowDragging: isMyTurn,
+                  showAnimations: !reducedMotion,
                   onPieceDrop: onDrop,
                   onSquareClick,
                   squareStyles,
@@ -586,10 +604,18 @@ export default function Solo() {
         )}
 
         <div className="row">
-          <button className="btn btn-ghost" onClick={undo} disabled={thinking || awaitRetry}>
+          <button
+            className="btn btn-ghost"
+            onClick={undo}
+            disabled={thinking || awaitRetry || historyLen === 0}
+          >
             ↶ {no.solo.undo}
           </button>
-          <button className="btn" onClick={start} disabled={thinking}>
+          <button
+            className="btn"
+            onClick={() => (historyLen > 0 ? setConfirmNewGame(true) : start())}
+            disabled={thinking}
+          >
             {no.solo.newGame}
           </button>
           <Link href="/" className="btn btn-ghost">
@@ -680,6 +706,18 @@ export default function Solo() {
             tryMove(from, to, promotion, true);
           }}
           onCancel={() => setWarnMove(null)}
+        />
+      )}
+
+      {confirmNewGame && (
+        <ConfirmDialog
+          message={no.solo.newGameConfirm}
+          confirmLabel={no.solo.newGame}
+          onConfirm={() => {
+            setConfirmNewGame(false);
+            start();
+          }}
+          onCancel={() => setConfirmNewGame(false)}
         />
       )}
 

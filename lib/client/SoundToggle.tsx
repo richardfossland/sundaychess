@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { sound } from "@/lib/client/sound";
+import { no } from "@/lib/locale/no";
 
 /** Small fixed-corner speaker toggle. Reads/writes the persisted mute flag. */
 export function SoundToggle() {
@@ -15,8 +16,10 @@ export function SoundToggle() {
   return (
     <button
       className="sound-toggle"
-      aria-label={muted ? "Slå på lyd" : "Slå av lyd"}
-      title={muted ? "Slå på lyd" : "Slå av lyd"}
+      aria-label={muted ? no.common.unmuteSound : no.common.muteSound}
+      title={muted ? no.common.unmuteSound : no.common.muteSound}
+      // Pressed = sound is currently OFF (the state this button's action toggles).
+      aria-pressed={muted}
       onClick={() => {
         const next = sound.toggle();
         setMuted(next);

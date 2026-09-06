@@ -115,6 +115,16 @@ export function SpectateGame({
   const [floats, setFloats] = useState<FloatingReaction[]>([]);
   const floatSeq = useRef(0);
 
+  // Escape returns to the grid — the same exit the back button offers, for
+  // anyone driving this projector view from a keyboard.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   // SpectateGame is FEN-driven (the parent patches `fen` live from broadcasts),
   // so there's no PGN here — fetch it for the move list when the position changes
   // (one cheap fetch per move, for the single game being spectated). The same
@@ -197,7 +207,7 @@ export function SpectateGame({
       {(result === "white_win" || result === "black_win") && <Confetti count={140} />}
       <div className="stack" style={{ alignItems: "center", gap: 14 }}>
         <button className="btn btn-ghost" style={{ alignSelf: "flex-start" }} onClick={onClose}>
-          ← {no.host.liveToggle}
+          ← {no.host.backToGames}
         </button>
 
         <SpectatePlayer name={black} side="black" fen={fen} baselineFen={baselineFen} clock={clock} />
