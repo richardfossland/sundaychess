@@ -486,6 +486,11 @@ a:focus-visible,
   border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
   color: #f3c9c5;
 }
+.banner-warn {
+  background: color-mix(in srgb, var(--warn) 18%, var(--ink-2));
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+  color: #f3d9c4;
+}
 /* L2: the turn/pre-move banner is always mounted (visibility:hidden, never
    unmounted, once the game ends) so nothing above .board-shell can change
    height mid-game. This slot reserves exactly ONE line of .banner: 15px
