@@ -362,6 +362,13 @@ export const no = {
     cupProgress: "Cup-stigen",
     yourTurn: "DIN TUR",
     opponentTurn: "Venter på motstander",
+    // Background "your turn" cue for a hidden/backgrounded tab — see
+    // lib/client/turnCue.ts. Distinct from `yourTurn` above (the in-page
+    // banner): this is a browser tab title / notification title, so it's
+    // punchier and carries an exclamation mark.
+    turnTitle: "Din tur!",
+    notifyOptIn: "🔔 Varsle meg når det er min tur",
+    notifyBody: "Motstanderen din har trukket – bli med igjen for å spille.",
     boardLabel: "Sjakkbrett",
     otherTabTitle: "Du spiller i en annen fane",
     otherTabBody: "Spillet er åpent i en annen fane på denne enheten. For å unngå trøbbel spiller bare én fane om gangen.",
