@@ -186,3 +186,48 @@ migration `0013_revoke_cleanup_exec_casual_guard.sql`, PR **#91**:
   app (only pg_cron), so this has no effect on the app itself. This is **not** the same as the
   still-open "realtime channel authorization" item above (that one is about Supabase Realtime
   broadcast/presence channel access boundaries, cross-class eavesdropping — untouched by 0013).
+
+## Closed by runde 2 (2026-09-06)
+
+Three adversarial audits (UX/a11y, kodehelse/sikkerhet, produkt) run against
+`main` — full write-up and PR-by-PR table in
+`docs/STABILITY-PROGRAM-2026-09.md` §"Runde 2 (05.–06.09)". This entry maps
+only the **lettered findings** the kodehelse/sikkerhet audit produced to the
+PRs that closed them; the two sections directly above (H4/H5/M1 and db(0013))
+were added by those same PRs and are folded in here rather than repeated.
+
+**No `C1`/`C2` findings exist in this round** — worth saying plainly since a
+prior read of this program expected some: the sikkerhet audit's findings
+(anon-exposed definer RPCs, forged realtime broadcasts, exposed host/resume
+codes, missing route-level rate limits, cross-tournament identity bleed)
+each got a PR but none of them were labelled `C*` in the PR body. Likewise
+`H3` and `M2`/`M4`/`M7`/`M8` were never used — the audit's numbering has gaps,
+not this document.
+
+| Finding | What | Closed by |
+| --- | --- | --- |
+| H1 | Five routes (`join`, `round/start`\|`advance`\|`extend`\|`force`) did real work — rate limit, `readJson`, the auth round-trip, the PIN lookup — *before* their own try block, so a transient throw escaped as a platform 500 / Workers 1102 HTML page instead of JSON. | #95 |
+| H2 | A malformed (non-UUID) id handed to `getPlayer`/`getTournament`/`getGame` made PostgREST throw `22P02`, which the H1 catch-all then reported as a false `503 server_error` instead of a client 4xx. | #95 |
+| H4 | The unauthenticated 5 s board poll (`GET /api/tournament/[id]`, `GET /api/game/[id]`) and the player-action POSTs (`game/draw`, `game/resign`, `game/claim`) had no rate limit at all. | #102 (see "Partially closed" above) |
+| H5 | `tournament/open` — the best host-code brute-force oracle in the app — only checked its own 20/min bucket, not the shared host bucket. | #102 |
+| M1 | `game/override`, `game/absent`, `join`, `lobby/kick`, `round/extend` still awaited their broadcast/roster side-effects on the response path (R8/#69 had only covered `move`/`resign`/`draw`/`claim`). | #102 |
+| M3 | Eight `store.ts` writes (`setPlayerSeed`, `setPlayerStatus`, `setRoundStatus`, `setRoundStartedAt`, `setDrawOffer`, `recomputeScores`, both `scorePredictions` call sites) awaited a PostgREST chain and dropped its `error` — a failed write returned the same `void` as a successful one. | #95 |
+| M5 | A late presence subscriber carrying a `trackKey` never got `track()` called (it lived in the `SUBSCRIBED` callback that subscriber already missed), and nothing polls presence — the student was invisible to the host indefinitely. | #101 |
+| M6 | Dead code: `store.currentGameForPlayer`, `reviewSummary.TAG_LABEL_NO` — zero callers. | #95 |
+| — (unlabelled) | Anon-exposed `security definer` cleanup RPCs; casual session deleted while its game was still live. | #91 / migration 0013 (see "Closed by db(0013)" above) |
+| — (unlabelled) | Host/resume codes shown in the clear on the projector by default. | #97 |
+| — (unlabelled) | Student identity in a single per-browser `localStorage` slot — joining a second tournament silently discarded the first tournament's resume code; telemetry misattributed events across tournaments. | #105 |
+
+Still open, unchanged by runde 2 — same three items this file has carried since the 2026-09-03 program, restated here because runde 2's audit re-confirmed all three rather than finding anything new:
+
+- **Presence-key forgery** (new detail from #101, not previously in this file): a forged
+  presence key can make a *ghost* look online, dodging the lobby's absence sweep. It cannot
+  make a real student look absent — presence is additive. Closing it needs authenticated
+  Realtime (Supabase Realtime Authorization / RLS on `realtime.messages`), not a client-side
+  check — the same prerequisite as the "Realtime channel authorization" item below.
+- **Rate limiter → shared store.** Still per-isolate × per-source-IP (`lib/server/http.ts`) even
+  after #102 widened *which* routes it covers — a real deterrent, not a hard ceiling, until it
+  moves to edge KV or a Durable Object.
+- **Finished-game override policy.** Teacher override on an already-finished game is still not
+  auto-changed — correcting a finished result is a legitimate ask, but needs a product decision
+  (allow + idempotent vs. require-live), not a code fix.

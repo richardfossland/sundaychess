@@ -1,9 +1,13 @@
 # SundayChess
 
 A big-screen classroom chess tournament for ungdomsskole. A live Swiss league
-(3–7 rounds) with an optional knockout playoff. Students join with a PIN; the
-teacher runs a projector "board". Part of the **Sunday Suite**, deployed at
-**`chess.sundaysuite.app`**.
+(3–7 rounds) with an optional knockout playoff, plus a knockout-only "cup"
+format. Students join with a PIN; the teacher runs a projector "board" —
+lobby, live standings, bracket, podium, full results with print/PDF export,
+and a private note-to-self. Outside a tournament, `/solo` has an 18-lesson
+"Lær sjakk" coach curriculum plus a bot to practice against, and `/versus` is
+a same-device two-player board with no tournament at all. Part of the
+**Sunday Suite**, deployed at **`chess.sundaysuite.app`**.
 
 The chess rules are **server-authoritative**: the client only sends a move
 *intent*; the server replays it with `chess.js` against the stored FEN, commits
