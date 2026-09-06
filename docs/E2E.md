@@ -203,7 +203,8 @@ Two conventions the specs above rely on, both deliberate:
   to clear is waiting for two. Where a number does not come from a constant in
   the app, the comment says what it does come from.
 
-`openAs` fakes no screens: it writes `sjakk:player` via `addInitScript` and lets
+`openAs` fakes no screens: it writes `sjakk:player:<tournamentId>` (plus the
+`sjakk:player:last` pointer) via `addInitScript` and lets
 `/play` walk its real path — `attemptResume` → `WaitingRoom` latches the live
 game → `GameView` mounts — then waits for `board-shell`.
 
@@ -221,7 +222,8 @@ Stable hooks, kebab-case, added only where a spec needs one. The same names are
 intended for SundayTicTacToe, so keep them generic:
 
 `board-shell` · `turn-banner` · `toast` · `result-card` · `passive-tab` ·
-`load-error` · `join-screen` · `resume-retry` · `waiting-room` · `movelist`
+`load-error` · `join-screen` · `resume-retry` · `waiting-room` · `movelist` ·
+`switch-player`
 
 Prefer these over class names and copy: a restyle or a wording pass must not
 break the suite.
