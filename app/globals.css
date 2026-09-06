@@ -446,6 +446,20 @@ a:focus-visible,
 .badge-done {
   color: var(--txt-dim);
 }
+/* Fair-play readout — a small marker next to a result badge when the game's
+   result_source wasn't ordinary play (walkover/override/timeout/absent). */
+.result-marker {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: color-mix(in srgb, var(--warn) 22%, transparent);
+  color: var(--warn);
+  vertical-align: middle;
+}
 .banner {
   border-radius: 13px;
   padding: 15px 18px;
@@ -1564,4 +1578,86 @@ a:focus-visible,
   height: 9px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+/* ============ print (finished-screen recap) ============ */
+/* `.print-only` content (a plain title/date, the per-round pairings list) is
+   invisible on screen — the projector already shows the podium/table/awards
+   in their own styled form — and only appears once @media print flips it on.
+   `.no-print` is the opposite: fixed toolbars, toggles and confetti that make
+   no sense on paper. */
+.print-only {
+  display: none;
+}
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block;
+  }
+  /* Fixed-corner toolbars make no sense on paper. */
+  .sound-toggle,
+  .fullscreen-toggle,
+  .notify-toggle {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  body::before,
+  body::after {
+    display: none !important;
+  }
+  .center-screen {
+    min-height: 0;
+    display: block;
+    padding: 0;
+  }
+  .card {
+    background: #fff !important;
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+  }
+  .table th,
+  .table td {
+    border-bottom-color: #ccc !important;
+    color: #000 !important;
+  }
+  .table th {
+    color: #444 !important;
+  }
+  .rankpill {
+    background: #eee !important;
+    color: #000 !important;
+  }
+  /* Undo the gold gradient text-clip on the champion name — it prints as
+     invisible text (color: transparent) without this. */
+  .gold-text {
+    background: none !important;
+    -webkit-background-clip: unset !important;
+    background-clip: unset !important;
+    -webkit-text-fill-color: #000 !important;
+    color: #000 !important;
+  }
+  a,
+  h1,
+  h2,
+  h3,
+  b,
+  .badge,
+  .eyebrow,
+  .muted,
+  .faint,
+  .result-marker,
+  .team-chip {
+    color: #000 !important;
+    background: none !important;
+  }
+  .badge,
+  .team-chip {
+    border-color: #999 !important;
+  }
 }
