@@ -506,7 +506,7 @@ export const no = {
   coach: {
     modeNormal: "♟ Vanlig spill",
     modeCoach: "🎓 Med coach",
-    lessons: "📚 Lær sjakk",
+    lessons: "📚 Lær sjakk – 18 oppgaver",
     level: "Hva vil du?",
     laer: "Lære å spille",
     ovning: "Bli bedre",
@@ -523,10 +523,16 @@ export const no = {
     keep: "Spill videre",
     review: "🎓 Trenerens gjennomgang",
     lessonsTitle: "Lær sjakk",
-    lessonsIntro: "Små oppgaver – gjør trekket som løser hver av dem.",
+    lessonsIntro: "18 små oppgaver – fra hvordan brikkene går til matt i ett trekk.",
     hint: "Hint",
     lessonDone: "Riktig! 🎉",
-    lessonRetry: "Ikke helt – prøv igjen.",
+    lessonRetry: "Ikke helt – les hintet og prøv igjen.",
+    /** {n} = oppgavenummer, {total} = antall oppgaver. */
+    lessonProgress: "Oppgave {n} av {total}",
+    /** {n} = løste oppgaver, {total} = antall oppgaver. */
+    lessonsProgress: "{n} av {total} klart",
+    lessonTryAgain: "↺ Prøv igjen",
+    lessonSolvedLabel: "Klart",
     next: "Neste oppgave →",
     backToList: "← Oppgavene",
   },
