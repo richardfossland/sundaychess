@@ -8,7 +8,7 @@ import {
 } from "@/lib/server/store";
 import { computeClocks } from "@/lib/chess/clock";
 import { computeScores, computeStandings } from "@/lib/tournament/score";
-import { fail, ok } from "@/lib/server/http";
+import { fail, ok, rateLimit, clientIp } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 import type { PublicGame } from "@/lib/dto";
 import {
@@ -40,6 +40,14 @@ async function handleGet(
   // Postgres throws 22P02 on a non-UUID `.eq("id", id)`, and that must not
   // surface as a 503 — "no such tournament" is the truthful, cheap answer.
   if (!isUuid(id)) return fail(404, "not_found");
+
+  // H4: this is the hot poll — every connected client (students + the host
+  // projector) hits it every 5s. A class of 30 behind one shared school NAT IP
+  // is 360/min; 600 leaves real headroom while still capping a refetch storm
+  // (e.g. a forged/duplicated broadcast fanning out extra fetches).
+  if (!rateLimit(`board:${clientIp(req)}`, 600, 60_000)) {
+    return fail(429, "rate_limited");
+  }
 
   // Live-grid clocks are only rendered by the host projector, which asks for
   // them with ?clocks=1. Students poll this same endpoint every 5s and don't

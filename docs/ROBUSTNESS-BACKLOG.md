@@ -121,6 +121,49 @@ entries above that this program actually resolves:
 Not touched by this program, still open exactly as listed above: the in-memory rate limiter,
 realtime channel authorization, and the finished-game override product decision.
 
+## Partially closed — 2026-09-06: per-route rate limiter bounds (H4/H5/M1)
+
+The in-memory rate limiter itself (Deferred list, above) is **still** per-isolate × per-source-IP
+— that part is genuinely open and needs a shared store (edge KV or a Durable Object) before it is
+a hard ceiling rather than a deterrent. What this batch closes is the **coverage** gap: several
+routes had no bound at all, or a smaller one than they needed.
+
+- **H4 — bounded the unauthenticated hot GETs.** `GET /api/tournament/[id]` and
+  `GET /api/game/[id]` are the 5s board poll for every connected client (students + the host
+  projector) and had NO throttle. `rateLimit("board:"+ip, 600, 60_000)`: a class of 30 behind one
+  shared NAT IP polling every 5s is 360/min, so 600 leaves headroom while still capping a refetch
+  storm (e.g. a forged/duplicated broadcast fanning out extra fetches).
+- **H4 — bounded the player-action POSTs.** `game/draw`, `game/resign`, `game/claim` had no
+  throttle either. `rateLimit("gameact:"+ip, 120, 60_000)`, checked before auth even runs (auth's
+  own `getPlayer` read is unavoidable and stays first *after* the limiter — no game row is ever
+  fetched before auth passes, which was already true on `main` for these three routes).
+- **H5 — `tournament/open` also draws on the shared host bucket.** This route is unauthenticated
+  until the DB lookup AND is the best host-code brute-force oracle in the app (it searches EVERY
+  tournament, including one row per casual game), so it now checks BOTH its own tighter 20/min
+  bucket AND `hostRateLimit` (the bucket `game/override`, `game/absent`, `round/extend`,
+  `lobby/kick` already share) — not just the first. The `isResumeCodeShape` guard (#95) is now the
+  first substantive check in the handler, ahead of *either* limiter, so a garbage-shaped guess
+  can't spend budget in the shared bucket at all.
+- **Honesty fix.** `hostRateLimit`'s doc comment in `lib/server/http.ts` used to claim a flat
+  "~90/min" bound; it now says what is actually true — per-isolate × per-source-IP — and points
+  back here.
+
+Still open, unchanged by this batch: the shared-store rate limiter itself (DO/KV), realtime
+channel authorization, and the finished-game override product decision.
+
+## M1 — remaining side-effects moved off the response path (2026-09-06)
+
+R8/PR #69 moved `move`/`resign`/`draw`/`claim`'s scoring+broadcasts to `defer()` (respond first,
+side-effect after — see `lib/server/defer.ts`). This batch finishes the sweep on the routes that
+still `await`ed theirs: `game/override` (`afterGameResolved`), `game/absent` (both the live-game
+`afterGameResolved` call and the scope-`tournament` roster broadcast — `setPlayerStatus` itself
+stays awaited, since the caller must be told if that write fails), `join` (roster broadcast),
+`lobby/kick` (roster broadcast), `round/extend` (timer broadcast).
+
+`POST /api/resume`'s `maybeAutoFinishStale` call was **deliberately left awaited** — unlike the
+others, the response depends on its result (`tournamentStatus: fresh.status`, `tournamentId:
+fresh.id`), so there is nothing to answer with until it resolves.
+
 ## Closed by db(0013) — 2026-09-05
 
 Two more items from the "Deferred (low value / need migrations)" list in Batch 4, closed by

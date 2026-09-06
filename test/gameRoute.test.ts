@@ -16,6 +16,15 @@ vi.mock("@/lib/server/clock", () => ({
   gameClock: (...a: unknown[]) => gameClock(...a),
 }));
 
+// H4: the per-IP board-poll rate limiter, mocked so we can force a 429.
+const { rateLimitMock } = vi.hoisted(() => ({
+  rateLimitMock: vi.fn().mockReturnValue(true),
+}));
+vi.mock("@/lib/server/http", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/server/http")>();
+  return { ...actual, rateLimit: (...a: unknown[]) => rateLimitMock(...a) };
+});
+
 import { GET } from "@/app/api/game/[id]/route";
 
 const VALID_ID = "11111111-1111-4111-8111-111111111111";
@@ -30,6 +39,7 @@ function params(id: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  rateLimitMock.mockReturnValue(true);
   gameClock.mockResolvedValue(null);
 });
 
@@ -79,5 +89,14 @@ describe("GET /api/game/[id]", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.id).toBe(VALID_ID);
+  });
+
+  // H4: same generous-but-bounded poll cap as GET /api/tournament/[id].
+  it("429s when the per-IP poll bound is exceeded", async () => {
+    rateLimitMock.mockReturnValueOnce(false);
+    const res = await GET(req(VALID_ID), params(VALID_ID));
+    expect(res.status).toBe(429);
+    expect((await res.json()).error).toBe("rate_limited");
+    expect(getGame).not.toHaveBeenCalled();
   });
 });
