@@ -5,12 +5,22 @@ import { defineConfig, devices } from "@playwright/test";
 //
 // ## What is under test
 //
-// The PRODUCTION build, served by `next start` — not `next dev`, and not
-// wrangler. `npm run e2e:server` starts it with `E2E_SEAM=1` so
-// `/api/dev/quickmatch` can mint two players and a live game in one call (see
-// that route's comment: the variable must NEVER be set on the Worker).
-// Testing the dev server would leave the shipped bundle — the one with inlined
-// NODE_ENV, minified chunks and real code-splitting — with no coverage at all.
+// The PRODUCTION build. By default it is served by `next start` — not
+// `next dev`: testing the dev server would leave the shipped bundle (inlined
+// NODE_ENV, minified chunks, real code-splitting) with no coverage at all.
+//
+// `E2E_SERVER=worker` swaps that server for the OpenNext bundle running under
+// workerd (`wrangler dev`, see `npm run e2e:server:worker` and
+// wrangler.e2e.jsonc). That is the SHIPPED runtime, and three things exist only
+// there: `after()` backed by `ctx.waitUntil` (lib/server/defer.ts — the whole
+// R8 respond-first mechanism), the `staticAssetsIncrementalCache` interception
+// configured in open-next.config.ts, and `nodejs_compat` semantics under the
+// pinned compatibility date. Under `next start` all three are Node's own
+// behaviour instead, so a break in any of them is invisible until deploy.
+//
+// Either server is started with `E2E_SEAM=1` so `/api/dev/quickmatch` can mint
+// two players and a live game in one call (see that route's comment: the
+// variable must NEVER be set on the DEPLOYED Worker).
 //
 // ## No timing overrides
 //
@@ -27,14 +37,39 @@ import { defineConfig, devices } from "@playwright/test";
 // Supabase instance, and the seam mints real rows. Two CI workers is the
 // ceiling that still keeps file-level isolation cheap.
 
-// WebKit is opt-in: it is the engine iPhone Safari actually runs, but installing
-// it costs minutes on every CI run. `E2E_WEBKIT=1 npm run e2e` turns it on for
-// the mobile-layout work that needs it.
-const WEBKIT = process.env.E2E_WEBKIT === "1";
+// WebKit is opt-in: it is the engine iPhone Safari actually runs, but the
+// browser download costs minutes, so a bare `npm run e2e` must not pay for it.
+//
+// Two ways in, and the second is why this reads argv at all:
+//
+//   * `E2E_WEBKIT=1 npm run e2e` — the local switch, unchanged.
+//   * `npx playwright test --project=mobile-webkit` — ASKING for the project by
+//     name is consent enough. Without this, `--project=mobile-webkit` matched a
+//     project that the config had not defined, and Playwright's answer to that
+//     is `Error: Project(s) "mobile-webkit" not found` — i.e. the nightly
+//     WebKit lane could not be expressed as a project list at all, and every
+//     caller would have had to remember the env var as well.
+//
+// Only an EXPLICIT `--project` counts. A default run (no `--project` at all)
+// still gets the two Chromium projects and nothing else.
+const argv = process.argv.slice(2);
+const explicitProjects = new Set<string>();
+for (let i = 0; i < argv.length; i++) {
+  const arg = argv[i];
+  if (arg === "--project" && argv[i + 1]) explicitProjects.add(argv[i + 1]);
+  else if (arg.startsWith("--project=")) explicitProjects.add(arg.slice(10));
+}
+
+const WEBKIT = process.env.E2E_WEBKIT === "1" || explicitProjects.has("mobile-webkit");
 
 const mobileWebkit = WEBKIT
   ? [{ name: "mobile-webkit", use: { ...devices["iPhone 13"] } }]
   : [];
+
+// Which server the suite is pointed at. `worker` means the OpenNext bundle under
+// workerd; anything else (including unset) means `next start`. Both listen on
+// :3000 and both answer /api/health, so nothing below this line has to know.
+const WORKER = process.env.E2E_SERVER === "worker";
 
 export default defineConfig({
   testDir: "e2e",
@@ -79,15 +114,22 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "npm run e2e:server",
+    command: WORKER ? "npm run e2e:server:worker" : "npm run e2e:server",
     // /api/health is `force-dynamic` and dependency-free (no DB on the bare
     // probe), so it answers as soon as the server is really serving — a plain
     // "/" would go green on a static shell that cannot yet run a route handler.
+    // Under the worker lane it proves more: a route handler answering here means
+    // the OpenNext bundle booted inside workerd, not just that assets are served.
     url: "http://localhost:3000/api/health",
     reuseExistingServer: !process.env.CI,
-    // `next start` on a cold production build plus first-request compile.
-    timeout: 180_000,
-    stdout: "ignore",
+    // `next start` on a cold production build plus first-request compile. The
+    // worker lane's command builds first (`next build` + the OpenNext bundling
+    // pass + the cache-population copy), so it needs several minutes before
+    // anything is listening at all.
+    timeout: WORKER ? 600_000 : 180_000,
+    // The worker lane's stdout carries the build it is doing during that silence,
+    // and wrangler's boot errors; on the `next start` lane it is noise.
+    stdout: WORKER ? "pipe" : "ignore",
     stderr: "pipe",
   },
 });
