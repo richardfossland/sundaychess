@@ -27,6 +27,15 @@ vi.mock("@/lib/server/store", () => ({
   listMoveStampsForGames: (...a: unknown[]) => listMoveStampsForGames(...a),
 }));
 
+// H4: the per-IP board-poll rate limiter, mocked so we can force a 429.
+const { rateLimitMock } = vi.hoisted(() => ({
+  rateLimitMock: vi.fn().mockReturnValue(true),
+}));
+vi.mock("@/lib/server/http", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/server/http")>();
+  return { ...actual, rateLimit: (...a: unknown[]) => rateLimitMock(...a) };
+});
+
 import { GET } from "@/app/api/tournament/[id]/route";
 
 // Tournament ids must be UUID-shaped now that the route validates them before
@@ -106,6 +115,7 @@ function ctx(id: string = VALID_ID) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  rateLimitMock.mockReturnValue(true);
   getTournament.mockResolvedValue(makeTournament());
   listPlayers.mockResolvedValue([makePlayer("white"), makePlayer("black")]);
   listGames.mockResolvedValue([makeGame()]);
@@ -175,5 +185,17 @@ describe("GET /api/tournament/[id] — malformed id guard (R1b)", () => {
     expect(res.status).toBe(404);
     expect((await res.json()).error).toBe("not_found");
     expect(getTournament).toHaveBeenCalledWith(VALID_ID);
+  });
+});
+
+describe("GET /api/tournament/[id] — board rate limit (H4)", () => {
+  // The 5s poll from every connected client (students + host projector) is
+  // bounded generously but not unboundedly — a refetch storm must not be free.
+  it("429s when the per-IP poll bound is exceeded", async () => {
+    rateLimitMock.mockReturnValueOnce(false);
+    const res = await GET(req(`http://x/api/tournament/${VALID_ID}`), ctx());
+    expect(res.status).toBe(429);
+    expect((await res.json()).error).toBe("rate_limited");
+    expect(getTournament).not.toHaveBeenCalled();
   });
 });
