@@ -23,9 +23,16 @@ export function ReviewView({
 }) {
   const [data, setData] = useState<ReviewResult | null>(null);
   const [error, setError] = useState(false);
+  // Bumped by the "Prøv igjen" button to re-run the effect below without
+  // duplicating the fetch call at the call site.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
+    // Clears a previous failure on retry (`attempt` bump) — otherwise the old
+    // error banner would still be showing when the new request lands.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setError(false);
     api
       .review(gameId, me.playerId, me.resumeCode)
       .then((r) => live && setData(r))
@@ -33,7 +40,7 @@ export function ReviewView({
     return () => {
       live = false;
     };
-  }, [gameId, me.playerId, me.resumeCode]);
+  }, [gameId, me.playerId, me.resumeCode, attempt]);
 
   return (
     <div className="card stack" style={{ padding: 18, width: "100%", maxWidth: 460, gap: 14 }}>
@@ -53,7 +60,18 @@ export function ReviewView({
         </div>
       )}
 
-      {error && <div className="banner banner-error">{no.review.error}</div>}
+      {error && (
+        <div className="banner banner-error stack" style={{ gap: 8 }} role="alert">
+          <span>{no.review.error}</span>
+          <button
+            className="btn btn-ghost"
+            style={{ alignSelf: "flex-start" }}
+            onClick={() => setAttempt((n) => n + 1)}
+          >
+            {no.common.retry}
+          </button>
+        </div>
+      )}
 
       {data && (
         <>

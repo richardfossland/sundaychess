@@ -7,6 +7,7 @@ import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import { PUZZLES, puzzleTurn } from "@/lib/puzzles";
 import { legalDestinations } from "@/lib/chess/validateMove";
 import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
+import { useReducedMotion } from "@/lib/client/useReducedMotion";
 import { sound } from "@/lib/client/sound";
 import { safeGet, safeSet } from "@/lib/client/storage";
 import { no } from "@/lib/locale/no";
@@ -39,6 +40,7 @@ export function PuzzleCard() {
   const [legal, setLegal] = useState<string[]>([]);
   // shown position: the puzzle FEN, or the mate position once solved
   const [fen, setFen] = useState(puzzle.fen);
+  const reducedMotion = useReducedMotion();
 
   const turn = puzzleTurn(puzzle);
   const orientation = turn === "w" ? "white" : "black";
@@ -141,6 +143,7 @@ export function PuzzleCard() {
             position: fen,
             boardOrientation: orientation,
             allowDragging: !solved,
+            showAnimations: !reducedMotion,
             onPieceDrop: onDrop,
             onSquareClick,
             squareStyles,

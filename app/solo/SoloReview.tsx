@@ -28,8 +28,17 @@ export function SoloReview({
   const [base, setBase] = useState<
     { facts: ReviewFacts; templated: string } | null | undefined
   >(undefined);
+  // Bumped by the "Prøv igjen" button to re-run the effect below. annotateGame
+  // is a pure replay of `pgn`, so a genuinely malformed PGN will fail the same
+  // way again — but a `live` race (a fast close/reopen) can also land here,
+  // and for that this button is a real fix, not just a consistent affordance.
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let live = true;
+    // Back to "loading" on retry (`attempt` bump) — otherwise the old error
+    // banner would still be showing while the replay re-runs.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBase(undefined);
     const id = setTimeout(() => {
       const review = annotateGame(pgn, no.solo.you, no.solo.computer);
       if (!live) return;
@@ -45,7 +54,7 @@ export function SoloReview({
       live = false;
       clearTimeout(id);
     };
-  }, [pgn, playerColor]);
+  }, [pgn, playerColor, attempt]);
 
   // Optional AI narration upgrade (keyless → stays templated).
   const [narrated, setNarrated] = useState<string | null>(null);
@@ -84,7 +93,16 @@ export function SoloReview({
       </div>
 
       {error ? (
-        <div className="banner banner-error">{no.review.error}</div>
+        <div className="banner banner-error stack" style={{ gap: 8 }} role="alert">
+          <span>{no.review.error}</span>
+          <button
+            className="btn btn-ghost"
+            style={{ alignSelf: "flex-start" }}
+            onClick={() => setAttempt((n) => n + 1)}
+          >
+            {no.common.retry}
+          </button>
+        </div>
       ) : !facts ? (
         <div className="row" style={{ alignItems: "center", gap: 10 }}>
           <span className="spin" />
