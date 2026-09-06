@@ -369,7 +369,9 @@ export const no = {
 
   promo: {
     title: "Velg brikke",
-    hint: "Trykk en brikke · Esc = dronning",
+    // Esc used to default to dronning; it now cancels the trekket (see
+    // PromotionPicker), so the hint must say that instead.
+    hint: "Trykk en brikke · Esc = avbryt",
     q: "Dronning",
     r: "Tårn",
     b: "Løper",
@@ -463,6 +465,13 @@ export const no = {
     drawOfferedByOpponent: "Motstander tilbyr remis",
     accept: "Godta",
     decline: "Avslå",
+    // Ghost button in the notice slot while an incoming draw offer's dialog
+    // was dismissed (Esc/backdrop) without an answer — the offer is still
+    // pending, so this reopens the same dialog.
+    answerDrawOffer: "Svar på remistilbudet",
+    // aria-describedby text on that dialog: Esc/backdrop only closes it
+    // (the offer stays pending) — declining is a separate, explicit button.
+    drawOfferDismissHint: "Esc eller klikk utenfor lukker uten å svare — tilbudet står fortsatt til du trykker Avslå eller Godta.",
     checkmate: "Sjakkmatt",
     youWon: "Du vant! 🎉",
     youLost: "Du tapte",

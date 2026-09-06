@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import type { GameDetail } from "@/lib/dto";
 import type { GameStatus, Turn } from "@/lib/types";
@@ -117,15 +117,26 @@ function NoticeSlot({
   status,
   myTurnLetter,
   drawSent,
+  incomingDraw,
+  drawDialogOpen,
   acting,
   onClaim,
+  onReopenDraw,
 }: {
   clock: ClockState | null;
   status: GameStatus;
   myTurnLetter: Turn;
   drawSent: boolean;
+  /** An opponent's draw offer is pending on me. */
+  incomingDraw: boolean;
+  /** Whether the offer's ConfirmDialog is currently shown — false right
+   * after the student dismisses it (Escape/backdrop) without answering,
+   * while the offer itself is still pending (`incomingDraw` stays true). */
+  drawDialogOpen: boolean;
   acting: boolean;
   onClaim: () => void;
+  /** Reopens the dismissed draw-offer dialog. */
+  onReopenDraw: () => void;
 }) {
   const [, tick] = useState(0);
   useEffect(() => {
@@ -165,6 +176,19 @@ function NoticeSlot({
       ) : drawSent ? (
         <div className="banner banner-wait" style={{ width: "100%" }} role="status" aria-live="polite">
           <span className="banner-line">½ {no.player.drawSent}</span>
+        </div>
+      ) : incomingDraw && !drawDialogOpen ? (
+        // The offer's dialog was dismissed (Esc/backdrop) without an answer —
+        // it is still pending (L3/notice-slot rule: never lose track of it),
+        // so this is the way back to it.
+        <div
+          className="banner banner-wait"
+          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}
+        >
+          <span className="banner-line">½ {no.player.drawOfferedByOpponent}</span>
+          <button className="btn btn-ghost" style={{ flexShrink: 0 }} onClick={onReopenDraw}>
+            {no.player.answerDrawOffer}
+          </button>
         </div>
       ) : null}
     </div>
@@ -300,6 +324,11 @@ export const GameView = memo(function GameView({
   // visible instead of the board just appearing to freeze.
   const [syncFailures, setSyncFailures] = useState(0);
   const [incomingDraw, setIncomingDraw] = useState(false);
+  // Whether the incoming-draw ConfirmDialog is CURRENTLY SHOWN — distinct from
+  // `incomingDraw` (the offer being pending) so that dismissing the dialog
+  // (Escape/backdrop click) can hide it WITHOUT declining: the offer stays
+  // pending, and the notice slot's "Svar på remistilbudet" button reopens it.
+  const [drawDialogOpen, setDrawDialogOpen] = useState(false);
   const [drawSent, setDrawSent] = useState(false);
   const [replayPgn, setReplayPgn] = useState<string | null>(null);
   const [showReview, setShowReview] = useState(false);
@@ -557,6 +586,18 @@ export const GameView = memo(function GameView({
       .finally(() => setActing(false));
   };
 
+  // Mirror the draw-offer dialog's visibility onto `incomingDraw`: a NEW
+  // offer (this flips false→true, from load() or the `draw_offer` broadcast)
+  // reopens it, and the offer resolving one way or another (this flips
+  // true→false) closes it. A manual dismiss in between (Escape/backdrop) sets
+  // `drawDialogOpen` false directly, without touching `incomingDraw` — so it
+  // is NOT undone here, since this effect only reacts to `incomingDraw`
+  // actually changing.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDrawDialogOpen(incomingDraw);
+  }, [incomingDraw]);
+
   // Result sound — fires once when the game flips from live to a result.
   useEffect(() => {
     if (status === "live") return;
@@ -584,6 +625,24 @@ export const GameView = memo(function GameView({
       live = false;
     };
   }, [status, gameId]);
+
+  // Result overlay (.result-overlay below) accessibility: the id its heading
+  // gets (referenced by the overlay's aria-labelledby, only while the main
+  // result-card branch — not replay/review — is actually showing), and
+  // moving focus to the primary "Neste" action the moment the game ends,
+  // returning it to whatever had it once the overlay is gone (component
+  // unmount on "Neste", typically). `ended` itself isn't computed until below
+  // the early returns further down, so this is keyed on `status` directly.
+  const resultHeadingId = useId();
+  const resultNextBtnRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (status === "live") return;
+    const prevActive = document.activeElement;
+    resultNextBtnRef.current?.focus();
+    return () => {
+      if (prevActive instanceof HTMLElement) prevActive.focus();
+    };
+  }, [status]);
 
   // The chess-clock flag state ("krev seier på tid" / "tiden din er ute") is
   // computed inside <NoticeSlot>, which owns its own ticker — so ticking
@@ -1133,8 +1192,11 @@ export const GameView = memo(function GameView({
             status={status}
             myTurnLetter={myTurnLetter}
             drawSent={drawSent}
+            incomingDraw={incomingDraw}
+            drawDialogOpen={drawDialogOpen}
             acting={acting}
             onClaim={() => runMeta(api.claimTime(gameId, me.playerId, me.resumeCode))}
+            onReopenDraw={() => setDrawDialogOpen(true)}
           />
 
           {/* Always mounted (L2) — MoveList already renders a "–" placeholder
@@ -1169,7 +1231,17 @@ export const GameView = memo(function GameView({
       </div>
 
       {ended && (
-        <div className="result-overlay">
+        <div
+          className="result-overlay"
+          role="dialog"
+          aria-modal="true"
+          // Only the main result-card branch below actually renders the
+          // heading this points at — the replay/review branches have their
+          // own headings/controls instead.
+          aria-labelledby={
+            replayPgn === null && !showReview ? resultHeadingId : undefined
+          }
+        >
           {replayPgn !== null ? (
             <div className="result-card" style={{ maxWidth: 680, width: "100%" }}>
               <ReplayBoard
@@ -1191,7 +1263,9 @@ export const GameView = memo(function GameView({
               <div className="result-emoji">
                 {status === "draw" ? "🤝" : iWon ? "🎉" : "😔"}
               </div>
-              <h1 style={{ fontSize: "clamp(36px,9vw,64px)" }}>{resultText}</h1>
+              <h1 id={resultHeadingId} style={{ fontSize: "clamp(36px,9vw,64px)" }}>
+                {resultText}
+              </h1>
               <p className="muted">
                 {status === "draw"
                   ? "Godt spilt av begge."
@@ -1199,7 +1273,12 @@ export const GameView = memo(function GameView({
                     ? "Sterkt spilt!"
                     : "Bedre lykke neste runde."}
               </p>
-              <button className="btn btn-primary btn-lg" style={{ marginTop: 6 }} onClick={onFinished}>
+              <button
+                ref={resultNextBtnRef}
+                className="btn btn-primary btn-lg"
+                style={{ marginTop: 6 }}
+                onClick={onFinished}
+              >
                 {no.common.next} →
               </button>
               <button
@@ -1251,12 +1330,18 @@ export const GameView = memo(function GameView({
           card whenever an offer arrived, sliding the board on a top-aligned
           screen). A modal dialog — same one used for resign — moves it out of
           flow entirely; accept/decline are wired to the same handlers as
-          before. */}
-      {incomingDraw && !ended && (
+          before.
+          Dismissing (Escape/backdrop) is deliberately NOT the same as
+          "Avslå": it only hides the dialog (`onDismiss`), leaving the offer
+          itself pending — a student who hit Escape by reflex must not have
+          just declined a draw for them. `onCancel` (the explicit button) is
+          the one that actually declines. */}
+      {drawDialogOpen && !ended && (
         <ConfirmDialog
           message={no.player.drawOfferedByOpponent}
           confirmLabel={no.player.accept}
           cancelLabel={no.player.decline}
+          dismissLabel={no.player.drawOfferDismissHint}
           onConfirm={() =>
             runMeta(
               api.draw(gameId, me.playerId, me.resumeCode, "accept"),
@@ -1269,6 +1354,7 @@ export const GameView = memo(function GameView({
               () => setIncomingDraw(false),
             )
           }
+          onDismiss={() => setDrawDialogOpen(false)}
         />
       )}
 
