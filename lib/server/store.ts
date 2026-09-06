@@ -184,6 +184,21 @@ export async function updateTournament(
   return data as Tournament;
 }
 
+/** Merge-patch a tournament's jsonb `config` — never a raw replace, so a
+ * caller that only wants to change ONE field (e.g. `notes`) can't silently
+ * wipe out every other setting (rounds, playoff, timer, …) sitting in the same
+ * column. Takes the tournament the caller already has (authHost's return, or
+ * a fresh getTournament) so this doesn't cost a second read just to know the
+ * base to merge onto. */
+export async function updateTournamentConfig(
+  tournament: Tournament,
+  patch: Partial<TournamentConfig>,
+): Promise<Tournament> {
+  return updateTournament(tournament.id, {
+    config: { ...tournament.config, ...patch },
+  });
+}
+
 /** Atomically finish a tournament ONLY if it's still active. Returns the updated
  * row if THIS call did the transition, or null if it was already finished (a
  * concurrent writer won). Lets the auto-finish path collapse a whole class

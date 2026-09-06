@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Game, ResultSource } from "@/lib/types";
-import { resultSourceLabel, toPublicGame } from "@/lib/dto";
+import type { Game, ResultSource, Tournament } from "@/lib/types";
+import { resultSourceLabel, toBoardTournament, toPublicGame } from "@/lib/dto";
 
 // R9: PGN is heavy (a full move-by-move history per decided game) and must
 // never ride along on the 5s board poll — only a one-off `?full=1` fetch
@@ -101,6 +101,55 @@ describe("toPublicGame — fair-play readout (result_source)", () => {
   it("omits resultSource for an aborted game (not in the `decided` set)", () => {
     const pub = toPublicGame(makeGame({ status: "aborted", result_source: "teacher_override" }));
     expect(pub.resultSource).toBeUndefined();
+  });
+});
+
+describe("toBoardTournament — the teacher's private notes never leak to students", () => {
+  function makeTournament(over: Partial<Tournament> = {}): Tournament {
+    return {
+      id: "t1",
+      join_pin: "123456",
+      host_code: "HOST",
+      host_user_id: null,
+      title: "7A",
+      status: "league",
+      config: {
+        leagueRounds: 5,
+        playoff: false,
+        playoffSize: 0,
+        roundTimerSec: null,
+        notes: "Klasse 7A, time 3 — pass på Kari og Ola",
+      },
+      current_round: 1,
+      created_at: "",
+      ...over,
+    };
+  }
+
+  // GET /api/tournament/[id] is UNAUTHENTICATED and polled every 5s by every
+  // connected student device (see app/api/tournament/[id]/route.ts) — the
+  // teacher's private reminder must never ride along in its `config`.
+  it("strips config.notes from the public board DTO", () => {
+    const pub = toBoardTournament(makeTournament());
+    expect(pub.config).not.toHaveProperty("notes");
+    expect("notes" in pub.config).toBe(false);
+  });
+
+  it("leaves every other config field untouched", () => {
+    const pub = toBoardTournament(makeTournament());
+    expect(pub.config).toMatchObject({
+      leagueRounds: 5,
+      playoff: false,
+      playoffSize: 0,
+      roundTimerSec: null,
+    });
+  });
+
+  it("is safe when there are no notes to begin with", () => {
+    const t = makeTournament();
+    delete t.config.notes;
+    const pub = toBoardTournament(t);
+    expect(pub.config).not.toHaveProperty("notes");
   });
 });
 

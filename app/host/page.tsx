@@ -14,12 +14,16 @@ export default async function HostDashboardPage() {
   if (!host) redirect("/host/login");
 
   const rows = await listTournamentsByOwner(host.id);
+  // This page is server-rendered straight from the DB row (never through the
+  // public board DTO), and gated to the signed-in owner by getHost() above —
+  // so, unlike every board/API surface, it's safe to read config.notes here.
   const items = rows.map((t) => ({
     id: t.id,
     title: t.title,
     status: t.status,
     joinPin: t.join_pin,
     createdAt: t.created_at,
+    notes: t.config.notes ?? null,
   }));
 
   return (
