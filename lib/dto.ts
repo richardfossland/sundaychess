@@ -5,6 +5,7 @@ import type {
   Game,
   GameStatus,
   Player,
+  ResultSource,
   Tournament,
   TournamentConfig,
   TournamentStatus,
@@ -13,6 +14,7 @@ import type {
 import type { StandingRow } from "@/lib/tournament/score";
 import type { AnnotatedMove } from "@/lib/chess/analysis";
 import type { ReviewFacts } from "@/lib/chess/reviewSummary";
+import { no } from "@/lib/locale/no";
 
 export type { StandingRow };
 
@@ -51,6 +53,13 @@ export interface PublicGame {
   pgn?: string;
   /** Bracket/pairing position within the round (0 for pre-0007 rows). */
   slot?: number;
+  /** Fair-play readout — present only for a DECIDED game (mirrors the same
+   * `decided` gate as `pgn`, but unconditionally, not just on `?full=1`), so
+   * the 5s board poll can show a "non-standard result" marker without a
+   * separate fetch. "play" means ordinary checkmate/resignation/draw-offer;
+   * anything else (walkover, teacher_override, timeout_draw, opponent_absent)
+   * is worth flagging. Absent/undefined for a live game. */
+  resultSource?: ResultSource;
   /** Chess-clock snapshot for a LIVE timed game, so the spectator grid can show
    * remaining time. null/absent when no clock is configured or the game isn't
    * live. Clients tick the `turn` side down locally from receipt. */
@@ -115,7 +124,18 @@ export function toPublicGame(g: Game, opts?: { withPgn?: boolean }): PublicGame 
     turn: g.turn,
     slot: g.slot ?? 0,
     ...(withPgn && decided && g.pgn ? { pgn: g.pgn } : {}),
+    ...(decided && g.result_source ? { resultSource: g.result_source } : {}),
   };
+}
+
+/** Short marker text for a fair-play `resultSource` ("" for ordinary "play",
+ * a live game's `undefined`/`null`, or an unmapped value). Pure — a lookup
+ * into `no.host.resultSourceLabel`, kept here so it can't drift from the
+ * `ResultSource` union and so both LeagueView and FinishedView share one
+ * mapping. */
+export function resultSourceLabel(source: ResultSource | null | undefined): string {
+  if (!source || source === "play") return "";
+  return no.host.resultSourceLabel[source] ?? "";
 }
 
 export interface GameDetail {

@@ -28,6 +28,13 @@ export const no = {
     student: "Jeg spiller",
     studentSub: "Bli med med en PIN",
     versus: "Spill mot hverandre",
+    // "Slik funker det" 3-step strip + reassurance line on the landing page.
+    howTitle: "Slik funker det",
+    step1: "Lag turnering",
+    step2: "Elevene skanner QR eller taster PIN",
+    step3: "Følg tavla",
+    reassurance:
+      "Gratis · ingen elevkontoer · funker på Chromebook og mobil · ~20 min",
   },
 
   versus: {
@@ -163,6 +170,33 @@ export const no = {
     // one key so the two boards never drift apart. LeagueView still has its
     // own literal copy of this sentence pending a sibling copy-pass PR.
     awaitAllGames: "Alle partier må være ferdige før neste runde.",
+
+    // Finished-screen print / save-as-PDF (window.print()).
+    printResults: "Skriv ut / lagre som PDF",
+
+    // Fair-play readout — a game whose `result_source` isn't plain "play".
+    // Short marker shown next to the result badge in the results grid, plus
+    // its hover title. Keyed by ResultSource (see lib/types.ts); `resultSourceLabel`
+    // in lib/dto.ts looks these up so the mapping can't drift from the enum.
+    resultSourceLabel: {
+      walkover: "W.O.",
+      opponent_absent: "Fraværende",
+      teacher_override: "Overstyrt",
+      timeout_draw: "Tid ute",
+      bye: "Frirunde",
+    } as Record<string, string>,
+    resultSourceTitle: {
+      walkover: "Walkover — registrert av arrangøren uten at partiet ble spilt",
+      opponent_absent: "Motstanderen var borte — automatisk seier",
+      teacher_override: "Resultatet er satt manuelt av arrangøren",
+      timeout_draw: "Tiden løp ut i partiet — satt til remis",
+      bye: "Frirunde denne runden",
+    } as Record<string, string>,
+    // Compact legend on the finished screen: how many games were decided
+    // without play (walkover / fraværende / overstyrt) — a fair-play readout,
+    // not a comment on ordinary byes or time-forced draws.
+    resultSourceLegend: (n: number) =>
+      `${n} ${n === 1 ? "parti" : "partier"} avgjort uten spill (walkover/fravær/overstyring).`,
   },
 
   // Lærerens avlesning av klient-telemetrien (T5). Se docs/TELEMETRY.md.
@@ -198,6 +232,9 @@ export const no = {
   // Sunday Account host login + "mine turneringer"-oversikt (arrangør only).
   // Players/joiners are untouched — they still use codes.
   hostAuth: {
+    // Discreet entry point from the landing page to the optional Sunday
+    // Account host dashboard — anonymous arrangører never need it.
+    landingLink: "Arrangør med Sunday-konto →",
     loginTitle: "Logg inn som arrangør",
     loginLede: "Logg inn med Sunday-kontoen din for å samle turneringene dine.",
     emailLabel: "E-post",
