@@ -14,6 +14,9 @@ import { PredictPanel } from "@/lib/client/PredictPanel";
 import { BracketBoard } from "@/lib/client/BracketBoard";
 import { variantStartFen } from "@/lib/chess/variants";
 import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
+import { waitingProgress } from "@/lib/tournament/progress";
+import { RoundTimer } from "@/lib/client/RoundTimer";
+import { resumeTroubleFromStatus } from "@/lib/client/resumeCopy";
 import { no } from "@/lib/locale/no";
 import { GameView } from "./GameView";
 
@@ -228,12 +231,26 @@ export function WaitingRoom({
   }
 
   if (showReconnectCard) {
+    // Same "blip vs. dead end" copy as attemptResume's resumeTrouble() in
+    // page.tsx (moved to lib/client/resumeCopy.ts) — this hook only kept the
+    // status/code pair, not the raw exception, hence the FromStatus variant.
+    const message = resumeTroubleFromStatus(errorStatus, errorCode);
     return (
       <main className="center-screen">
         <div className="card card-narrow stack text-center" style={{ alignItems: "center" }}>
           <h2>{no.common.error}</h2>
+          <p className="muted">{message}</p>
           <button className="btn btn-primary btn-lg" onClick={() => refresh()}>
             {no.common.retry}
+          </button>
+          <button
+            className="btn btn-ghost"
+            onClick={() => {
+              onLeave(); // first — see the tournament-gone button above
+              identity.clearPlayer();
+            }}
+          >
+            {no.player.logOut}
           </button>
         </div>
       </main>
@@ -302,7 +319,7 @@ export function WaitingRoom({
   const eliminated = state ? isOut(state, me.playerId) : false;
   let banner: string = no.player.waitingStart;
   if (status !== "lobby") {
-    if (status === "finished") banner = "Turneringen er ferdig 🏆";
+    if (status === "finished") banner = no.player.tournamentFinished;
     else if (eliminated) banner = no.player.outOfTournament;
     else if (game?.status === "bye") banner = no.player.waitingBye;
     else banner = no.player.waitingNext;
@@ -310,6 +327,12 @@ export function WaitingRoom({
   // The spinner means "hang on, more is coming" — drop it once the player is out
   // or the tournament is over, where nothing more is coming for them.
   const showWaitingSpinner = !eliminated && status !== "finished";
+
+  // Round n/N + games-left line (+ compact timer) for the between-rounds and
+  // bye screens. Null for lobby/finished/no-round-yet/an eliminated playoff
+  // player — see lib/tournament/progress.ts — so it's safe to render
+  // unconditionally below.
+  const progress = state ? waitingProgress(state, { playerId: me.playerId }) : null;
 
   const myTeam = meRow?.team ?? null;
 
@@ -351,11 +374,25 @@ export function WaitingRoom({
           {banner}
         </div>
 
+        {progress && (
+          <div className="row" style={{ gap: 8, alignItems: "center", justifyContent: "center" }}>
+            <span className="muted" style={{ fontSize: 13 }}>{progress.label}</span>
+            {progress.timer && (
+              <RoundTimer
+                startedAt={progress.timer.startedAt}
+                durationSec={progress.timer.durationSec}
+                extendedMs={progress.timer.extendedMs}
+                compact
+              />
+            )}
+          </div>
+        )}
+
         {showCode ? (
           <div className="big-code">{me.resumeCode}</div>
         ) : (
           <button className="btn btn-ghost" onClick={() => setShowCode(true)}>
-            Vis koden min
+            {no.player.showMyCode}
           </button>
         )}
         <p className="muted" style={{ fontSize: 12 }}>

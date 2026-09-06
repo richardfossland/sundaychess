@@ -81,6 +81,8 @@ export const no = {
     name: "Navn",
     score: "Poeng",
     tiebreak: "Buchholz",
+    tiebreakHelp:
+      "Summen av motstandernes poeng — skiller spillere med like mange poeng.",
     round: "Runde",
     games: "Partier",
     nextRound: "Neste runde",
@@ -357,8 +359,11 @@ export const no = {
     resume: "Gjenoppta",
     waitingStart: "Venter på at arrangøren starter …",
     waitingNext: "Venter på neste motstander …",
-    waitingBye: "Du har frirunde — slapp av til neste runde 🎉",
+    waitingBye:
+      "Du har frirunde denne runden og får 1 poeng gratis 🎉 Slapp av til neste runde.",
     outOfTournament: "Du er ute av turneringen 🏁 — godt spilt!",
+    tournamentFinished: "Turneringen er ferdig 🏆",
+    showMyCode: "Vis koden min",
     cupProgress: "Cup-stigen",
     yourTurn: "DIN TUR",
     opponentTurn: "Venter på motstander",
