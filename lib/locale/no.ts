@@ -438,6 +438,9 @@ export const no = {
     outOfTournament: "Du er ute av turneringen 🏁 — godt spilt!",
     tournamentFinished: "Turneringen er ferdig 🏆",
     showMyCode: "Vis koden min",
+    // Shared classroom device: hand the iPad to the next student without
+    // wiping any OTHER tournament this device has a session for (R6).
+    switchPlayer: "Ikke deg? Bytt spiller",
     cupProgress: "Cup-stigen",
     yourTurn: "DIN TUR",
     opponentTurn: "Venter på motstander",
