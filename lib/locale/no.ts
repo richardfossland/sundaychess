@@ -130,6 +130,11 @@ export const no = {
     addMinute: "+1 min",
     timeUpSuggestion: "Tiden er ute – vil du avslutte runden?",
     endRound: "Avslutt runden",
+    crownChampion: "Kår mester 🏆",
+    // Shared between league and bracket "can't advance yet" hints — kept as
+    // one key so the two boards never drift apart. LeagueView still has its
+    // own literal copy of this sentence pending a sibling copy-pass PR.
+    awaitAllGames: "Alle partier må være ferdige før neste runde.",
   },
 
   // Lærerens avlesning av klient-telemetrien (T5). Se docs/TELEMETRY.md.
