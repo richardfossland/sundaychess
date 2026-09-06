@@ -14,6 +14,16 @@ import { drawReasonFromPgn } from "@/lib/chess/drawReason";
 import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { plyOf } from "@/lib/chess/ply";
 import { channels } from "@/lib/realtime";
+import {
+  createReactionGate,
+  isValidDrawEvent,
+  isValidPositionPayload,
+  isValidResultPayload,
+  nextStamp,
+  resolveAuthoritative,
+  type ClockWire,
+  type Provisional,
+} from "@/lib/realtimeTrust";
 import { useChannel } from "@/lib/client/useChannel";
 import { useActiveTab } from "@/lib/client/useActiveTab";
 import { useTabHidden } from "@/lib/client/useTabHidden";
@@ -28,6 +38,7 @@ import { FullscreenToggle } from "@/lib/client/FullscreenToggle";
 import { NotifyToggle } from "@/lib/client/NotifyToggle";
 import { useTurnCue } from "@/lib/client/turnCue";
 import {
+  REACTION_EMOJIS,
   ReactionBar,
   ReactionOverlay,
   type ReactionHandle,
@@ -45,6 +56,13 @@ import { no } from "@/lib/locale/no";
  * first; this only fires if something truly wedges the request. */
 const PENDING_CEILING_MS = 11000;
 
+/** How long a burst of broadcasts is coalesced into ONE authoritative refetch.
+ * Every broadcast on the game channel is now followed by a `safeLoad()` (see
+ * the trust model at the handler): that is what turns a payload from a claim
+ * into a hint, and it also caps what a flood of forged events can cost us —
+ * whatever arrives inside this window is a single GET, not one per event. */
+const BROADCAST_REFETCH_MS = 250;
+
 /** Client copy of a server clock snapshot, stamped with local receipt time. */
 interface ClockState {
   whiteMs: number;
@@ -60,9 +78,6 @@ function clockRemaining(c: ClockState, side: Turn): number {
     ? Math.max(0, base - (Date.now() - c.at))
     : base;
 }
-
-/** A server clock snapshot as it arrives on the wire (no local receipt stamp). */
-type ClockWire = { whiteMs: number; blackMs: number; turn: Turn; running: boolean };
 
 /** How far the server's remaining time may sit from what we already predict
  * locally before we adopt the new snapshot. A no-op poll (same side still
@@ -318,8 +333,17 @@ export const GameView = memo(function GameView({
     setSans((prev) => (plyOf(fenAfter) === prev.length + 1 ? [...prev, san] : prev));
   }, []);
 
-  // Last server-confirmed FEN — the rollback target for a failed optimistic move.
+  // Freshest FEN we treat as settled — the rollback target for a failed
+  // optimistic move, and the left-hand side of the ply guard. Fed by load(),
+  // by our own move's reply, AND by broadcasts (a mid-flight opponent move must
+  // not be undone by a rollback) — so it can hold an UNTRUSTED value, which is
+  // precisely what `provisional` below records and bounds.
   const confirmedFen = useRef<string>("");
+  // Non-null while the position on screen rests on a broadcast nobody
+  // authenticated. Set by the position handler, cleared the moment an
+  // authoritative response that was issued after it lands — see
+  // resolveAuthoritative in lib/realtimeTrust.ts.
+  const provisional = useRef<Provisional | null>(null);
   // Last PGN we parsed into the move list — lets the poll skip a full chess.js
   // re-parse when the position is unchanged (the common no-op poll).
   const lastPgn = useRef<string>("");
@@ -357,6 +381,12 @@ export const GameView = memo(function GameView({
   }, [tabActive, gameId]);
 
   const load = useCallback(async () => {
+    // Stamped at ISSUE, not at arrival: the server broadcasts only after it has
+    // committed a move, so a request sent after a broadcast landed reads state
+    // at or past whatever that broadcast claimed — which is what lets the answer
+    // overrule a provisional position no matter how high a ply it claimed.
+    const issuedStamp = nextStamp();
+    const wasProvisional = provisional.current !== null;
     const d = await api.game(gameId);
     // Names/pgn are always safe to refresh — but L5: only as a NEW object when
     // a field the UI reads actually changed. This runs every 3 s, and between
@@ -364,27 +394,37 @@ export const GameView = memo(function GameView({
     // re-rendered GameView (and its 64 squares) for nothing. The ply-guarded
     // position writes below are untouched and remain authoritative.
     setDetail((prev) => (sameDetail(prev, d) ? prev : d));
-    // Ply-guard exactly like the broadcast handler: a slow in-flight GET that
-    // resolves AFTER a fresher move (mine or the opponent's) must not roll the
-    // board back to a stale ply. Only adopt the fetched position if it's at
-    // least as fresh as the last confirmed one.
-    const fresh = plyOf(d.fen) >= plyOf(confirmedFen.current || d.fen);
+    // Ply-guard, but ONLY against another authoritative source: a slow in-flight
+    // GET that resolves after a fresher move (mine, or one the opponent's own
+    // reply confirmed) must not roll the board back to a stale ply. Against a
+    // PROVISIONAL position — one only a broadcast vouched for — this response
+    // wins outright, so a forged high ply cannot freeze the board.
+    const fresh = resolveAuthoritative(
+      { ply: plyOf(confirmedFen.current || d.fen) },
+      { ply: plyOf(d.fen), issuedStamp },
+      provisional.current,
+    );
     if (fresh) {
+      provisional.current = null; // truth has landed
       setFen(d.fen);
       setTurn(d.turn);
       setLastMove(d.lastMove ? { from: d.lastMove.from, to: d.lastMove.to } : null);
       confirmedFen.current = d.fen;
       takeClock(d.clock);
       // Authoritative move-list rebuild — but only when the PGN actually changed
-      // (skip the full chess.js parse on a no-op poll).
-      if (d.pgn !== lastPgn.current) {
+      // (skip the full chess.js parse on a no-op poll). `wasProvisional` forces
+      // it anyway: a broadcast may have appended a SAN the server never played,
+      // and the pgn-unchanged shortcut would otherwise leave that phantom move
+      // in the list forever.
+      if (d.pgn !== lastPgn.current || wasProvisional) {
         lastPgn.current = d.pgn;
         setSans(sansFromPgn(d.pgn));
       }
     }
-    // A terminal status must be honoured even when the ply didn't advance (a
-    // resign / teacher-resolve emits no position move); a stale "live" must
-    // never un-end a finished game.
+    // Status comes from HERE and nowhere else (see the trust model at the
+    // broadcast handler). A terminal status must be honoured even when the ply
+    // didn't advance (a resign / teacher-resolve emits no position move); a
+    // stale "live" must never un-end a finished game.
     if (fresh || d.status !== "live") setStatus(d.status);
     // Reconcile draw banners from the authoritative offer state, so a lost
     // decline/offer broadcast can never leave a banner stuck (3s poll heals).
@@ -417,6 +457,25 @@ export const GameView = memo(function GameView({
         }
       });
   }, [load, gameId]);
+
+  // Ask for the truth behind a broadcast. Coalescing (not a trailing debounce):
+  // the FIRST event in a quiet period schedules the fetch and everything inside
+  // the window rides along, so a burst of moves — or a flood of forged events —
+  // costs exactly one GET per 250 ms and can never starve the fetch entirely.
+  const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestAuthoritative = useCallback(() => {
+    if (refetchTimer.current !== null) return;
+    refetchTimer.current = setTimeout(() => {
+      refetchTimer.current = null;
+      safeLoad();
+    }, BROADCAST_REFETCH_MS);
+  }, [safeLoad]);
+  useEffect(
+    () => () => {
+      if (refetchTimer.current !== null) clearTimeout(refetchTimer.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -531,16 +590,45 @@ export const GameView = memo(function GameView({
   // it twice a second does NOT re-render the board/clocks here.
   const oppTurnLetter: Turn = myTurnLetter === "w" ? "b" : "w";
 
-  // Authoritative updates from the game channel.
+  // The only two ids allowed to say anything on this channel. Empty until the
+  // first load() answers, which is the safe direction: an unattributable event
+  // is dropped rather than trusted.
+  const whiteId = detail?.white.id;
+  const blackId = detail?.black?.id;
+  const knownPlayers = useMemo(
+    () => new Set([whiteId, blackId].filter((id): id is string => !!id)),
+    [whiteId, blackId],
+  );
+  // Emoji reactions are client→client — no server ever sees one, so there is no
+  // authoritative version to fall back on and the gate IS the defence
+  // (allowlist + known sender + 5/s). Created once so its rate-limit window
+  // survives every re-render.
+  const reactionGate = useMemo(() => createReactionGate(REACTION_EMOJIS), []);
+
+  // --- TRUST MODEL FOR EVERYTHING BELOW (full reasoning: lib/realtimeTrust.ts)
+  //
+  // This channel is NOT authenticated. Every classmate's browser holds the same
+  // public anon key, and `chess:game:<id>` is derivable from the unauthenticated
+  // tournament payload, so a payload arriving here may have been typed into a
+  // console two desks away. It is a HINT, never truth:
+  //
+  //   • Shape-checked first; anything that isn't what the server emits is
+  //     dropped whole.
+  //   • `status` is NEVER read off a payload. A forged `result` used to end a
+  //     classmate's game for good — the poll stops the instant status leaves
+  //     "live", so nothing healed it. Now a `result` only asks for a refetch.
+  //   • A `position` is still applied immediately, because that snappiness is
+  //     the point of realtime — but it marks the board PROVISIONAL, and the
+  //     refetch it schedules overrules it whatever ply it claimed. Before this,
+  //     a forged position with a huge ply was accepted by the monotonic guard
+  //     and then BLOCKED every authoritative load from ever landing again.
   const sendOnGame = useChannel(channels.game(gameId), (event, payload) => {
     if (event === "position") {
-      const p = payload as {
-        fen: string;
-        turn: Turn;
-        status: GameStatus;
-        lastMove?: { from: string; to: string; san?: string } | null;
-        clock?: { whiteMs: number; blackMs: number; turn: Turn; running: boolean } | null;
-      };
+      if (!isValidPositionPayload(payload)) return;
+      const p = payload;
+      // Our own move comes back to us as a SERVER broadcast (`self: false` only
+      // mutes what this client sends). Nothing new to show, nothing to verify.
+      if (p.fen === confirmedFen.current) return;
       // Ignore a delayed / out-of-order broadcast that would roll the board back
       // to an older position (the ref tracks the freshest confirmed FEN).
       const fresh = plyOf(p.fen) >= plyOf(confirmedFen.current || fen);
@@ -553,6 +641,9 @@ export const GameView = memo(function GameView({
         setTurn(p.turn);
         takeClock(p.clock);
         confirmedFen.current = p.fen;
+        // Everything just written rests on an unauthenticated payload until the
+        // fetch below comes back and says otherwise.
+        provisional.current = { stamp: nextStamp() };
         if (p.lastMove) setLastMove({ from: p.lastMove.from, to: p.lastMove.to });
         appendSan(p.lastMove?.san, p.fen); // extend the move list (opponent's move)
         setSelected(null);
@@ -560,23 +651,23 @@ export const GameView = memo(function GameView({
         setIncomingDraw(false); // a move supersedes any pending draw offer
         setDrawSent(false);
       }
-      // A terminal status can arrive with (or just behind) the final position —
-      // honour it regardless of ply, but a stale "live" must never un-end a game.
-      if (fresh || p.status !== "live") setStatus(p.status);
+      // Deliberately NOT `setStatus(p.status)`. A real game-end arrives here one
+      // round-trip later instead, via load().
+      requestAuthoritative();
     } else if (event === "reaction") {
-      const p = payload as { emoji?: string };
-      if (typeof p.emoji === "string" && p.emoji.length <= 8)
-        reactionRef.current?.add(p.emoji);
+      const emoji = reactionGate(payload, knownPlayers);
+      if (emoji) reactionRef.current?.add(emoji);
     } else if (event === "result") {
-      const p = payload as { status: GameStatus };
-      setStatus(p.status);
+      // Shape-checked so a malformed event doesn't even cost a fetch — but the
+      // status inside is never used. Only `load()` may end this game.
+      if (isValidResultPayload(payload)) requestAuthoritative();
     } else if (event === "draw_offer") {
-      const p = payload as { by: string };
-      if (p.by !== me.playerId) setIncomingDraw(true);
+      if (!isValidDrawEvent(payload, knownPlayers)) return;
+      if (payload.by !== me.playerId) setIncomingDraw(true);
     } else if (event === "draw_declined") {
-      const p = payload as { by: string };
+      if (!isValidDrawEvent(payload, knownPlayers)) return;
       setIncomingDraw(false);
-      if (p.by !== me.playerId) {
+      if (payload.by !== me.playerId) {
         // The opponent declined my offer.
         setDrawSent(false);
         flash(no.player.drawDeclined);
@@ -627,7 +718,10 @@ export const GameView = memo(function GameView({
           playerId: me.playerId,
           resumeCode: me.resumeCode,
         });
-        // Reconcile to the server's authoritative result.
+        // Reconcile to the server's authoritative result — my own move's reply
+        // is a first-party answer, so it also settles anything a broadcast had
+        // talked us into meanwhile.
+        provisional.current = null;
         setFen(res.fen);
         setTurn(res.turn);
         setStatus(res.status);

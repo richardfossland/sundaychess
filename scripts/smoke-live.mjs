@@ -45,7 +45,7 @@ async function main() {
   // Realtime subscription to the cloud project.
   const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   const events = [];
-  const ch = sb.channel(`game:${gameId}`, { config: { broadcast: { self: false } } });
+  const ch = sb.channel(`chess:game:${gameId}`, { config: { broadcast: { self: false } } });
   ch.on("broadcast", { event: "*" }, (m) => events.push(m.event));
   await new Promise((r) => ch.subscribe((s) => s === "SUBSCRIBED" && r()));
 
