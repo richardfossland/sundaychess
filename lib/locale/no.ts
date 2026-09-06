@@ -64,6 +64,12 @@ export const no = {
 
   host: {
     createTitle: "Ny turnering",
+    quickStart: "Rask start",
+    customize: "Tilpass turnering …",
+    // Auto-title for "Rask start" — becomes "Turnering DD.MM" (see
+    // app/arranger/page.tsx). Kept as a plain prefix so the date formatting
+    // (which isn't language content) stays out of the locale file.
+    quickStartTitlePrefix: "Turnering",
     enterTitle: "Åpne turnering",
     enterPrompt: "Skriv vertskoden for å åpne tavla igjen",
     hostCodeLabel: "Vertskode",
@@ -240,6 +246,14 @@ export const no = {
     reviewFormat: "Form",
     roundsStep: "Antall ligarunder",
     roundsHint: "Sveitsisk system — anbefalt 5",
+    roundsRuleOfThumb: "Tommelfingerregel: færre runder enn spillere",
+    roundsFewer: "Færre runder",
+    roundsMore: "Flere runder",
+    // Player-count-aware warning for lib/tournament/roundsAdvice.ts — not
+    // wired into any screen yet (the wizard runs before anyone has joined,
+    // so it has no roster to check against; see that file's doc comment).
+    roundsWarningRematch: (rounds: number, players: number) =>
+      `Med ${rounds} runder og ${players} spillere vil noen møtes to ganger.`,
     playoffStep: "Sluttspill?",
     playoffOn: "Med sluttspill",
     playoffOff: "Bare liga",
@@ -275,6 +289,7 @@ export const no = {
       pawn_warSub: "Bare konge og bønder — kappløp om å promotere!",
     },
     reviewStep: "Se over",
+    edit: "Endre",
     reviewRounds: "Ligarunder",
     reviewPlayoff: "Sluttspill",
     reviewTimer: "Rundetimer",
