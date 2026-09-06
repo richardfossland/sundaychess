@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { api } from "@/lib/client/api";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
 import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
+import { Modal } from "@/lib/client/Modal";
 import { no } from "@/lib/locale/no";
 import type { GameStatus } from "@/lib/types";
 
@@ -68,134 +69,127 @@ export function OverrideModal({
   const askAbsent = (playerId: string, message: string) =>
     setPending({ message, danger: true, run: () => markAbsent(playerId) });
 
+  const titleId = useId();
+  const isReplay = replayPgn !== null;
+
   return (
     <>
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.6)",
-        backdropFilter: "blur(4px)",
-        display: "grid",
-        placeItems: "center",
-        padding: 20,
-        zIndex: 50,
-      }}
+    <Modal
+      open
+      onClose={onClose}
+      // The replay branch has its own content/close and no heading of ours to
+      // point at — only label the dialog while our own title is rendered.
+      labelledBy={isReplay ? undefined : titleId}
+      cardClassName={`card stack scale-in ${isReplay ? "" : "card-narrow"}`}
+      cardStyle={isReplay ? { maxWidth: 680, width: "100%" } : undefined}
     >
-      <div
-        className={`card stack scale-in ${replayPgn !== null ? "" : "card-narrow"}`}
-        style={replayPgn !== null ? { maxWidth: 680, width: "100%" } : undefined}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {replayPgn !== null ? (
-          <ReplayBoard
-            pgn={replayPgn}
-            whiteName={white.name}
-            blackName={black?.name ?? no.host.bye}
-            onClose={() => setReplayPgn(null)}
-          />
-        ) : (
-          <>
-        <h3 style={{ fontSize: 20 }}>{no.host.overrideTitle}</h3>
-        <p className="muted">
-          {white.name} {no.player.vs} {black?.name ?? no.host.bye}
-        </p>
+      {isReplay ? (
+        <ReplayBoard
+          pgn={replayPgn}
+          whiteName={white.name}
+          blackName={black?.name ?? no.host.bye}
+          onClose={() => setReplayPgn(null)}
+        />
+      ) : (
+        <>
+          <h3 id={titleId} style={{ fontSize: 20 }}>{no.host.overrideTitle}</h3>
+          <p className="muted">
+            {white.name} {no.player.vs} {black?.name ?? no.host.bye}
+          </p>
 
-        {black && (
-          <button
-            className="btn btn-ghost btn-block"
-            disabled={busy}
-            onClick={() =>
-              api
-                .game(gameId)
-                .then((d) => setReplayPgn(d.pgn))
-                .catch(() => setError(no.common.error))
-            }
-          >
-            ♟ {no.replay.cta}
-          </button>
-        )}
+          {black && (
+            <button
+              className="btn btn-ghost btn-block"
+              disabled={busy}
+              onClick={() =>
+                api
+                  .game(gameId)
+                  .then((d) => setReplayPgn(d.pgn))
+                  .catch(() => setError(no.common.error))
+              }
+            >
+              ♟ {no.replay.cta}
+            </button>
+          )}
 
-        <p className="eyebrow">{no.host.setResult}</p>
-        <button
-          className="btn btn-block"
-          disabled={busy}
-          onClick={() => askResult("white_win", no.host.overrideResultConfirm(white.name))}
-        >
-          {white.name} ✓
-        </button>
-        {black && (
+          <p className="eyebrow">{no.host.setResult}</p>
           <button
             className="btn btn-block"
             disabled={busy}
-            onClick={() => askResult("black_win", no.host.overrideResultConfirm(black.name))}
+            onClick={() => askResult("white_win", no.host.overrideResultConfirm(white.name))}
           >
-            {black.name} ✓
+            {white.name} ✓
           </button>
-        )}
-        <button
-          className="btn btn-block"
-          disabled={busy}
-          onClick={() => askResult("draw", no.host.overrideDrawConfirm)}
-        >
-          {no.host.draw}
-        </button>
-        {allowAbort && (
+          {black && (
+            <button
+              className="btn btn-block"
+              disabled={busy}
+              onClick={() => askResult("black_win", no.host.overrideResultConfirm(black.name))}
+            >
+              {black.name} ✓
+            </button>
+          )}
           <button
-            className="btn btn-danger btn-block"
+            className="btn btn-block"
             disabled={busy}
-            onClick={() => askResult("aborted", no.host.overrideAbortConfirm, true)}
+            onClick={() => askResult("draw", no.host.overrideDrawConfirm)}
           >
-            {no.host.abort}
+            {no.host.draw}
           </button>
-        )}
+          {allowAbort && (
+            <button
+              className="btn btn-danger btn-block"
+              disabled={busy}
+              onClick={() => askResult("aborted", no.host.overrideAbortConfirm, true)}
+            >
+              {no.host.abort}
+            </button>
+          )}
 
-        {black && (
-          <>
-            <hr className="thread" />
-            <p className="eyebrow">{no.host.absentTitle}</p>
-            <div className="row" style={{ gap: 6 }}>
+          {black && (
+            <>
+              <hr className="thread" />
+              <p className="eyebrow">{no.host.absentTitle}</p>
+              <div className="row" style={{ gap: 6 }}>
+                <button
+                  className={`btn grow ${scope === "round" ? "btn-primary" : "btn-ghost"}`}
+                  onClick={() => setScope("round")}
+                >
+                  {no.host.absentRound}
+                </button>
+                <button
+                  className={`btn grow ${scope === "tournament" ? "btn-primary" : "btn-ghost"}`}
+                  onClick={() => setScope("tournament")}
+                >
+                  {no.host.absentTournament}
+                </button>
+              </div>
               <button
-                className={`btn grow ${scope === "round" ? "btn-primary" : "btn-ghost"}`}
-                onClick={() => setScope("round")}
+                className="btn btn-block"
+                disabled={busy}
+                onClick={() => askAbsent(white.id, no.host.overrideAbsentConfirm(white.name, scope))}
               >
-                {no.host.absentRound}
+                {white.name} {no.host.absentSuffix}
               </button>
               <button
-                className={`btn grow ${scope === "tournament" ? "btn-primary" : "btn-ghost"}`}
-                onClick={() => setScope("tournament")}
+                className="btn btn-block"
+                disabled={busy}
+                onClick={() => askAbsent(black.id, no.host.overrideAbsentConfirm(black.name, scope))}
               >
-                {no.host.absentTournament}
+                {black.name} {no.host.absentSuffix}
               </button>
-            </div>
-            <button
-              className="btn btn-block"
-              disabled={busy}
-              onClick={() => askAbsent(white.id, no.host.overrideAbsentConfirm(white.name, scope))}
-            >
-              {white.name} {no.host.absentSuffix}
-            </button>
-            <button
-              className="btn btn-block"
-              disabled={busy}
-              onClick={() => askAbsent(black.id, no.host.overrideAbsentConfirm(black.name, scope))}
-            >
-              {black.name} {no.host.absentSuffix}
-            </button>
-          </>
-        )}
+            </>
+          )}
 
-        {error && <div className="banner banner-error">{error}</div>}
-        <button className="btn btn-ghost btn-block" onClick={onClose}>
-          {no.common.cancel}
-        </button>
-          </>
-        )}
-      </div>
-    </div>
+          {error && <div className="banner banner-error">{error}</div>}
+          <button className="btn btn-ghost btn-block" onClick={onClose}>
+            {no.common.cancel}
+          </button>
+        </>
+      )}
+    </Modal>
 
-    {/* Rendered as a SIBLING of the backdrop above, not nested inside it — the
+    {/* Rendered as a SIBLING of Modal above, not nested inside it — the
         backdrop's onClick={onClose} would otherwise catch the bubbled click
         from ConfirmDialog's own backdrop and close this whole modal too when
         the teacher only meant to cancel the confirmation. */}

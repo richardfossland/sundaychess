@@ -1661,3 +1661,47 @@ a:focus-visible,
     border-color: #999 !important;
   }
 }
+
+/* ============ shared Modal primitive (lib/client/Modal.tsx) ============ */
+/* Default backdrop for a Modal that doesn't reuse an existing overlay class
+ * (CodesModal / OverrideModal / DiagnosticsModal) — same look those three
+ * already had inline. ConfirmDialog / PromotionPicker instead pass
+ * `overlayClassName="promo-overlay"` to keep reusing that one verbatim
+ * (different z-index/background — it must stay above this). */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 50;
+  animation: fadeIn 0.2s ease both;
+}
+.modal-sm {
+  max-width: 380px;
+}
+.modal-md {
+  max-width: 460px;
+}
+.modal-lg {
+  max-width: 720px;
+}
+.modal-footer {
+  margin-top: 4px;
+}
+/* Visually hidden but still announced — for a dialog's `aria-describedby`
+ * text that clarifies what Escape/backdrop does when that differs from its
+ * visible cancel/decline button (see ConfirmDialog's `dismissLabel`). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

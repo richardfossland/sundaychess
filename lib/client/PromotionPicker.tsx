@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import type { PromoPiece } from "@/lib/chess/promotion";
 import { no } from "@/lib/locale/no";
+import { Modal } from "@/lib/client/Modal";
 
 // White / black Unicode glyphs per promotable piece, in the usual chooser order.
 const PIECES: { p: PromoPiece; white: string; black: string }[] = [
@@ -22,8 +23,10 @@ const KEY_TO_PIECE: Record<string, PromoPiece> = {
 };
 
 /** Modal piece chooser shown before committing a promoting move. Pieces are
- * ≥44px tap targets; Queen is pre-focused (Enter/Space = queen). Keyboard:
- * q/r/b/n (or d/t/l/s), Esc = queen (the quick default). Backdrop = cancel. */
+ * ≥44px tap targets; Queen is pre-focused. Keyboard: q/r/b/n (or d/t/l/s).
+ * Escape CANCELS the pending move (same as backdrop click) — it never commits
+ * a queen implicitly, since Escape is "back out of this", not "pick the
+ * default". */
 export function PromotionPicker({
   color,
   onPick,
@@ -36,11 +39,6 @@ export function PromotionPicker({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      if (k === "escape") {
-        e.preventDefault();
-        onPick("q"); // Esc = queen, the standard default
-        return;
-      }
       const piece = KEY_TO_PIECE[k];
       if (piece) {
         e.preventDefault();
@@ -51,32 +49,34 @@ export function PromotionPicker({
     return () => window.removeEventListener("keydown", onKey);
   }, [onPick]);
 
+  const titleId = useId();
+
   return (
-    <div
-      className="promo-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-label={no.promo.title}
-      onClick={onCancel}
+    <Modal
+      open
+      onClose={onCancel}
+      labelledBy={titleId}
+      overlayClassName="promo-overlay"
+      cardClassName="promo-card"
     >
-      <div className="promo-card" onClick={(e) => e.stopPropagation()}>
-        <p className="promo-title">{no.promo.title}</p>
-        <div className="promo-row">
-          {PIECES.map(({ p, white, black }) => (
-            <button
-              key={p}
-              className="promo-btn"
-              autoFocus={p === "q"}
-              aria-label={no.promo[p]}
-              title={no.promo[p]}
-              onClick={() => onPick(p)}
-            >
-              {color === "white" ? white : black}
-            </button>
-          ))}
-        </div>
-        <p className="promo-hint">{no.promo.hint}</p>
+      <p id={titleId} className="promo-title">
+        {no.promo.title}
+      </p>
+      <div className="promo-row">
+        {PIECES.map(({ p, white, black }) => (
+          <button
+            key={p}
+            className="promo-btn"
+            autoFocus={p === "q"}
+            aria-label={no.promo[p]}
+            title={no.promo[p]}
+            onClick={() => onPick(p)}
+          >
+            {color === "white" ? white : black}
+          </button>
+        ))}
       </div>
-    </div>
+      <p className="promo-hint">{no.promo.hint}</p>
+    </Modal>
   );
 }
