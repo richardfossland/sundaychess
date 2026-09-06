@@ -17,6 +17,11 @@ vi.mock("@/lib/server/llm", () => ({ narrateReview: (...a: unknown[]) => narrate
 
 import { POST } from "@/app/api/review/route";
 
+// A valid-shaped id for the request body — the route's isUuid guard runs
+// BEFORE the (mocked) getGame, so it must look like a real UUID even though
+// the mock keys off makeGame()'s own "g1" id.
+const GAME_ID = "11111111-1111-4111-8111-111111111111";
+
 function scholarMatePgn(): string {
   const chess = new Chess();
   ["e4", "e5", "Bc4", "Nc6", "Qh5", "Nf6", "Qxf7#"].forEach((m) => chess.move(m));
@@ -71,39 +76,39 @@ beforeEach(() => {
 describe("POST /api/review", () => {
   it("401 when unauthorized", async () => {
     authPlayer.mockResolvedValue(null);
-    const res = await POST(req({ playerId: "white", resumeCode: "x", gameId: "g1" }));
+    const res = await POST(req({ playerId: "white", resumeCode: "x", gameId: GAME_ID }));
     expect(res.status).toBe(401);
   });
 
   it("403 when the game belongs to another tournament", async () => {
     store.getGame.mockResolvedValue(makeGame({ tournament_id: "other" }));
-    const res = await POST(req({ playerId: "white", resumeCode: "x", gameId: "g1" }));
+    const res = await POST(req({ playerId: "white", resumeCode: "x", gameId: GAME_ID }));
     expect(res.status).toBe(403);
   });
 
   it("403 when the player is not in the game", async () => {
     authPlayer.mockResolvedValue(player("stranger"));
-    const res = await POST(req({ playerId: "stranger", resumeCode: "x", gameId: "g1" }));
+    const res = await POST(req({ playerId: "stranger", resumeCode: "x", gameId: GAME_ID }));
     expect(res.status).toBe(403);
     expect((await res.json()).error).toBe("not_your_game");
   });
 
   it("409 when the game is not finished", async () => {
     store.getGame.mockResolvedValue(makeGame({ status: "live" }));
-    const res = await POST(req({ playerId: "white", resumeCode: "x", gameId: "g1" }));
+    const res = await POST(req({ playerId: "white", resumeCode: "x", gameId: GAME_ID }));
     expect(res.status).toBe(409);
     expect((await res.json()).error).toBe("not_finished");
   });
 
   it("409 when there are no replayable moves", async () => {
     store.getGame.mockResolvedValue(makeGame({ pgn: '[Result "1-0"]', status: "white_win" }));
-    const res = await POST(req({ playerId: "white", resumeCode: "x", gameId: "g1" }));
+    const res = await POST(req({ playerId: "white", resumeCode: "x", gameId: GAME_ID }));
     expect(res.status).toBe(409);
     expect((await res.json()).error).toBe("no_moves");
   });
 
   it("returns the templated summary when there is no key (narrate → null)", async () => {
-    const res = await POST(req({ playerId: "white", resumeCode: "x", gameId: "g1" }));
+    const res = await POST(req({ playerId: "white", resumeCode: "x", gameId: GAME_ID }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.aiNarrated).toBe(false);
@@ -117,7 +122,7 @@ describe("POST /api/review", () => {
 
   it("uses the AI narration when present and flags aiNarrated", async () => {
     narrateReview.mockResolvedValue("Strålende avslutning, white!");
-    const res = await POST(req({ playerId: "white", resumeCode: "x", gameId: "g1" }));
+    const res = await POST(req({ playerId: "white", resumeCode: "x", gameId: GAME_ID }));
     const body = await res.json();
     expect(body.aiNarrated).toBe(true);
     expect(body.summary).toBe("Strålende avslutning, white!");
@@ -125,7 +130,7 @@ describe("POST /api/review", () => {
 
   it("reviews from the black player's perspective (engine truth, not the LLM)", async () => {
     authPlayer.mockResolvedValue(player("black"));
-    const res = await POST(req({ playerId: "black", resumeCode: "x", gameId: "g1" }));
+    const res = await POST(req({ playerId: "black", resumeCode: "x", gameId: GAME_ID }));
     const body = await res.json();
     expect(body.facts.outcome).toBe("lost"); // black got mated
     expect(body.facts.deliveredMate).toBe(false);
