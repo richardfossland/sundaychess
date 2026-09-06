@@ -52,6 +52,17 @@ import { defineConfig, devices } from "@playwright/test";
 //
 // Only an EXPLICIT `--project` counts. A default run (no `--project` at all)
 // still gets the two Chromium projects and nothing else.
+//
+// ⚠️ THE ARGV SNIFF MUST PUBLISH ITSELF INTO process.env, and that line is the
+// load-bearing one. This config is re-loaded from scratch in EVERY worker
+// process, and a worker is `child_process.fork`ed with no arguments of its own
+// (playwright/lib/runner/index.js: `fork(entryScript, { env: {...process.env} })`).
+// So a worker's `process.argv` carries no `--project`, the sniff below comes up
+// empty there, the project list it builds is one shorter than the one the main
+// process planned — and every WebKit test dies on
+//   `Error: Project "mobile-webkit" not found in the worker process.`
+// A config decision derived from argv only survives the fork if it is turned
+// into an environment variable first: `env` is inherited, argv is not.
 const argv = process.argv.slice(2);
 const explicitProjects = new Set<string>();
 for (let i = 0; i < argv.length; i++) {
@@ -59,8 +70,9 @@ for (let i = 0; i < argv.length; i++) {
   if (arg === "--project" && argv[i + 1]) explicitProjects.add(argv[i + 1]);
   else if (arg.startsWith("--project=")) explicitProjects.add(arg.slice(10));
 }
+if (explicitProjects.has("mobile-webkit")) process.env.E2E_WEBKIT = "1";
 
-const WEBKIT = process.env.E2E_WEBKIT === "1" || explicitProjects.has("mobile-webkit");
+const WEBKIT = process.env.E2E_WEBKIT === "1";
 
 const mobileWebkit = WEBKIT
   ? [{ name: "mobile-webkit", use: { ...devices["iPhone 13"] } }]
@@ -81,7 +93,12 @@ export default defineConfig({
 
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  workers: process.env.CI ? 2 : 1,
+  // Two CI workers is the ceiling that still keeps file-level isolation cheap —
+  // except on the worker lane, which is served by `wrangler dev`: a
+  // single-process LOCAL DEV server, not the edge. Two spec files in parallel is
+  // four browser contexts against it, and this lane is about runtime semantics,
+  // not about how much load a dev server takes.
+  workers: WORKER ? 1 : process.env.CI ? 2 : 1,
   retries: process.env.CI ? 1 : 0,
   // CI also writes the HTML report: it is what the workflow uploads on failure,
   // and it is the only thing that turns the trace/video files in test-results/

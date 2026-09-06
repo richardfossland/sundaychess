@@ -236,6 +236,26 @@ jobs:
           # shellcheck disable=SC2086
           npx playwright test $args
 
+      - name: wrangler dev logs
+        # Worker lane only. When `wrangler dev` dies mid-run, the message
+        # Playwright shows is whatever wrangler wrote to stderr — and
+        # `opennextjs-cloudflare preview` spawns it with stderr PIPED, so that
+        # arrives as one buffered dump at exit and can be as little as a bare
+        # `✘ [ERROR]` with no text. The stack trace is in wrangler's own log file
+        # (it prints "Logs were written to …" and nothing collects it), so
+        # collect it here.
+        if: failure() && inputs.server == 'worker'
+        run: |
+          shopt -s nullglob
+          found=0
+          for f in "$HOME"/.config/.wrangler/logs/*.log .wrangler/logs/*.log; do
+            found=1
+            echo "::group::$f"
+            tail -c 100000 "$f" || true
+            echo "::endgroup::"
+          done
+          [ "$found" = 1 ] || echo "no wrangler log files found"
+
       - name: Supabase container logs
         if: failure()
         # Realtime refusing a join, or PostgREST rejecting the service key, shows
