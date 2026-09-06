@@ -1,6 +1,7 @@
 import { getGame, getPlayer } from "@/lib/server/store";
 import { authPlayer } from "@/lib/server/auth";
 import { clientIp, fail, ok, rateLimit, readJson } from "@/lib/server/http";
+import { isUuid } from "@/lib/codes";
 import { annotateGame } from "@/lib/chess/analysis";
 import { reviewFacts, templatedSummaryNo } from "@/lib/chess/reviewSummary";
 import { narrateReview } from "@/lib/server/llm";
@@ -37,6 +38,8 @@ async function handlePost(req: Request): Promise<Response> {
   const player = await authPlayer(body.playerId, body.resumeCode);
   if (!player) return fail(401, "unauthorized");
   if (!body.gameId) return fail(400, "bad_request");
+  // A malformed gameId is a client error, not an outage (22P02 → false 503).
+  if (!isUuid(body.gameId)) return fail(400, "bad_request");
 
   const game = await getGame(body.gameId);
   if (!game) return fail(404, "no_game");
