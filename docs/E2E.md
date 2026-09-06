@@ -51,6 +51,28 @@ progressive enhancement:
 `BroadcastChannel` (the R5 one-tab-is-the-board protocol, `lib/client/activeTab.ts`)
 *is* supported in WebKit, so `two-tabs.spec.ts` is a real test there.
 
+**One spec file does not run on WebKit: `reconnect.spec.ts`.** Not an app
+difference — a harness one. `context.setOffline(true)` is emulation, and the
+engines emulate different amounts of "offline". Measured against a local
+WebSocket server pushing a frame every 300 ms, with `setOffline(true)` at t=0:
+
+| engine | `navigator.onLine` | `fetch` | frames still arriving after 2 s |
+| ------ | ------------------ | ------- | ------------------------------- |
+| Chromium | `false` | fails | **0** |
+| WebKit | `false` | fails | **7** |
+
+Chromium's CDP `Network.emulateNetworkConditions` severs sockets that are
+already open; WebKit's `Network.setEmulateOfflineState` blocks new HTTP loads and
+flips `navigator.onLine` but leaves an established WebSocket delivering. This
+app's live updates arrive on exactly such a socket (Supabase Realtime, opened
+when the board mounts), so on WebKit the opponent's move lands on a device the
+test believes is offline. The premise cannot be established, so the file is
+`test.skip`ped there with that reason — the assertions are not softened, because
+a real iPhone losing its network has the OS tear the socket down and Chromium is
+the faithful model of that. `lobby-rejoin.spec.ts` uses `setOffline` too and
+*does* run on WebKit: it closes the page straight afterwards, which severs the
+socket for real.
+
 ### Servers
 
 | `E2E_SERVER` | webServer command       | what it is                                    |
