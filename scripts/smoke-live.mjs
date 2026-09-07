@@ -1,4 +1,8 @@
-// Production smoke test against the live Worker + cloud Supabase.
+// Production smoke test against the live Worker + cloud Supabase, via the
+// PUBLIC flow only: create → join ×2 → round/start → find the live game →
+// moves. `/api/dev/quickmatch` is a dev-only test seam that 404s in a
+// production build (see the T2 e2e work), so it cannot be used here — the
+// same reason TicTacToe's smoke-live.mjs was rewritten this way.
 // HTTP goes through curl with --resolve (local DNS may still cache NXDOMAIN);
 // realtime subscribes to the cloud Supabase project directly.
 //
@@ -37,10 +41,27 @@ const move = (g, p, from, to) =>
 async function main() {
   console.log(`SundaySjakk LIVE smoke — https://${HOST}\n`);
 
-  const qm = curl("POST", "/api/dev/quickmatch", { white: "Ada", black: "Bo" });
-  check("quickmatch on cloud DB", !!qm.gameId, JSON.stringify(qm));
-  if (!qm.gameId) return done();
-  const { gameId, white, black } = qm;
+  const t = curl("POST", "/api/tournament", { title: "LiveSmoke" });
+  check("tournament created", !!t.id, JSON.stringify(t));
+  if (!t.id) return done();
+
+  const p1 = curl("POST", "/api/join", { pin: t.joinPin, displayName: "Ada" });
+  const p2 = curl("POST", "/api/join", { pin: t.joinPin, displayName: "Bo" });
+  check("both players joined", !!p1.playerId && !!p2.playerId, JSON.stringify({ p1, p2 }));
+  if (!p1.playerId || !p2.playerId) return done();
+
+  const started = curl("POST", "/api/round/start", { tournamentId: t.id, hostCode: t.hostCode });
+  check("round started", started.status === "league", JSON.stringify(started));
+
+  const board = curl("GET", `/api/tournament/${t.id}`);
+  const g = board.games?.find((x) => x.status === "live" && x.blackPlayerId);
+  check("live game found on the board", Boolean(g), JSON.stringify(board.games));
+  if (!g) return done();
+
+  const byId = { [p1.playerId]: p1, [p2.playerId]: p2 };
+  const white = byId[g.whitePlayerId];
+  const black = byId[g.blackPlayerId];
+  const gameId = g.id;
 
   // Realtime subscription to the cloud project.
   const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
@@ -59,6 +80,10 @@ async function main() {
 
   const detail = curl("GET", `/api/game/${gameId}`);
   check("reconnect read shows black_win", detail.status === "black_win");
+
+  const boardAfter = curl("GET", `/api/tournament/${t.id}`);
+  const winnerRow = boardAfter.standings?.find((s) => s.playerId === black.playerId);
+  check("standings show the winner's point", winnerRow?.score === 1, JSON.stringify(boardAfter.standings));
 
   await new Promise((r) => setTimeout(r, 800));
   check("cloud realtime delivered position broadcasts", events.filter((e) => e === "position").length >= 1, JSON.stringify(events));

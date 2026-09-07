@@ -253,11 +253,13 @@ field list; in short:
   probe`. This is a synthetic external check, not a substitute for the rig —
   it catches "the site is down," not "the board jumped."
 - **Live feature smoke test**: `node scripts/smoke-live.mjs` exercises the
-  *deployed* Worker + cloud Supabase directly (quickmatch, illegal/out-of-turn
-  rejection, a full game to checkmate via `apply_move`, reconnect read, and
-  cloud realtime broadcast delivery). Run it once after any production deploy,
-  before or alongside the rig session, to confirm the deployed bundle — not
-  just `main` — is the one behaving correctly.
+  *deployed* Worker + cloud Supabase directly via the public flow (create →
+  join × 2 → round/start), then illegal/out-of-turn rejection, a full game to
+  checkmate via `apply_move`, reconnect read, and cloud realtime broadcast
+  delivery. It cannot use `/api/dev/quickmatch` — that seam 404s in a
+  production build (see §5 below and `docs/E2E.md`). Run it once after any
+  production deploy, before or alongside the rig session, to confirm the
+  deployed bundle — not just `main` — is the one behaving correctly.
 
 ## 5. Core chess flow (still worth a quick manual pass after a deploy)
 
