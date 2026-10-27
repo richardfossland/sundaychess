@@ -3,7 +3,7 @@ import { getTournament, setPlayerStatus } from "@/lib/server/store";
 import { broadcast } from "@/lib/server/broadcast";
 import { defer } from "@/lib/server/defer";
 import { channels, events } from "@/lib/realtime";
-import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
+import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 
 // POST /api/lobby/rejoin — a student who was removed from the LOBBY puts
@@ -16,14 +16,7 @@ import { isUuid } from "@/lib/codes";
 // Only valid while the tournament is still in the lobby: once pairings exist,
 // silently re-adding a player would change the bracket. Then the client says so
 // instead ("Du ble fjernet fra turneringen") and they join afresh.
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[rejoin]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   // Same generous per-IP cap as /api/resume: a whole class sits behind ONE

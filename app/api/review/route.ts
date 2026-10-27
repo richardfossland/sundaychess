@@ -1,6 +1,6 @@
 import { getGame, getPlayer } from "@/lib/server/store";
 import { authPlayer } from "@/lib/server/auth";
-import { clientIp, fail, ok, rateLimit, readJson } from "@/lib/server/http";
+import { clientIp, fail, ok, rateLimit, readJson, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 import { annotateGame } from "@/lib/chess/analysis";
 import { reviewFacts, templatedSummaryNo } from "@/lib/chess/reviewSummary";
@@ -12,14 +12,7 @@ import { narrateReview } from "@/lib/server/llm";
 // only narrates the resulting facts into a warm Norwegian paragraph. With no
 // key (or any LLM failure) we fall back to a templated Norwegian summary, so
 // the feature degrades gracefully and never blocks.
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[review]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   const body = await readJson<{

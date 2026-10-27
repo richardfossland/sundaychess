@@ -1,16 +1,9 @@
 import { openTournamentByHostCode } from "@/lib/server/store";
-import { fail, ok, readJson, rateLimit, clientIp, hostRateLimit } from "@/lib/server/http";
+import { fail, ok, readJson, rateLimit, clientIp, hostRateLimit, withApi } from "@/lib/server/http";
 import { isResumeCodeShape, normalizeResumeCode } from "@/lib/codes";
 
 // POST /api/tournament/open — reopen a tournament board with the host code.
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[tournament/open]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   const body = await readJson<{ hostCode?: string }>(req);

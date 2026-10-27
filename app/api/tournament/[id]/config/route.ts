@@ -3,7 +3,7 @@ import { updateTournamentConfig } from "@/lib/server/store";
 import { broadcast } from "@/lib/server/broadcast";
 import { defer } from "@/lib/server/defer";
 import { channels, events } from "@/lib/realtime";
-import { fail, ok, readJson, hostRateLimit } from "@/lib/server/http";
+import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 
 const MAX_NOTES = 280;
@@ -30,17 +30,7 @@ const MAX_NOTES = 280;
 //    other host-code routes, all POST for the same reason) — and it's what
 //    lets NotesModal pre-fill its textarea through this one route instead of
 //    a second one.
-export async function POST(
-  req: Request,
-  ctx: { params: Promise<{ id: string }> },
-) {
-  try {
-    return await handlePost(req, ctx);
-  } catch (err) {
-    console.error("[tournament/[id]/config]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(
   req: Request,

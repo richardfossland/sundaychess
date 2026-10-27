@@ -4,23 +4,16 @@ import {
   getTournamentByPin,
 } from "@/lib/server/store";
 import { maybeAutoFinishStale } from "@/lib/server/lifecycle";
-import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
+import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { normalizeResumeCode, isValidPin, isUuid } from "@/lib/codes";
 
 // POST /api/resume — restore a student session from their resume code.
 // Accepts { resumeCode, pin } or { resumeCode, tournamentId }. The resume code
 // travels in the body only (it is a bearer token — spec §8).
-export async function POST(req: Request) {
-  try {
-    return await handleResume(req);
-  } catch (err) {
-    // A throw here used to become a platform 500, and the client's resume catch
-    // WIPES the stored session → the student is kicked ("internal server error").
-    // Return a structured transient error so the client keeps the session + retries.
-    console.error("[resume]", err);
-    return fail(503, "server_error");
-  }
-}
+// A throw here used to become a platform 500, and the client's resume catch
+// WIPES the stored session. withApi answers a structured 503 so the client
+// keeps the session + retries.
+export const POST = withApi(handleResume);
 
 async function handleResume(req: Request): Promise<Response> {
   // Generous per-IP cap: after a wifi blip the whole class resumes at once

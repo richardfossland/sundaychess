@@ -26,6 +26,11 @@ export const no = {
     unmuteSound: "Slå på lyd",
     enterFullscreen: "Fullskjerm",
     exitFullscreen: "Avslutt fullskjerm",
+    offlineRetrying: "Ingen kontakt med serveren – prøver på nytt …",
+    offlineSince: (t: string) => `Ingen kontakt med serveren siden ${t} – prøver på nytt …`,
+    errorRetryBody: "Prøv igjen – framgangen din er trygt lagret på serveren.",
+    errorReload: "Last inn siden på nytt.",
+    toLogin: "Til innlogging",
   },
 
   landing: {

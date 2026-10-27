@@ -1,23 +1,13 @@
 import { getGame, getPlayer } from "@/lib/server/store";
 import { gameClock } from "@/lib/server/clock";
 import { lastMoveFromPgn } from "@/lib/chess/lastMove";
-import { fail, ok, rateLimit, clientIp } from "@/lib/server/http";
+import { fail, ok, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 import type { GameDetail } from "@/lib/dto";
 
 // GET /api/game/[id] — authoritative game state for reconnect/resume (spec §4).
 // Public: contains no secrets (no resume codes).
-export async function GET(
-  req: Request,
-  ctx: { params: Promise<{ id: string }> },
-) {
-  try {
-    return await handleGet(req, ctx);
-  } catch (err) {
-    console.error("[game/[id]]", err);
-    return fail(503, "server_error");
-  }
-}
+export const GET = withApi(handleGet);
 
 async function handleGet(
   req: Request,

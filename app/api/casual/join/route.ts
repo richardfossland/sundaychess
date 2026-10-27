@@ -1,17 +1,10 @@
 import { joinCasualGame } from "@/lib/server/casual";
-import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
+import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { isValidPin } from "@/lib/codes";
 
 // POST /api/casual/join — join a casual 1v1 by code as the second player; the
 // game auto-starts and the gameId is returned.
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[casual/join]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   if (!rateLimit(`casualjoin:${clientIp(req)}`, 60, 60_000)) {

@@ -3,7 +3,7 @@ import { getPlayer, setPlayerStatus } from "@/lib/server/store";
 import { broadcast } from "@/lib/server/broadcast";
 import { defer } from "@/lib/server/defer";
 import { channels, events } from "@/lib/realtime";
-import { fail, ok, readJson, hostRateLimit } from "@/lib/server/http";
+import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 
 // POST /api/game/reinstate — the teacher's undo for /api/game/absent's
@@ -15,14 +15,7 @@ import { isUuid } from "@/lib/codes";
 // lib/server/league.ts's `active` filter includes them again from the NEXT
 // round's pairing. It never touches the CURRENT round, and never revives a
 // finished tournament.
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[reinstate]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   const limited = hostRateLimit(req);

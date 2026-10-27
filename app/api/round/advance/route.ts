@@ -2,18 +2,11 @@ import { authHost } from "@/lib/server/auth";
 import { advanceRound, currentRoundResolved } from "@/lib/server/league";
 import { advancePlayoff, playoffRoundResolved } from "@/lib/server/playoff";
 import { getTournament, isUniqueViolation } from "@/lib/server/store";
-import { fail, ok, readJson, hostRateLimit } from "@/lib/server/http";
+import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
 
 // POST /api/round/advance — teacher clicks "Neste runde". Guarded: every game
 // in the current round must be resolved (play it out, override, or force).
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[round/advance]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   const limited = hostRateLimit(req);

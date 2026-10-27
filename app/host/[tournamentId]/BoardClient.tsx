@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useBoardState } from "@/lib/client/useBoardState";
+import { useWakeLock } from "@/lib/client/useWakeLock";
 import { identity } from "@/lib/client/identity";
 import { no } from "@/lib/locale/no";
 import { DiagnosticsModal } from "./DiagnosticsModal";
@@ -14,6 +15,8 @@ import { LiveGamesView } from "./LiveGamesView";
 export function BoardClient({ tournamentId }: { tournamentId: string }) {
   // Host projector renders the live-games grid → ask for per-game clocks.
   const { state, error, refresh } = useBoardState(tournamentId, true);
+  // The host board runs on a projector/TV: never let it dim or sleep.
+  useWakeLock();
   const [mode, setMode] = useState<"board" | "live">("board");
   // T5 diagnostics: host-code-gated, so the button only appears on the device
   // that actually created this tournament (the code lives in its localStorage).

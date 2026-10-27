@@ -2,19 +2,12 @@ import { getGame, resolveGameRpc } from "@/lib/server/store";
 import { authPlayer } from "@/lib/server/auth";
 import { afterGameResolved } from "@/lib/server/gameEvents";
 import { defer } from "@/lib/server/defer";
-import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
+import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 import type { GameStatus } from "@/lib/types";
 
 // POST /api/game/resign — the resigning player loses; opponent wins.
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[resign]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   const body = await readJson<{

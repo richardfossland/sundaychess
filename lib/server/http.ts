@@ -9,6 +9,37 @@ export function fail(status: number, error: string, extra?: Record<string, unkno
   return Response.json({ error, ...extra }, { status });
 }
 
+/** Stable error code for "the server (or its database) failed transiently".
+ * Clients treat any 5xx as "try again" and keep their last good state — a
+ * 5xx must never end a session (see shouldClearSession in lib/client/api.ts). */
+export const TRANSIENT_ERROR = "server_error";
+
+/** Wrap a route handler: any uncaught throw (typically a Supabase/network
+ * error) becomes JSON 503 `server_error`, never Next's HTML 500 or a Worker
+ * exception page. Handlers keep returning their own 4xx for client mistakes. */
+export function withApi<A extends unknown[]>(
+  handler: (...args: A) => Response | Promise<Response>,
+): (...args: A) => Promise<Response> {
+  return async (...args: A) => {
+    try {
+      return await handler(...args);
+    } catch (e) {
+      const first = args[0];
+      const where = first instanceof Request ? new URL(first.url).pathname : "?";
+      console.error("[api]", where, e);
+      return fail(503, TRANSIENT_ERROR);
+    }
+  };
+}
+
+/** Unwrap a supabase `{ data, error }` result: throw on error so an outage
+ * surfaces as a failure (→ 503 via withApi) instead of an ignored write or an
+ * empty read. */
+export function must<T>(res: { data?: T | null; error: { message?: string } | null }): T {
+  if (res.error) throw res.error;
+  return res.data as T;
+}
+
 /** Parse a JSON body, returning null on malformed input. */
 export async function readJson<T = Record<string, unknown>>(
   req: Request,

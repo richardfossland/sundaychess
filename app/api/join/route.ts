@@ -1,5 +1,5 @@
 import { addPlayer, getTournamentByPin } from "@/lib/server/store";
-import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
+import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { broadcast } from "@/lib/server/broadcast";
 import { defer } from "@/lib/server/defer";
 import { channels, events } from "@/lib/realtime";
@@ -7,14 +7,7 @@ import { isValidPin } from "@/lib/codes";
 
 // POST /api/join — student joins a tournament by PIN with a display name.
 // Returns the resume code (a bearer token) in the body ONLY (never a URL).
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[join]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   // Generous per-IP cap: an entire class joins from ONE school NAT IP,

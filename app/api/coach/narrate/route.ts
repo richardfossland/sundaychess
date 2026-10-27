@@ -1,5 +1,5 @@
 import { narrateReview } from "@/lib/server/llm";
-import { clientIp, fail, ok, rateLimit, readJson } from "@/lib/server/http";
+import { clientIp, fail, ok, rateLimit, readJson, withApi } from "@/lib/server/http";
 import type { ReviewFacts } from "@/lib/chess/reviewSummary";
 
 // POST /api/coach/narrate — AI narration for a SOLO coached-game review. Solo
@@ -7,14 +7,7 @@ import type { ReviewFacts } from "@/lib/chess/reviewSummary";
 // (annotateGame is pure) and posts them here purely to be turned into a warm
 // Norwegian paragraph. Keyless → returns summary:null and the client falls back
 // to its templated summary. Tightly rate-limited (narration is the only cost).
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[coach/narrate]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   if (!rateLimit(`coach:${clientIp(req)}`, 30, 60_000)) {

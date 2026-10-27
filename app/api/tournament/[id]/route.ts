@@ -8,7 +8,7 @@ import {
 } from "@/lib/server/store";
 import { computeClocks } from "@/lib/chess/clock";
 import { computeScores, computeStandings } from "@/lib/tournament/score";
-import { fail, ok, rateLimit, clientIp } from "@/lib/server/http";
+import { fail, ok, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 import type { PublicGame } from "@/lib/dto";
 import {
@@ -19,17 +19,7 @@ import {
 } from "@/lib/dto";
 
 // GET /api/tournament/[id] — authoritative board state (no secrets).
-export async function GET(
-  req: Request,
-  ctx: { params: Promise<{ id: string }> },
-) {
-  try {
-    return await handleGet(req, ctx);
-  } catch (err) {
-    console.error("[tournament/[id]]", err);
-    return fail(503, "server_error");
-  }
-}
+export const GET = withApi(handleGet);
 
 async function handleGet(
   req: Request,

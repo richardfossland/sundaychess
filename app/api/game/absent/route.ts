@@ -8,7 +8,7 @@ import { afterGameResolved } from "@/lib/server/gameEvents";
 import { broadcast } from "@/lib/server/broadcast";
 import { defer } from "@/lib/server/defer";
 import { channels, events } from "@/lib/realtime";
-import { fail, ok, readJson, hostRateLimit } from "@/lib/server/http";
+import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 import type { GameStatus } from "@/lib/types";
 
@@ -16,14 +16,7 @@ import type { GameStatus } from "@/lib/types";
 // opponent gets a walkover win (not a draw).
 //   scope 'round'      → resolve this game as the opponent's win (player stays)
 //   scope 'tournament' → same + status='left' (excluded from future rounds)
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[absent]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   const limited = hostRateLimit(req);

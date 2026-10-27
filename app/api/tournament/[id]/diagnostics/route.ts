@@ -1,6 +1,6 @@
 import { authHost } from "@/lib/server/auth";
 import { listClientEvents } from "@/lib/server/store";
-import { fail, ok, readJson, hostRateLimit } from "@/lib/server/http";
+import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 import type { DiagnosticsResult } from "@/lib/dto";
 
@@ -19,17 +19,7 @@ export const dynamic = "force-dynamic";
 /** How many events the modal shows. One class, one lesson, comfortably. */
 const LIMIT = 200;
 
-export async function POST(
-  req: Request,
-  ctx: { params: Promise<{ id: string }> },
-) {
-  try {
-    return await handlePost(req, ctx);
-  } catch (err) {
-    console.error("[diagnostics]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(
   req: Request,

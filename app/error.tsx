@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { report } from "@/lib/client/telemetry";
+import { no } from "@/lib/locale/no";
 
 // Route-level error boundary — a transient render/runtime error shows a
 // friendly recovery screen instead of a blank, unrecoverable page.
@@ -33,11 +34,11 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
           <span className="knight">♞</span> Sunday<b>Chess</b>
         </div>
         <div style={{ fontSize: 40 }}>♟️</div>
-        <h2 style={{ fontSize: 24 }}>Noe gikk galt</h2>
-        <p className="muted">Prøv på nytt – framgangen din er trygt lagret på serveren.</p>
+        <h2 style={{ fontSize: 24 }}>{no.common.error}</h2>
+        <p className="muted">{no.common.errorRetryBody}</p>
         <div className="row" style={{ marginTop: 6 }}>
           <button className="btn btn-primary btn-lg" onClick={() => reset()}>
-            Prøv igjen
+            {no.common.retry}
           </button>
           <button
             className="btn btn-lg"
@@ -47,7 +48,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
               router.push("/play");
             }}
           >
-            Til innlogging
+            {no.common.toLogin}
           </button>
         </div>
       </div>

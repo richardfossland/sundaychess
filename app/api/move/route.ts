@@ -14,22 +14,15 @@ import {
   broadcastSpectate,
 } from "@/lib/server/gameEvents";
 import { defer } from "@/lib/server/defer";
-import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
+import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 import type { GameStatus, Turn } from "@/lib/types";
 
 // POST /api/move — THE server-authoritative move path (spec §4).
-export async function POST(req: Request) {
-  try {
-    return await handleMove(req);
-  } catch (err) {
-    // Never let an unexpected throw become a platform 500/1102 HTML page: the
-    // client maps an unknown move error to a (false) "Ulovlig trekk". Return a
-    // structured transient error so the client shows reconnecting + resyncs.
-    console.error("[move]", err);
-    return fail(503, "server_error");
-  }
-}
+// A throw anywhere becomes a structured 503 (never a platform 500/1102 page):
+// the client maps an unknown move error to a (false) "Ulovlig trekk", so a
+// transient error must tell it to show reconnecting + resync instead.
+export const POST = withApi(handleMove);
 
 async function handleMove(req: Request): Promise<Response> {
   const body = await readJson<{

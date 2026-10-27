@@ -1,19 +1,12 @@
 import { rematchCasual } from "@/lib/server/casual";
 import { authPlayer } from "@/lib/server/auth";
-import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
+import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 
 // POST /api/casual/rematch — either player in a finished casual 1v1 starts a
 // rematch (new game, swapped colours, same throwaway session). Idempotent: both
 // players calling it land in the same game.
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[casual/rematch]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   if (!rateLimit(`casualrematch:${clientIp(req)}`, 30, 60_000)) {

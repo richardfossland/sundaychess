@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useWakeLock } from "@/lib/client/useWakeLock";
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import type { GameDetail } from "@/lib/dto";
 import type { GameStatus, Turn } from "@/lib/types";
@@ -302,6 +303,8 @@ export const GameView = memo(function GameView({
   /** the tournament's variant start position (for captured-piece baselines) */
   variantFen?: string;
 }) {
+  // Keep the screen awake during a game (re-acquired when the tab returns).
+  useWakeLock();
   const [detail, setDetail] = useState<GameDetail | null>(null);
   const [fen, setFen] = useState<string>("");
   const [turn, setTurn] = useState<Turn>("w");

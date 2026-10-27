@@ -1,5 +1,5 @@
 import { createTournament, DEFAULT_CONFIG } from "@/lib/server/store";
-import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
+import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { getHost } from "@/lib/server/auth";
 import { isVariant } from "@/lib/chess/variants";
 import type { TournamentConfig } from "@/lib/types";
@@ -11,7 +11,7 @@ import type { TournamentConfig } from "@/lib/types";
 // tournament is stamped with their user id so it shows up in their dashboard.
 // Anonymous create still works exactly as before (owner stays null) — getHost()
 // returns null without throwing, so the host code remains the only required key.
-export async function POST(req: Request) {
+async function handlePost(req: Request): Promise<Response> {
   if (!rateLimit(`create:${clientIp(req)}`, 10, 60_000)) {
     return fail(429, "rate_limited");
   }
@@ -61,11 +61,9 @@ export async function POST(req: Request) {
 
   const title = body?.title?.toString().slice(0, 80).trim() || null;
 
-  try {
-    const t = await createTournament(title, config, host?.id ?? null);
-    return ok({ id: t.id, joinPin: t.join_pin, hostCode: t.host_code });
-  } catch (err) {
-    console.error("[create tournament]", err);
-    return fail(500, "create_failed");
-  }
+  const t = await createTournament(title, config, host?.id ?? null);
+  return ok({ id: t.id, joinPin: t.join_pin, hostCode: t.host_code });
 }
+
+// A DB failure is a transient 503 (stable code), not a bespoke 500.
+export const POST = withApi(handlePost);

@@ -60,7 +60,17 @@ export function shouldClearSession(err: unknown): boolean {
   return err.code === "invalid_code" || err.code === "not_found";
 }
 
-const DEFAULT_TIMEOUT = 8000;
+import {
+  noteRequestFailed,
+  noteRequestOk,
+} from "@/lib/client/connectivity";
+
+/** Reads give up after 8 s; writes get 15 s — they must stay above the server's
+ * own per-DB-call bound, otherwise the client would show a timeout for a write
+ * that still commits and the retry would hit a false conflict. */
+export const READ_TIMEOUT_MS = 8000;
+export const WRITE_TIMEOUT_MS = 15000;
+const DEFAULT_TIMEOUT = READ_TIMEOUT_MS;
 
 /** fetch + JSON parse under ONE hard timeout — a hung request must never freeze
  * the UI. CRUCIAL: the timeout spans BOTH the fetch AND reading the response
@@ -86,9 +96,12 @@ export async function timedJson(
       if (e instanceof DOMException && e.name === "AbortError") throw e;
       return {};
     });
+    if (res.status >= 500) noteRequestFailed();
+    else noteRequestOk();
     return { ok: res.ok, status: res.status, data };
   } catch (e) {
     const aborted = e instanceof DOMException && e.name === "AbortError";
+    noteRequestFailed();
     throw new ApiError(0, aborted ? "timeout" : "network", null);
   } finally {
     clearTimeout(t); // only after the body is read (or aborted) — never earlier
@@ -100,7 +113,7 @@ async function post<T>(url: string, body: unknown): Promise<T> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  });
+  }, WRITE_TIMEOUT_MS);
   if (!ok) {
     // No envelope → this response is NOT our API's verdict (edge page, WAF,
     // proxy). Say so explicitly rather than dressing it up as a generic "error"
