@@ -3,7 +3,12 @@
 //
 // Points (spec §6): win 1, draw 0.5, loss 0, bye 1, aborted 0.
 
-import type { Game, GameStatus, Player } from "@/lib/types";
+import type { Game, GameStatus, Player, Round } from "@/lib/types";
+import {
+  computeStandings as computeTiebreakStandings,
+  type TiebreakGame,
+  type TiebreakKey,
+} from "@/lib/tournament/tiebreaks";
 
 export interface StandingRow {
   playerId: string;
@@ -11,6 +16,41 @@ export interface StandingRow {
   score: number;
   tiebreak: number; // Buchholz
   rank: number;
+  /** Alle tiebreak-verdier; kun satt når en rekkefølge er konfigurert. */
+  tiebreaks?: Partial<Record<TiebreakKey, number | null>>;
+}
+
+export interface StandingsOptions {
+  /** Konfigurert rekkefølge (config.tiebreaks, validert med resolveTiebreaks).
+   * Uten dette brukes dagens oppførsel: score → Buchholz → navn. */
+  tiebreaks?: TiebreakKey[];
+  /** Nødvendig sammen med `tiebreaks` for å kjenne rundenummer per parti. */
+  rounds?: Round[];
+}
+
+const FORFEIT_SOURCES = new Set(["walkover", "opponent_absent"]);
+
+/** Game-rader → historikk for tiebreak-motoren. Pågående partier utelates. */
+export function gamesToHistory(games: Game[], rounds: Round[]): TiebreakGame[] {
+  const num = new Map(rounds.map((r) => [r.id, r.number]));
+  const out: TiebreakGame[] = [];
+  for (const g of games) {
+    if (!isResolved(g.status)) continue;
+    const round = num.get(g.round_id) ?? 0;
+    const base = { round, white: g.white_player_id, black: g.black_player_id };
+    if (g.status === "bye" || g.black_player_id === null) {
+      out.push({ ...base, black: null, result: "bye" });
+      continue;
+    }
+    const result =
+      g.status === "white_win" ? "1-0" : g.status === "black_win" ? "0-1" : g.status === "draw" ? "1/2-1/2" : "0-0";
+    out.push({
+      ...base,
+      result,
+      ...(g.result_source && FORFEIT_SOURCES.has(g.result_source) ? { forfeit: true } : {}),
+    });
+  }
+  return out;
 }
 
 /** Points earned by each side from a single finished game. */
@@ -88,7 +128,12 @@ export function computeBuchholz(games: Game[]): Map<string, number> {
 }
 
 /** Full ranked standings for the board. */
-export function computeStandings(players: Player[], games: Game[]): StandingRow[] {
+export function computeStandings(
+  players: Player[],
+  games: Game[],
+  opts: StandingsOptions = {},
+): StandingRow[] {
+  if (opts.tiebreaks && opts.rounds) return configuredStandings(players, games, opts);
   const scores = computeScores(games);
   const buch = computeBuchholz(games);
 
@@ -158,4 +203,41 @@ export function colorCounts(
     if (g.black_player_id) bump(g.black_player_id, "black");
   }
   return counts;
+}
+
+function configuredStandings(
+  players: Player[],
+  games: Game[],
+  opts: StandingsOptions,
+): StandingRow[] {
+  const order = opts.tiebreaks!;
+  const active = players.filter((p) => p.status === "active");
+  const table = computeTiebreakStandings(
+    active.map((p) => ({ id: p.id })),
+    gamesToHistory(games, opts.rounds!),
+    order,
+  );
+  const byId = new Map(active.map((p) => [p.id, p]));
+  const rows: StandingRow[] = [];
+  for (const t of table) {
+    const p = byId.get(t.playerId);
+    if (!p) continue; // spillere som har forlatt turneringen dukker ikke opp
+    rows.push({
+      playerId: p.id,
+      displayName: p.display_name,
+      score: t.score,
+      tiebreak: t.values[order[0]] ?? 0,
+      tiebreaks: t.values,
+      rank: 0,
+    });
+  }
+  // Motoren gir delt rang ved full likhet; brettet viser fortsatt entydig rekkefølge (navn).
+  const tbRank = new Map(table.map((t) => [t.playerId, t.rank]));
+  rows.sort(
+    (a, b) =>
+      tbRank.get(a.playerId)! - tbRank.get(b.playerId)! ||
+      a.displayName.localeCompare(b.displayName, "no"),
+  );
+  rows.forEach((r, i) => (r.rank = i + 1));
+  return rows;
 }
