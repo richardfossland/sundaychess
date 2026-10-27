@@ -25,7 +25,7 @@ describe("golden: 4 spillere, 3 runder, ingen bye", () => {
   it("poeng og Buchholz", () => {
     expect(row(rows, "A").score).toBe(2.5);
     expect(row(rows, "A").values.buchholz).toBe(3.5); // B1 + C2 + D0.5
-    expect(row(rows, "A").values.buchholz_cut1).toBe(2.5);
+    expect(row(rows, "A").values.buchholz_cut1).toBe(3); // 3.5 - 0.5
     expect(row(rows, "A").values.buchholz_median).toBe(1); // bare C=2 igjen? [0.5,1,2] -> 1
     expect(row(rows, "B").values.buchholz).toBe(5); // 2.5+0.5+2
   });
