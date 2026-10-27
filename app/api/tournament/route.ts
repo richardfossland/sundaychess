@@ -1,5 +1,6 @@
 import { createTournament, DEFAULT_CONFIG } from "@/lib/server/store";
 import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
+import { signPairToken } from "@/lib/server/pair";
 import { getHost } from "@/lib/server/auth";
 import { isVariant } from "@/lib/chess/variants";
 import type { TournamentConfig } from "@/lib/types";
@@ -62,7 +63,12 @@ async function handlePost(req: Request): Promise<Response> {
   const title = body?.title?.toString().slice(0, 80).trim() || null;
 
   const t = await createTournament(title, config, host?.id ?? null);
-  return ok({ id: t.id, joinPin: t.join_pin, hostCode: t.host_code });
+  return ok({
+    id: t.id,
+    joinPin: t.join_pin,
+    hostCode: t.host_code,
+    pairToken: await signPairToken(t.id, t.host_code),
+  });
 }
 
 // A DB failure is a transient 503 (stable code), not a bespoke 500.

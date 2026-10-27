@@ -9,16 +9,20 @@ vi.mock("@/lib/server/store", () => ({
 
 // H5: this route now draws on BOTH its own `open:` bucket AND the shared host
 // bucket (hostRateLimit) — mock both so each can be forced independently.
-const { rateLimitMock, hostRateLimitMock } = vi.hoisted(() => ({
+const { rateLimitMock, isCodeBlocked, registerCodeFailure } = vi.hoisted(() => ({
   rateLimitMock: vi.fn().mockReturnValue(true),
-  hostRateLimitMock: vi.fn().mockReturnValue(null),
+  isCodeBlocked: vi.fn().mockResolvedValue(false),
+  registerCodeFailure: vi.fn().mockResolvedValue(false),
+}));
+vi.mock("@/lib/server/attempts", () => ({
+  isCodeBlocked: (...a: unknown[]) => isCodeBlocked(...a),
+  registerCodeFailure: (...a: unknown[]) => registerCodeFailure(...a),
 }));
 vi.mock("@/lib/server/http", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/server/http")>();
   return {
     ...actual,
     rateLimit: (...a: unknown[]) => rateLimitMock(...a),
-    hostRateLimit: (...a: unknown[]) => hostRateLimitMock(...a),
   };
 });
 
@@ -51,7 +55,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   __resetRateLimiter();
   rateLimitMock.mockReturnValue(true);
-  hostRateLimitMock.mockReturnValue(null);
+  isCodeBlocked.mockResolvedValue(false);
+  registerCodeFailure.mockResolvedValue(false);
   openTournamentByHostCode.mockResolvedValue(tournament());
 });
 
@@ -59,7 +64,7 @@ describe("POST /api/tournament/open", () => {
   it("reopens the board and normalises the typed code first", async () => {
     const res = await POST(req({ hostCode: "host 01" }));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ id: T_ID });
+    expect(await res.json()).toMatchObject({ id: T_ID });
     expect(openTournamentByHostCode).toHaveBeenCalledWith("HOST-01");
   });
 
@@ -111,7 +116,7 @@ describe("POST /api/tournament/open", () => {
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("invalid_code");
     expect(rateLimitMock).not.toHaveBeenCalled();
-    expect(hostRateLimitMock).not.toHaveBeenCalled();
+    expect(isCodeBlocked).not.toHaveBeenCalled();
   });
 
   // H5: own bucket (20/min) — independent of the shared host bucket.
@@ -120,20 +125,30 @@ describe("POST /api/tournament/open", () => {
     const res = await POST(req({ hostCode: "HOST-01" }));
     expect(res.status).toBe(429);
     expect((await res.json()).error).toBe("rate_limited");
-    expect(hostRateLimitMock).not.toHaveBeenCalled();
+    expect(isCodeBlocked).not.toHaveBeenCalled();
     expect(openTournamentByHostCode).not.toHaveBeenCalled();
   });
 
-  // H5: this route searches EVERY tournament (including one row per casual
-  // game) — the best host-code brute-force oracle in the app — so it now
-  // ALSO draws on the shared host bucket, even when its own bucket has room.
-  it("429s on the SHARED host bucket even when its own bucket has room", async () => {
-    hostRateLimitMock.mockReturnValueOnce(
-      Response.json({ error: "rate_limited" }, { status: 429 }),
-    );
+  // This route searches EVERY tournament — the best host-code brute-force
+  // oracle in the app — so only WRONG guesses count, in the DB (migration 0015).
+  it("429s before the lookup when the IP is blocked for scope `open`", async () => {
+    isCodeBlocked.mockResolvedValue(true);
     const res = await POST(req({ hostCode: "HOST-01" }));
     expect(res.status).toBe(429);
-    expect((await res.json()).error).toBe("rate_limited");
+    expect(isCodeBlocked).toHaveBeenCalledWith("open", expect.any(Request));
     expect(openTournamentByHostCode).not.toHaveBeenCalled();
+  });
+
+  it("counts a wrong code, and 429s on the failure that trips the block", async () => {
+    openTournamentByHostCode.mockResolvedValue(null);
+    expect((await POST(req({ hostCode: "ZZZZ-99" }))).status).toBe(404);
+    expect(registerCodeFailure).toHaveBeenCalledWith("open", expect.any(Request));
+    registerCodeFailure.mockResolvedValue(true);
+    expect((await POST(req({ hostCode: "ZZZZ-99" }))).status).toBe(429);
+  });
+
+  it("never counts a correct code", async () => {
+    await POST(req({ hostCode: "HOST-01" }));
+    expect(registerCodeFailure).not.toHaveBeenCalled();
   });
 });

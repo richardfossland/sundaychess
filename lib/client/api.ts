@@ -10,6 +10,7 @@ import type {
   ReviewResult,
 } from "@/lib/dto";
 import type { GameStatus, PlayerStatus, Turn } from "@/lib/types";
+import { identity } from "@/lib/client/identity";
 
 export class ApiError extends Error {
   constructor(
@@ -116,9 +117,16 @@ async function post<T>(
   body: unknown,
   timeoutMs = WRITE_TIMEOUT_MS,
 ): Promise<T> {
+  // Host calls carry the pairing token minted when this device created/opened
+  // the tournament, so a pupil's wrong guesses on the shared school IP can't
+  // lock the teacher out (server: lib/server/pair.ts).
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const hc = (body as { hostCode?: unknown } | null)?.hostCode;
+  const pt = typeof hc === "string" ? identity.pairToken(hc) : null;
+  if (pt) headers["x-pair-token"] = pt;
   const { ok, status, data } = await timedJson(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body),
   }, timeoutMs);
   if (!ok) {
@@ -142,6 +150,8 @@ export interface CreatedTournament {
   id: string;
   joinPin: string;
   hostCode: string;
+  /** Proof of the host code (x-pair-token); absent when the server has no secret. */
+  pairToken?: string | null;
 }
 
 export interface JoinResult {
@@ -179,11 +189,19 @@ export interface CasualJoined {
 }
 
 export const api = {
-  createTournament: (body: { title?: string; config?: unknown }) =>
-    post<CreatedTournament>("/api/tournament", body),
+  createTournament: async (body: { title?: string; config?: unknown }) => {
+    const r = await post<CreatedTournament>("/api/tournament", body);
+    if (r.pairToken) identity.savePairToken(r.hostCode, r.pairToken);
+    return r;
+  },
 
-  openHost: (hostCode: string) =>
-    post<{ id: string }>("/api/tournament/open", { hostCode }),
+  openHost: async (hostCode: string) => {
+    const r = await post<{ id: string; pairToken?: string | null }>("/api/tournament/open", {
+      hostCode,
+    });
+    if (r.pairToken) identity.savePairToken(hostCode, r.pairToken);
+    return r;
+  },
 
   join: (pin: string, displayName: string) =>
     post<JoinResult>("/api/join", { pin, displayName }),

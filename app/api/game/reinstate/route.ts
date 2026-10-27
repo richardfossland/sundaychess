@@ -3,7 +3,7 @@ import { getPlayer, setPlayerStatus } from "@/lib/server/store";
 import { broadcast } from "@/lib/server/broadcast";
 import { defer } from "@/lib/server/defer";
 import { channels, events } from "@/lib/realtime";
-import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
+import { fail, ok, readJson, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 
 // POST /api/game/reinstate — the teacher's undo for /api/game/absent's
@@ -18,8 +18,6 @@ import { isUuid } from "@/lib/codes";
 export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
-  const limited = hostRateLimit(req);
-  if (limited) return limited;
   const body = await readJson<{
     tournamentId?: string;
     hostCode?: string;
@@ -31,7 +29,7 @@ async function handlePost(req: Request): Promise<Response> {
   // (tournamentId is shape-checked inside authHost.)
   if (!isUuid(body.playerId)) return fail(400, "bad_request");
 
-  const t = await authHost(body.tournamentId, body.hostCode);
+  const t = await authHost(body.tournamentId, body.hostCode, req);
   if (!t) return fail(401, "unauthorized");
   // Pairings no longer exist to re-enter once the tournament is over.
   if (t.status === "finished") return fail(409, "finished");

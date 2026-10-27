@@ -3,7 +3,7 @@ import { updateTournamentConfig } from "@/lib/server/store";
 import { broadcast } from "@/lib/server/broadcast";
 import { defer } from "@/lib/server/defer";
 import { channels, events } from "@/lib/realtime";
-import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
+import { fail, ok, readJson, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 
 const MAX_NOTES = 280;
@@ -36,8 +36,6 @@ async function handlePost(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
-  const limited = hostRateLimit(req);
-  if (limited) return limited;
   const { id } = await params;
   // Same malformed-id guard as the sibling GET /api/tournament/[id]/codes: a
   // bad shape must answer "no such tournament", not throw into a false 503.
@@ -49,7 +47,7 @@ async function handlePost(
     notes?: string;
   }>(req);
 
-  const t = await authHost(id, body?.hostCode);
+  const t = await authHost(id, body?.hostCode, req);
   if (!t) return fail(401, "unauthorized");
 
   const leagueRounds = body?.leagueRounds;

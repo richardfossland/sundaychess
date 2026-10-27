@@ -3,7 +3,7 @@ import { extendRoundRpc, listRounds, setRoundStartedAt } from "@/lib/server/stor
 import { broadcast } from "@/lib/server/broadcast";
 import { defer } from "@/lib/server/defer";
 import { channels, events } from "@/lib/realtime";
-import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
+import { fail, ok, readJson, withApi } from "@/lib/server/http";
 
 // POST /api/round/extend — the organizer adds +1 minute to the round timer.
 // Atomic increment of rounds.extended_ms (RPC, 0007): a double-click adds two
@@ -12,10 +12,8 @@ import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
 export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
-  const limited = hostRateLimit(req);
-  if (limited) return limited;
   const body = await readJson<{ tournamentId?: string; hostCode?: string }>(req);
-  const t = await authHost(body?.tournamentId, body?.hostCode);
+  const t = await authHost(body?.tournamentId, body?.hostCode, req);
   if (!t) return fail(401, "unauthorized");
 
   const phase = t.status === "playoff" ? "playoff" : "league";

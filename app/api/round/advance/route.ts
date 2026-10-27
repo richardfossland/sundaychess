@@ -2,15 +2,13 @@ import { authHost } from "@/lib/server/auth";
 import { advanceRound, currentRoundResolved } from "@/lib/server/league";
 import { advancePlayoff, playoffRoundResolved } from "@/lib/server/playoff";
 import { getTournament, isUniqueViolation } from "@/lib/server/store";
-import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
+import { fail, ok, readJson, withApi } from "@/lib/server/http";
 
 // POST /api/round/advance — teacher clicks "Neste runde". Guarded: every game
 // in the current round must be resolved (play it out, override, or force).
 export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
-  const limited = hostRateLimit(req);
-  if (limited) return limited;
   const body = await readJson<{
     tournamentId?: string;
     hostCode?: string;
@@ -18,7 +16,7 @@ async function handlePost(req: Request): Promise<Response> {
     // "ranking" sends the higher seed straight through (no rematch).
     tiebreak?: "rematch" | "ranking";
   }>(req);
-  const t = await authHost(body?.tournamentId, body?.hostCode);
+  const t = await authHost(body?.tournamentId, body?.hostCode, req);
   if (!t) return fail(401, "unauthorized");
 
   try {

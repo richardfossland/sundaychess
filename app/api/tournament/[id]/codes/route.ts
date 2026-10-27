@@ -1,6 +1,6 @@
 import { authHost } from "@/lib/server/auth";
 import { listPlayers } from "@/lib/server/store";
-import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
+import { fail, ok, readJson, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 
 // POST /api/tournament/[id]/codes — teacher-only (host code). Returns each
@@ -13,15 +13,13 @@ async function handlePost(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
-  const limited = hostRateLimit(req);
-  if (limited) return limited;
   const { id } = await params;
   // Same malformed-id guard as the sibling GET /api/tournament/[id]: a bad
   // shape must answer "no such tournament", not throw into a false 503.
   if (!isUuid(id)) return fail(404, "not_found");
   const body = await readJson<{ hostCode?: string }>(req);
 
-  const t = await authHost(id, body?.hostCode);
+  const t = await authHost(id, body?.hostCode, req);
   if (!t) return fail(401, "unauthorized");
 
   const players = await listPlayers(id);
