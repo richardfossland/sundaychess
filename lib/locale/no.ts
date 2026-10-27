@@ -675,6 +675,17 @@ export const no = {
     next: "Neste oppgave →",
     backToList: "← Oppgavene",
   },
+  /** Tiebreaks: kort navn + én setning forklaring (brukes i UI, fase 2). */
+  tiebreaks: {
+    buchholz: { label: "Buchholz", help: "Summen av motstandernes poeng. Den som har møtt sterkere motstand, rangeres høyere." },
+    buchholz_cut1: { label: "Buchholz uten laveste", help: "Buchholz hvor den laveste motstanderens poeng er strøket." },
+    buchholz_median: { label: "Median-Buchholz", help: "Buchholz hvor både høyeste og laveste motstanders poeng er strøket." },
+    sonneborn_berger: { label: "Sonneborn-Berger", help: "Summen av poengene til motstanderne du slo, pluss halvparten av dem du spilte remis mot." },
+    direct_encounter: { label: "Innbyrdes oppgjør", help: "Resultatene mellom spillerne som står likt avgjør rekkefølgen." },
+    wins: { label: "Antall seire", help: "Antall partier vunnet over brettet (uten walkover og frirunde)." },
+    progressive: { label: "Progressiv sum", help: "Summen av poengstillingen etter hver runde. Tidlige poeng teller mer." },
+    avg_opponent_rating: { label: "Snitt motstanderrating", help: "Gjennomsnittlig rating på motstanderne du spilte mot." },
+  },
 } as const;
 
 export type Locale = typeof no;

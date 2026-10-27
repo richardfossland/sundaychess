@@ -148,3 +148,22 @@ describe("colorCounts", () => {
     expect(colorCounts([]).size).toBe(0);
   });
 });
+
+describe("computeStandings med konfigurerte tiebreaks", () => {
+  it("uten opts er rekkefølgen uendret (score → Buchholz → navn); med opts får rader tiebreaks", () => {
+    const mk = (id: string, name: string): Player => ({
+      id, tournament_id: "t", display_name: name, resume_code: "", score: 0, tiebreak: 0,
+      status: "active", seed: null, joined_at: "",
+    });
+    const players = [mk("a", "Ada"), mk("b", "Bo")];
+    const games = [game("a", "b", "white_win")];
+    const plain = computeStandings(players, games);
+    expect(plain[0].tiebreaks).toBeUndefined();
+    const cfg = computeStandings(players, games, {
+      tiebreaks: ["wins", "buchholz"],
+      rounds: [{ id: "r", tournament_id: "t", number: 1, phase: "league", status: "done", started_at: null }],
+    });
+    expect(cfg.map((r) => r.playerId)).toEqual(["a", "b"]);
+    expect(cfg[0].tiebreaks?.wins).toBe(1);
+  });
+});
