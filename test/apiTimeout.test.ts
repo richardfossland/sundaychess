@@ -79,3 +79,14 @@ describe("client fetch timeouts", () => {
     expect(getConnectivity().failures).toBe(0);
   });
 });
+
+describe("move keeps the short deadline", () => {
+  it("a hung move POST aborts at 8 s, not 15 s", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", (_u: string, init: RequestInit) => Promise.resolve(stalledBody(init.signal ?? undefined)));
+    const p = api.move({ gameId: "g", from: "e2", to: "e4", playerId: "p", resumeCode: "c" });
+    const expectation = expect(p).rejects.toMatchObject({ code: "timeout" });
+    await vi.advanceTimersByTimeAsync(8100);
+    await expectation;
+  });
+});

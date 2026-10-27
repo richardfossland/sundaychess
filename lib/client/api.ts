@@ -71,6 +71,9 @@ import {
 export const READ_TIMEOUT_MS = 8000;
 export const WRITE_TIMEOUT_MS = 15000;
 const DEFAULT_TIMEOUT = READ_TIMEOUT_MS;
+/** A move is latency-critical: a hung POST must roll the board back and release
+ * the lock within the read deadline (e2e/server-errors.spec.ts), so it keeps 8 s. */
+const MOVE_TIMEOUT_MS = READ_TIMEOUT_MS;
 
 /** fetch + JSON parse under ONE hard timeout — a hung request must never freeze
  * the UI. CRUCIAL: the timeout spans BOTH the fetch AND reading the response
@@ -108,12 +111,16 @@ export async function timedJson(
   }
 }
 
-async function post<T>(url: string, body: unknown): Promise<T> {
+async function post<T>(
+  url: string,
+  body: unknown,
+  timeoutMs = WRITE_TIMEOUT_MS,
+): Promise<T> {
   const { ok, status, data } = await timedJson(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  }, WRITE_TIMEOUT_MS);
+  }, timeoutMs);
   if (!ok) {
     // No envelope → this response is NOT our API's verdict (edge page, WAF,
     // proxy). Say so explicitly rather than dressing it up as a generic "error"
@@ -234,7 +241,7 @@ export const api = {
       status: GameStatus;
       san: string;
       clock: { whiteMs: number; blackMs: number; turn: Turn; running: boolean } | null;
-    }>("/api/move", args),
+    }>("/api/move", args, MOVE_TIMEOUT_MS),
 
   claimTime: (gameId: string, playerId: string, resumeCode: string) =>
     post<{ status: GameStatus }>("/api/game/claim", {
