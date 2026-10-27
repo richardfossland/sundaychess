@@ -2065,3 +2065,8 @@ a:focus-visible,
 :root[data-theme="light"] .icon-title {
   color: var(--gold-ink);
 }
+/* the gradient-text glyph trick doesn't paint an SVG: colour the stroke instead */
+.entrance-glyph svg.icon {
+  color: var(--gold-ink);
+  display: block;
+}
