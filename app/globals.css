@@ -1766,3 +1766,20 @@ a:focus-visible,
   white-space: nowrap;
   border: 0;
 }
+
+/* Offline / repeated-failure notice, mounted once in the root layout. */
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 8px 14px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+  background: color-mix(in srgb, var(--warn) 30%, var(--ink-2));
+  border-bottom: 1px solid color-mix(in srgb, var(--warn) 55%, transparent);
+  color: #f3d9c4;
+  pointer-events: none;
+}

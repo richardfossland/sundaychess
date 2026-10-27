@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
+import { OfflineBanner } from "@/lib/client/OfflineBanner";
 
 // Suite brand fonts.
 const display = Playfair_Display({
@@ -25,7 +26,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="no" className={`${display.variable} ${body.variable}`}>
-      <body>{children}</body>
+      <body>
+        <OfflineBanner />
+        {children}
+      </body>
     </html>
   );
 }

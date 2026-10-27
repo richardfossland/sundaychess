@@ -1,19 +1,12 @@
 import { authHost } from "@/lib/server/auth";
 import { forceResolveRound } from "@/lib/server/league";
-import { fail, ok, readJson, hostRateLimit } from "@/lib/server/http";
+import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
 
 // POST /api/round/force — teacher force-resolves remaining live games to draws
 // (½–½, result_source 'timeout_draw') so the round can advance. Works in league
 // OR playoff (a stuck knockout round can be drawn out; advancePlayoff then
 // applies tiebreak/draw-odds).
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[round/force]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   const limited = hostRateLimit(req);

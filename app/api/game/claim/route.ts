@@ -8,20 +8,13 @@ import {
   broadcastSpectate,
 } from "@/lib/server/gameEvents";
 import { defer } from "@/lib/server/defer";
-import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
+import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 import type { GameStatus } from "@/lib/types";
 
 // POST /api/game/claim — "krev seier på tid": a player claims the win when the
 // OPPONENT's chess clock has run out. Server-verified against move timestamps.
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[claim]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   const body = await readJson<{

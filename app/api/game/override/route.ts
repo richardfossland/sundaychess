@@ -2,21 +2,14 @@ import { authHost } from "@/lib/server/auth";
 import { getGame, resolveGameRpc } from "@/lib/server/store";
 import { afterGameResolved } from "@/lib/server/gameEvents";
 import { defer } from "@/lib/server/defer";
-import { fail, ok, readJson, hostRateLimit } from "@/lib/server/http";
+import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 import type { GameStatus } from "@/lib/types";
 
 const ALLOWED: GameStatus[] = ["white_win", "black_win", "draw", "aborted"];
 
 // POST /api/game/override — teacher sets a game result from the board (spec §3).
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[override]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   const limited = hostRateLimit(req);

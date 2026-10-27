@@ -2,18 +2,11 @@ import { authHost } from "@/lib/server/auth";
 import { isUniqueViolation, listPlayers } from "@/lib/server/store";
 import { startLeague } from "@/lib/server/league";
 import { startCup } from "@/lib/server/playoff";
-import { fail, ok, readJson, hostRateLimit } from "@/lib/server/http";
+import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
 
 // POST /api/round/start — organizer starts the tournament: league round 1, or
 // straight into the knockout bracket when format = "cup".
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[round/start]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   const limited = hostRateLimit(req);

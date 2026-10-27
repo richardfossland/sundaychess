@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { report } from "@/lib/client/telemetry";
+import { no } from "@/lib/locale/no";
 
 // Catches errors in the root layout itself. Must render its own <html>/<body>
 // and cannot rely on the app stylesheet, so it is fully inline-styled.
@@ -37,8 +38,8 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
       >
         <div>
           <div style={{ fontSize: 40, color: "#ebb84b" }}>♞</div>
-          <h2 style={{ fontWeight: 700 }}>Noe gikk galt</h2>
-          <p style={{ color: "#9aa0ad" }}>Last inn siden på nytt.</p>
+          <h2 style={{ fontWeight: 700 }}>{no.common.error}</h2>
+          <p style={{ color: "#9aa0ad" }}>{no.common.errorReload}</p>
           <button
             onClick={() => reset()}
             style={{
@@ -53,7 +54,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
               cursor: "pointer",
             }}
           >
-            Prøv igjen
+            {no.common.retry}
           </button>
         </div>
       </body>

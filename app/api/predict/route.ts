@@ -5,21 +5,14 @@ import {
   type PredictedResult,
 } from "@/lib/server/store";
 import { authPlayer } from "@/lib/server/auth";
-import { clientIp, fail, ok, rateLimit, readJson } from "@/lib/server/http";
+import { clientIp, fail, ok, rateLimit, readJson, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 
 // POST /api/predict — a waiting/eliminated player tips the result of a live
 // game they are NOT playing in. One prediction per (game, player); re-tipping
 // before the game ends overwrites. GETting own predictions also goes through
 // POST (action 'list') so the resume-code bearer auth stays in the body.
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[predict]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   const body = await readJson<{

@@ -1,23 +1,13 @@
 import { authHost } from "@/lib/server/auth";
 import { listPlayers } from "@/lib/server/store";
-import { fail, ok, readJson, hostRateLimit } from "@/lib/server/http";
+import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 
 // POST /api/tournament/[id]/codes — teacher-only (host code). Returns each
 // player's resume code so the teacher can read it back to a student who lost it.
 // Codes are bearer tokens, so this is gated by the host code and never exposed
 // in the public board state.
-export async function POST(
-  req: Request,
-  ctx: { params: Promise<{ id: string }> },
-) {
-  try {
-    return await handlePost(req, ctx);
-  } catch (err) {
-    console.error("[codes]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(
   req: Request,

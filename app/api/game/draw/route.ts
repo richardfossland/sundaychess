@@ -4,7 +4,7 @@ import { afterGameResolved } from "@/lib/server/gameEvents";
 import { broadcast } from "@/lib/server/broadcast";
 import { defer } from "@/lib/server/defer";
 import { channels } from "@/lib/realtime";
-import { fail, ok, readJson, rateLimit, clientIp } from "@/lib/server/http";
+import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 
 // POST /api/game/draw — draw by agreement, with the pending offer stored in the
@@ -13,14 +13,7 @@ import { isUuid } from "@/lib/codes";
 //   action 'accept'  → only resolves if the OPPONENT has a pending offer AND the
 //                      game is still live (require_live) → draw
 //   action 'decline' → clear the offer + notify
-export async function POST(req: Request) {
-  try {
-    return await handlePost(req);
-  } catch (err) {
-    console.error("[draw]", err);
-    return fail(503, "server_error");
-  }
-}
+export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
   const body = await readJson<{
