@@ -5,6 +5,7 @@ import { api } from "@/lib/client/api";
 import { maskCode } from "@/lib/codes";
 import { no } from "@/lib/locale/no";
 import { Modal } from "@/lib/client/Modal";
+import { Icon } from "@/lib/client/Icon";
 
 /** Teacher-only roster of resume codes, so a student who lost their code can be
  * read it back. Fetched with the host code; never in the public board state.
@@ -77,7 +78,7 @@ export function CodesModal({
       <h3 id={titleId} style={{ fontSize: 20 }}>{no.host.codesTitle}</h3>
       <p className="muted" style={{ fontSize: 13 }}>{no.host.codesHint}</p>
       <div className="banner banner-warn" style={{ fontSize: 13 }}>
-        ⚠️ {no.host.codesWarning}
+        <Icon name="warn" size={16} /> {no.host.codesWarning}
       </div>
       <hr className="thread" />
       {error ? (

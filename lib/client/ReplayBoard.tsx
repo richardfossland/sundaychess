@@ -6,6 +6,7 @@ import { Chess } from "chess.js";
 import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
 import { useReducedMotion } from "@/lib/client/useReducedMotion";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
 
 const Chessboard = dynamic(
   () => import("react-chessboard").then((m) => m.Chessboard),
@@ -98,7 +99,7 @@ export function ReplayBoard({
       <div className="stack text-center" style={{ alignItems: "center", gap: 12 }}>
         <p className="muted">{no.replay.empty}</p>
         <button className="btn btn-ghost" onClick={onClose}>
-          ← {no.common.back}
+          <Icon name="back" size={16} /> {no.common.back}
         </button>
       </div>
     );
@@ -139,7 +140,7 @@ export function ReplayBoard({
 
       <div className="row" style={{ alignItems: "center", gap: 8 }}>
         <button className="btn" onClick={() => setIdx(0)} disabled={idx === 0} aria-label="til start">
-          ⏮
+          <Icon name="skipBack" size={16} />
         </button>
         <button
           className="btn"
@@ -147,7 +148,7 @@ export function ReplayBoard({
           disabled={idx === 0}
           aria-label="forrige trekk"
         >
-          ◀
+          <Icon name="backStep" size={16} />
         </button>
         <button
           className="btn btn-primary"
@@ -165,10 +166,10 @@ export function ReplayBoard({
           disabled={idx >= total}
           aria-label="neste trekk"
         >
-          ▶
+          <Icon name="play" size={16} />
         </button>
         <button className="btn" onClick={() => setIdx(total)} disabled={idx >= total} aria-label="til slutt">
-          ⏭
+          <Icon name="skipForward" size={16} />
         </button>
       </div>
 
@@ -183,7 +184,7 @@ export function ReplayBoard({
       </p>
 
       <button className="btn btn-ghost" onClick={onClose}>
-        ← {no.common.back}
+        <Icon name="back" size={16} /> {no.common.back}
       </button>
     </div>
   );

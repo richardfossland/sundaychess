@@ -7,6 +7,7 @@ import { no } from "@/lib/locale/no";
 import { api, ApiError } from "@/lib/client/api";
 import { identity } from "@/lib/client/identity";
 import { defaultConfig, Wizard } from "./Wizard";
+import { Icon } from "@/lib/client/Icon";
 
 /** "Turnering DD.MM" — the auto-title "Rask start" gives a tournament created
  * without visiting the title step. */
@@ -82,7 +83,7 @@ export default function HostEntry() {
               disabled={quickBusy}
               onClick={quickStart}
             >
-              {quickBusy ? <span className="spin" /> : `⚡ ${no.host.quickStart}`}
+              {quickBusy ? <span className="spin" /> : <><Icon name="quick" size={16} /> {no.host.quickStart}</>}
             </button>
             {quickError && <div className="banner banner-error">{quickError}</div>}
             <button
@@ -101,7 +102,7 @@ export default function HostEntry() {
               {no.host.enterTitle}
             </button>
             <Link href="/" className="btn btn-ghost btn-block">
-              ← {no.common.back}
+              <Icon name="back" size={16} /> {no.common.back}
             </Link>
           </div>
         )}
@@ -136,7 +137,7 @@ export default function HostEntry() {
               className="btn btn-ghost btn-block"
               onClick={() => setMode("choose")}
             >
-              ← {no.common.back}
+              <Icon name="back" size={16} /> {no.common.back}
             </button>
           </>
         )}

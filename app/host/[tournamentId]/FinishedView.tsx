@@ -14,6 +14,7 @@ import { computeAwards, type Award } from "@/lib/tournament/awards";
 import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
 import { BracketBoard } from "@/lib/client/BracketBoard";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
 
 const AWARD_EMOJI: Record<Award["key"], string> = {
   fastest_mate: "⚡",
@@ -394,7 +395,7 @@ export function FinishedView({ state }: { state: BoardState }) {
             className="btn btn-ghost btn-lg"
             onClick={() => window.print()}
           >
-            🖨️ {no.host.printResults}
+            <Icon name="print" size={16} /> {no.host.printResults}
           </button>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useCountdown, fmt } from "@/lib/client/useCountdown";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
 
 /** Round countdown. On the board it's large; on a player's screen (`compact`)
  * it's a small chip. Counts down to `startedAt + durationSec + extendedMs`
@@ -77,7 +78,7 @@ export function RoundTimer({
         role="timer"
         aria-live="off"
       >
-        ⏱ {text}
+        <Icon name="timer" size={16} /> {text}
         <span className="visually-hidden" role="status" aria-live="assertive">
           {announcement}
         </span>

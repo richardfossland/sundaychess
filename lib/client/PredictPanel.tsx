@@ -5,6 +5,7 @@ import type { BoardState } from "@/lib/dto";
 import type { StoredPlayer } from "@/lib/client/identity";
 import { api, ApiError } from "@/lib/client/api";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
 
 type Pick = "white" | "black" | "draw";
 
@@ -65,7 +66,7 @@ export function PredictPanel({
   return (
     <div className="card stack" style={{ padding: 18, width: "100%", maxWidth: 420, gap: 10 }}>
       <div className="spread">
-        <p className="eyebrow" style={{ fontSize: 11 }}>🎯 {no.predict.title}</p>
+        <p className="eyebrow" style={{ fontSize: 11 }}><Icon name="target" size={14} /> {no.predict.title}</p>
         {myPoints > 0 && (
           <span className="badge">
             {myPoints} {no.predict.points}

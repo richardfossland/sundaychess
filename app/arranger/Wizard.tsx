@@ -7,6 +7,8 @@ import { api } from "@/lib/client/api";
 import { identity } from "@/lib/client/identity";
 import { MAX_ROUNDS, MIN_ROUNDS } from "@/lib/tournament/roundsAdvice";
 import type { TournamentConfig } from "@/lib/types";
+import { Icon } from "@/lib/client/Icon";
+import { NumberField } from "@/lib/client/NumberField";
 
 type StepKey =
   | "title"
@@ -247,7 +249,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
               aria-pressed={format === "league"}
               onClick={() => selectAndAdvance(setFormat, "league")}
             >
-              <b>🏅 {no.wizard.formatLeague}</b>
+              <b><Icon name="league" size={16} /> {no.wizard.formatLeague}</b>
               <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
                 {no.wizard.formatLeagueSub}
               </span>
@@ -258,7 +260,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
               aria-pressed={format === "cup"}
               onClick={() => selectAndAdvance(setFormat, "cup")}
             >
-              <b>🏆 {no.wizard.formatCup}</b>
+              <b><Icon name="cup" size={16} /> {no.wizard.formatCup}</b>
               <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
                 {no.wizard.formatCupSub}
               </span>
@@ -272,29 +274,16 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
           <p className="field" id="rounds-label" style={{ gap: 4 }}>
             {no.wizard.roundsStep}
           </p>
-          <div
-            className="row"
-            role="group"
-            aria-labelledby="rounds-label"
-            style={{ justifyContent: "center", gap: 18 }}
-          >
-            <button
-              className="btn"
-              onClick={() => setLeagueRounds((r) => Math.max(MIN_ROUNDS, r - 1))}
-              aria-label={no.wizard.roundsFewer}
-            >
-              −
-            </button>
-            <span className="pin-hero" style={{ fontSize: 64 }} aria-live="polite">
-              {leagueRounds}
-            </span>
-            <button
-              className="btn"
-              onClick={() => setLeagueRounds((r) => Math.min(MAX_ROUNDS, r + 1))}
-              aria-label={no.wizard.roundsMore}
-            >
-              +
-            </button>
+          <div role="group" aria-labelledby="rounds-label" style={{ display: "grid", justifyItems: "center" }}>
+            <NumberField
+              value={leagueRounds}
+              onChange={setLeagueRounds}
+              min={MIN_ROUNDS}
+              max={MAX_ROUNDS}
+              aria-label={no.wizard.roundsStep}
+              className="numfield-hero-wrap"
+              hero
+            />
           </div>
           <span className="muted text-center" style={{ fontSize: 13 }}>
             {no.wizard.roundsHint}
@@ -417,7 +406,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
                 aria-pressed={clockMin === m}
                 onClick={() => selectAndAdvance(setClockMin, m)}
               >
-                {m === 0 ? no.wizard.clockOff : `⏱ ${m} ${no.wizard.min}`}
+                {m === 0 ? no.wizard.clockOff : <><Icon name="timer" size={16} /> {m} {no.wizard.min}</>}
               </button>
             ))}
           </div>
@@ -493,7 +482,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
           )}
           <ReviewRow
             label={no.wizard.reviewFormat}
-            value={format === "cup" ? `🏆 ${no.wizard.formatCup}` : `🏅 ${no.wizard.formatLeague}`}
+            value={format === "cup" ? <><Icon name="cup" size={16} /> {no.wizard.formatCup}</> : <><Icon name="league" size={16} /> {no.wizard.formatLeague}</>}
             onEdit={() => jumpTo("format")}
           />
           {format === "league" && (
@@ -523,7 +512,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
               label={no.wizard.reviewClock}
               value={
                 <>
-                  ⏱ {clockMin} {no.wizard.min}
+                  <Icon name="timer" size={16} /> {clockMin} {no.wizard.min}
                 </>
               }
               onEdit={() => jumpTo("clock")}
@@ -555,7 +544,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
             onClick={step > 0 ? back : onExit}
             disabled={busy}
           >
-            ← {no.common.back}
+            <Icon name="back" size={16} /> {no.common.back}
           </button>
         )}
         {/* Single-select steps advance on tap (selectAndAdvance) — no "Neste"

@@ -9,6 +9,7 @@ import { errDetail, report } from "@/lib/client/telemetry";
 import { isValidPin } from "@/lib/codes";
 import { resumeTrouble } from "@/lib/client/resumeCopy";
 import { WaitingRoom } from "./WaitingRoom";
+import { Icon } from "@/lib/client/Icon";
 
 type Screen =
   | "init"
@@ -332,7 +333,7 @@ export default function Play() {
         {screen === "showCode" && me && (
           <>
             <div className="text-center stack" style={{ gap: 4 }}>
-              <div style={{ fontSize: 36 }}>🔑</div>
+              <div><Icon name="key" size={36} /></div>
               <p className="eyebrow">{no.player.resumeTitle}</p>
             </div>
             <div

@@ -14,6 +14,7 @@ import { Confetti } from "@/lib/client/Confetti";
 import { sound } from "@/lib/client/sound";
 import { safeGet, safeSet } from "@/lib/client/storage";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
 
 const Chessboard = dynamic(
   () => import("react-chessboard").then((m) => m.Chessboard),
@@ -79,7 +80,7 @@ export function Lessons({ onExit }: { onExit: () => void }) {
                     aria-label={solved ? no.coach.lessonSolvedLabel : undefined}
                     style={{ width: 18, flex: "0 0 18px", fontSize: 15, lineHeight: "22px", textAlign: "center" }}
                   >
-                    {solved ? "✓" : ""}
+                    {solved ? <Icon name="check" size={14} /> : ""}
                   </span>
                   <span className="stack" style={{ gap: 2 }}>
                     <b style={{ fontSize: 16 }}>

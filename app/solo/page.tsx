@@ -35,6 +35,7 @@ import { sound } from "@/lib/client/sound";
 import { no } from "@/lib/locale/no";
 import { SoloReview } from "./SoloReview";
 import { Lessons } from "./Lessons";
+import { Icon } from "@/lib/client/Icon";
 
 /** Audible cue for the move just played on `c`. */
 function playMoveCue(c: Chess, captured: boolean) {
@@ -535,9 +536,9 @@ export default function Solo() {
             <b>{no.solo.computer}</b>
             <span
               className="avatar-lg"
-              style={{ background: "linear-gradient(180deg,var(--ink-soft),#1c212b)", color: "var(--txt)", border: "1px solid var(--ink-line-strong)" }}
+              style={{ background: "linear-gradient(180deg,var(--ink-soft),var(--btn-end))", color: "var(--txt)", border: "1px solid var(--ink-line-strong)" }}
             >
-              🤖
+              <Icon name="bot" size={22} />
             </span>
           </div>
         </div>
@@ -609,7 +610,7 @@ export default function Solo() {
             onClick={undo}
             disabled={thinking || awaitRetry || historyLen === 0}
           >
-            ↶ {no.solo.undo}
+            <Icon name="undo" size={16} /> {no.solo.undo}
           </button>
           <button
             className="btn"

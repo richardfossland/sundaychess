@@ -31,6 +31,10 @@ export const no = {
     errorRetryBody: "Prøv igjen – framgangen din er trygt lagret på serveren.",
     errorReload: "Last inn siden på nytt.",
     toLogin: "Til innlogging",
+    themeToLight: "Bytt til lyst tema",
+    themeToDark: "Bytt til mørkt tema",
+    themeLight: "Lyst tema",
+    themeDark: "Mørkt tema",
   },
 
   landing: {
@@ -674,6 +678,13 @@ export const no = {
     lessonSolvedLabel: "Klart",
     next: "Neste oppgave →",
     backToList: "← Oppgavene",
+  },
+
+  field: {
+    less: "Mindre",
+    more: "Mer",
+    max: (n: number) => `Maks ${n}`,
+    min: (n: number) => `Minst ${n}`,
   },
 } as const;
 

@@ -16,6 +16,7 @@ import { FullscreenToggle } from "@/lib/client/FullscreenToggle";
 import { no } from "@/lib/locale/no";
 import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { NotesModal } from "./NotesModal";
+import { Icon } from "@/lib/client/Icon";
 
 /** A player who has been continuously disconnected for this long while still in
  * the lobby is auto-removed (they left the app). Conservative so a brief wifi
@@ -227,7 +228,7 @@ export function LobbyView({
             aria-label={no.host.editNotes}
             onClick={() => setShowNotes(true)}
           >
-            ✎
+            <Icon name="edit" size={16} />
           </button>
           {hostCode && (
             hostCodeRevealed ? (
@@ -253,7 +254,7 @@ export function LobbyView({
                   </button>
                 </div>
                 <span style={{ fontSize: 12, color: "var(--warn)" }}>
-                  ⚠️ {no.host.hostCodeWarning}
+                  <Icon name="warn" size={16} /> {no.host.hostCodeWarning}
                 </span>
               </div>
             ) : (
@@ -299,7 +300,7 @@ export function LobbyView({
             {starting ? (
               <span className="spin" />
             ) : tournament.config.format === "cup" ? (
-              `🏆 ${no.host.startCup} →`
+              <><Icon name="cup" size={16} /> {no.host.startCup} →</>
             ) : (
               `${no.host.startLeague} →`
             )}
@@ -308,7 +309,7 @@ export function LobbyView({
             <p className="faint" style={{ fontSize: 13 }}>Minst 2 spillere må bli med.</p>
           )}
           {roundsHint && (
-            <p className="faint" style={{ fontSize: 13 }}>⚠️ {roundsHint}</p>
+            <p className="faint" style={{ fontSize: 13 }}><Icon name="warn" size={16} /> {roundsHint}</p>
           )}
           {error && <div className="banner banner-error">{error}</div>}
         </section>
@@ -356,7 +357,7 @@ export function LobbyView({
                       aria-label={`${no.host.kick} ${p.displayName}`}
                       onClick={() => setKickTarget({ id: p.id, name: p.displayName })}
                     >
-                      ✕
+                      <Icon name="close" size={14} />
                     </button>
                   </span>
                 );
