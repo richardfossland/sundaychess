@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { NavLink } from "./nav";
 import { useEffect, useState } from "react";
 import { no } from "@/lib/locale/no";
 import { Icon } from "@/lib/client/Icon";
@@ -55,20 +56,20 @@ export function PhysicalList() {
           </div>
         )}
 
-        <Link href="/arranger/fysisk/ny" className="btn btn-primary btn-block btn-lg">
+        <NavLink href="/arranger/fysisk/ny" className="btn btn-primary btn-block btn-lg">
           <Icon name="more" size={16} /> {t.newTournament}
-        </Link>
+        </NavLink>
 
         {items && items.length === 0 && <p className="muted text-center">{t.emptyList}</p>}
         <div className="stack" style={{ gap: 8 }}>
           {items?.map((it) => (
             <div key={it.id} className="spread" style={{ gap: 8 }}>
-              <Link href={`/arranger/fysisk/${it.id}`} className="grow" style={{ textDecoration: "none" }}>
+              <NavLink href={`/arranger/fysisk/${it.id}`} className="grow" style={{ textDecoration: "none" }}>
                 <b>{it.title}</b>
                 <span className="muted" style={{ display: "block", fontSize: 12 }}>
                   {t.summary(it.playerCount, it.roundsPlayed)}
                 </span>
-              </Link>
+              </NavLink>
               <button type="button" className="btn btn-sm btn-ghost" onClick={() => remove(it)}>
                 {t.remove}
               </button>

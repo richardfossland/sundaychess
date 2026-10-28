@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { NavLink, navigate } from "./nav";
 import { useMemo, useState } from "react";
 import { no } from "@/lib/locale/no";
 import { Icon } from "@/lib/client/Icon";
@@ -14,7 +13,7 @@ import { saveTournament } from "@/lib/physical/storage";
 import { bracketRounds, cupBracketSize } from "@/lib/tournament/bracket";
 import { roundRobinRounds } from "@/lib/tournament/pairing/roundRobin";
 import { DEFAULT_TIEBREAKS, TIEBREAK_KEYS, type TiebreakKey } from "@/lib/tournament/tiebreaks";
-import { errorMessage, getStore } from "../usePhysical";
+import { errorMessage, getStore } from "./usePhysical";
 
 type StepKey = "name" | "system" | "rounds" | "tiebreaks" | "players" | "confirm";
 const STEPS: StepKey[] = ["name", "system", "rounds", "tiebreaks", "players", "confirm"];
@@ -26,7 +25,6 @@ function derivedRounds(system: PhysicalSystem, n: number, dbl: boolean, chosen: 
 }
 
 export function PhysicalWizard() {
-  const router = useRouter();
   const t = no.physical;
   const [step, setStep] = useState(0);
   const [title, setTitle] = useState("");
@@ -105,7 +103,7 @@ export function PhysicalWizard() {
         state = reduce(state, makeEvent({ type: "addPlayer", playerId: newId(), name: p.name, rating: p.rating, club: p.club }));
       }
       await saveTournament(await getStore(), state);
-      router.push(`/arranger/fysisk/${state.id}`);
+      navigate(`/arranger/fysisk/${state.id}`);
     } catch (e) {
       setError(errorMessage(e));
       setBusy(false);
@@ -281,9 +279,9 @@ export function PhysicalWizard() {
               <Icon name="back" size={16} /> {no.common.back}
             </button>
           ) : (
-            <Link href="/arranger/fysisk" className="btn btn-ghost">
+            <NavLink href="/arranger/fysisk" className="btn btn-ghost">
               <Icon name="back" size={16} /> {no.common.back}
-            </Link>
+            </NavLink>
           )}
           <button type="button" className="btn btn-primary grow" onClick={next} disabled={busy || !canNext}>
             {busy ? <span className="spin" /> : step === STEPS.length - 1 ? t.confirmCreate : no.common.next}

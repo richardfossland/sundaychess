@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { NavLink } from "./nav";
 import { useState } from "react";
 import { no } from "@/lib/locale/no";
 import { Icon } from "@/lib/client/Icon";
@@ -8,7 +8,7 @@ import { makeEvent, newId } from "@/lib/physical/events";
 import { canUndo, reduce, totalRounds } from "@/lib/physical/reducer";
 import { RESULT_CODES, type PhysicalPairing, type PhysicalTournament, type ResultCode } from "@/lib/physical/schema";
 import { nextRoundPairing, openRound, standings } from "@/lib/physical/selectors";
-import { usePhysicalTournament } from "../usePhysical";
+import { usePhysicalTournament } from "./usePhysical";
 
 const fmt = (n: number | null) => (n === null ? "–" : Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, ""));
 
@@ -22,7 +22,7 @@ export function PhysicalBoard({ id }: { id: string }) {
       <main className="center-screen">
         <div className="card card-narrow stack">
           <div className="banner banner-error">{status === "corrupt" ? p.loadFailed : p.notFound}</div>
-          <Link href="/arranger/fysisk" className="btn btn-block">{p.backToList}</Link>
+          <NavLink href="/arranger/fysisk" className="btn btn-block">{p.backToList}</NavLink>
         </div>
       </main>
     );
@@ -54,7 +54,7 @@ export function PhysicalBoard({ id }: { id: string }) {
             <button type="button" className="btn btn-sm btn-ghost" onClick={undo} disabled={!canUndo(t)}>
               <Icon name="undo" size={14} /> {p.undo}
             </button>
-            <Link href="/arranger/fysisk" className="btn btn-sm btn-ghost">{p.backToList}</Link>
+            <NavLink href="/arranger/fysisk" className="btn btn-sm btn-ghost">{p.backToList}</NavLink>
           </div>
         </div>
 
