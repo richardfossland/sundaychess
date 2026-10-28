@@ -145,13 +145,18 @@ jobs:
         # ("toomanyrequests … allowed: 44000/minute"), which failed every e2e
         # run on 10-27 before a single test ran. A short backoff clears it.
         run: |
-          for attempt in 1 2 3 4; do
+          # ghcr.io (the registry setup-cli selects) kept rate-limiting all four
+          # attempts too, so each retry also rotates to a mirror registry.
+          registries=(ghcr.io public.ecr.aws docker.io ghcr.io public.ecr.aws docker.io)
+          for attempt in 1 2 3 4 5 6; do
+            export SUPABASE_INTERNAL_IMAGE_REGISTRY="${registries[$((attempt - 1))]}"
+            echo "supabase start via $SUPABASE_INTERNAL_IMAGE_REGISTRY (attempt $attempt)"
             if supabase start -x studio,inbucket,imgproxy,edge-runtime,analytics,vector,functions,storage; then
               exit 0
             fi
-            echo "::warning::supabase start failed (attempt $attempt), retrying"
+            echo "::warning::supabase start failed via $SUPABASE_INTERNAL_IMAGE_REGISTRY (attempt $attempt), retrying"
             supabase stop --no-backup || true
-            sleep $((attempt * 20))
+            sleep $((attempt * 15))
           done
           exit 1
 
