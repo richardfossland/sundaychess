@@ -5,7 +5,8 @@ import { crosstableByRound, describeEvent, nextMissingBoard, resultForKey, round
 import { createSaveQueue } from "@/lib/physical/saveQueue";
 import type { PhysicalEventBody, PhysicalTournament, StoredTournament } from "@/lib/physical/schema";
 import { crosstable, historyOf, pairNextRound, standings } from "@/lib/physical/selectors";
-import { memoryStore, type PhysicalStore } from "@/lib/physical/storage";
+import { loadWithJournal, localJournal } from "@/lib/physical/journal";
+import { memoryStore, toStored, type PhysicalStore } from "@/lib/physical/storage";
 import { meta, newTournament, playRound } from "./helpers";
 
 const d = (t: PhysicalTournament, b: PhysicalEventBody) => dispatch(t, b, meta());
@@ -266,5 +267,46 @@ describe("saveQueue", () => {
     q.enqueue(newTournament({}, 2));
     await q.idle();
     expect(q.state).toBe("failed");
+  });
+});
+
+describe("journal (synkron sikkerhetskopi)", () => {
+  const kv = () => {
+    const m = new Map<string, string>();
+    return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k), size: () => m.size };
+  };
+  it("skriver synkront ved enqueue og rydder etter bekreftet lagring", async () => {
+    const storage = kv();
+    const j = localJournal(storage);
+    const store = memoryStore();
+    const q = createSaveQueue(async () => store, undefined, j);
+    const t = newTournament({}, 3);
+    q.enqueue(t);
+    expect(j.read(t.id)!.events).toHaveLength(t.events.length); // før noe er awaitet
+    await q.idle();
+    expect(j.read(t.id)).toBeNull();
+    expect(storage.size()).toBe(0);
+  });
+  it("mislykket lagring lar journalen stå; lasting henter den nyeste", async () => {
+    const storage = kv();
+    const j = localJournal(storage);
+    const store = memoryStore();
+    let t = newTournament({}, 3);
+    await store.put(toStored(t, "2026-10-28T10:00:00.000Z"));
+    t = d(t, { type: "addPlayer", playerId: "z", name: "Z" });
+    j.write(toStored(t, "2026-10-28T10:00:05.000Z"));
+    const r = await loadWithJournal(store, j, t.id);
+    expect(r.recovered).toBe(true);
+    expect(r.tournament!.players).toHaveLength(4);
+    // Lageret er nyere (journalen er foreldet) → lageret vinner.
+    await store.put(toStored(t, "2026-10-28T10:00:09.000Z"));
+    expect((await loadWithJournal(store, j, t.id)).recovered).toBe(false);
+  });
+  it("uten localStorage fungerer køen som før", async () => {
+    const boom = () => { throw new Error("x"); };
+    const q = createSaveQueue(async () => memoryStore(), undefined, localJournal({ getItem: boom, setItem: boom, removeItem: boom }));
+    q.enqueue(newTournament({}, 2));
+    await q.idle();
+    expect(q.state).toBe("saved");
   });
 });

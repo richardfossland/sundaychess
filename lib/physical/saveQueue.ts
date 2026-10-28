@@ -5,7 +5,8 @@
 //  - kan `flush()`es: ved visibilitychange/pagehide startes ventende skriving UMIDDELBART
 //    (IndexedDB-transaksjoner på samme store kjøres i opprettelsesrekkefølge, så rekkefølgen holder).
 
-import { saveTournament, type PhysicalStore } from "./storage";
+import type { Journal } from "./journal";
+import { saveTournament, toStored, type PhysicalStore } from "./storage";
 import type { PhysicalTournament } from "./schema";
 
 export type SaveState = "idle" | "saving" | "saved" | "failed";
@@ -23,6 +24,7 @@ export interface SaveQueue {
 export function createSaveQueue(
   getStore: () => Promise<PhysicalStore>,
   onState: (s: SaveState) => void = () => {},
+  journal?: Journal,
 ): SaveQueue {
   let pending: PhysicalTournament | null = null;
   let inflight: Promise<void> | null = null;
@@ -36,6 +38,8 @@ export function createSaveQueue(
   async function write(t: PhysicalTournament): Promise<void> {
     const ok = await saveTournament(await getStore(), t);
     if (!ok) failed = true;
+    // Journalen kan ryddes når lageret har bekreftet og ingenting nyere venter.
+    else if (!pending && journal) journal.clear(t.id);
   }
 
   function pump(): Promise<void> {
@@ -59,6 +63,7 @@ export function createSaveQueue(
   return {
     enqueue(t) {
       pending = t;
+      journal?.write(toStored(t));
       set("saving");
       void pump();
     },

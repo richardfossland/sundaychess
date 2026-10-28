@@ -7,7 +7,8 @@ import { reduce, undo as undoLast, canUndo } from "@/lib/physical/reducer";
 import type { PhysicalEventBody, PhysicalTournament } from "@/lib/physical/schema";
 import { describeEvent } from "@/lib/physical/roundView";
 import { createSaveQueue, type SaveQueue, type SaveState } from "@/lib/physical/saveQueue";
-import { loadTournament, openBestStore, type PhysicalStore } from "@/lib/physical/storage";
+import { localJournal, loadWithJournal } from "@/lib/physical/journal";
+import { openBestStore, type PhysicalStore } from "@/lib/physical/storage";
 import { no } from "@/lib/locale/no";
 
 let storePromise: Promise<PhysicalStore> | null = null;
@@ -31,7 +32,7 @@ export function usePhysicalTournament(id: string) {
   const ref = useRef<PhysicalTournament | null>(null);
   const queue = useRef<SaveQueue | null>(null);
   const toastSeq = useRef(0);
-  queue.current ??= createSaveQueue(getStore, setSaveState);
+  queue.current ??= createSaveQueue(getStore, setSaveState, localJournal());
 
   useEffect(() => {
     let alive = true;
@@ -40,8 +41,9 @@ export function usePhysicalTournament(id: string) {
       if (!alive) return;
       setStoreKind(store.kind);
       try {
-        const t = await loadTournament(store, id);
+        const { tournament: t, recovered } = await loadWithJournal(store, localJournal(), id);
         if (!alive) return;
+        if (t && recovered) queue.current!.enqueue(t);
         ref.current = t;
         setState(t);
         setStatus(t ? "ready" : "missing");
