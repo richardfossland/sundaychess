@@ -43,7 +43,7 @@ describe("Monrad 5 runder, 9 spillere (frirunder), helt gjennom reduceren", () =
       5,
     );
     const got = standings(t);
-    expect(got.map(({ player: _p, ...r }) => r)).toEqual(expected);
+    expect(got.map((r) => ({ playerId: r.playerId, score: r.score, values: r.values, rank: r.rank }))).toEqual(expected);
     const ct = crosstable(t);
     for (const row of ct) expect(row.score).toBe(got.find((g) => g.playerId === row.playerId)!.score);
     // sum poeng = antall partier (hvert parti deler ut 1 poeng) + frirunder
