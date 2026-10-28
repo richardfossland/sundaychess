@@ -48,6 +48,8 @@ export function randomTournament(seed: number): PhysicalTournament {
       meta(),
     );
   }
+  const late = rng(seed * 7919 + 1); // egen strøm: påvirker ikke resten av tilfeldighetene
+  let lateN = 0;
   const maxRounds = 1 + Math.floor(r() * 4);
   for (let k = 0; k < maxRounds; k++) {
     let pr;
@@ -65,6 +67,10 @@ export function randomTournament(seed: number): PhysicalTournament {
       t = dispatch(t, { type: "setResult", round: pr.round, board: p.board, result: pick(opts) }, meta());
     }
     t = dispatch(t, { type: "completeRound", round: pr.round }, meta());
+    if ((system === "monrad" || system === "swiss") && late() < 0.4) {
+      const half = late() < 0.5;
+      t = dispatch(t, { type: "addPlayer", playerId: `late${++lateN}`, name: `Sen Spiller${lateN}`, ...(half ? { missedRoundPoints: 0.5 as const } : {}) }, meta());
+    }
     if (r() < 0.2 && t.status === "running" && system !== "knockout" && system !== "roundRobin") {
       const act = t.players.filter((p) => p.status === "active");
       if (act.length > 3) t = dispatch(t, { type: "withdrawPlayer", playerId: pick(act).id }, meta());

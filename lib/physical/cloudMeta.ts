@@ -12,6 +12,8 @@ export interface CloudMeta {
   syncedVersion: number;
   /** Signatur (lengde + siste hendelses-id) av loggen ved siste vellykkede synk. */
   syncedSig: string | null;
+  /** Skyens id når den avviker fra den lokale turnerings-id (id-kollisjon ved publisering). */
+  cloudId?: string;
   /** `${runde}|${brett}` -> k. */
   keys: Record<string, string>;
 }
@@ -63,9 +65,14 @@ export function clearMeta(id: string): void {
   }
 }
 
+/** Id i skyen (= den lokale id med mindre publiseringen måtte velge en annen). */
+export function cloudIdOf(id: string): string {
+  return loadMeta(id)?.cloudId ?? id;
+}
+
 /** Offentlig lenke (turneringsside). */
 export function publicUrl(id: string, origin = typeof location === "undefined" ? "" : location.origin): string {
-  return `${origin}/f/${id}`;
+  return `${origin}/f/${cloudIdOf(id)}`;
 }
 
 /** URL i QR på bordkortet, eller null når turneringen ikke er publisert / nøkkelen ikke er hentet. */

@@ -6,6 +6,7 @@ import { no } from "@/lib/locale/no";
 import { Icon } from "@/lib/client/Icon";
 import { NumberField } from "@/lib/client/NumberField";
 import { makeEvent, newId } from "@/lib/physical/events";
+import { requestPersistence } from "@/lib/physical/exportReminder";
 import { createTournament, reduce } from "@/lib/physical/reducer";
 import { parseRoster, type RosterEntry } from "@/lib/physical/roster";
 import { PHYSICAL_SYSTEMS, type PhysicalSettings, type PhysicalSystem, type PhysicalTournament } from "@/lib/physical/schema";
@@ -103,6 +104,7 @@ export function PhysicalWizard() {
         state = reduce(state, makeEvent({ type: "addPlayer", playerId: newId(), name: p.name, rating: p.rating, club: p.club }));
       }
       await saveTournament(await getStore(), state);
+      void requestPersistence(); // best effort: be nettleseren la oss beholde lokale data
       navigate(`/arranger/fysisk/${state.id}`);
     } catch (e) {
       setError(errorMessage(e));

@@ -38,7 +38,7 @@ export function OpenPublished() {
       const store = await getStore();
       if ((await loadTournament(store, t.id).catch(() => null)) && !window.confirm(L.openReplaceConfirm)) return;
       await saveTournament(store, t);
-      saveMeta(t.id, { hostCode: d.hostCode, pairToken: d.pairToken ?? null, syncedVersion: d.version, syncedSig: `${t.events.length}:${t.events[t.events.length - 1]?.id ?? ""}`, keys: {} });
+      saveMeta(t.id, { hostCode: d.hostCode, pairToken: d.pairToken ?? null, syncedVersion: d.version, syncedSig: `${t.events.length}:${t.events[t.events.length - 1]?.id ?? ""}`, keys: {}, ...(tid !== t.id ? { cloudId: tid } : {}) });
       navigate(`/arranger/fysisk/${t.id}`);
     } catch {
       setErr(L.openFailed);

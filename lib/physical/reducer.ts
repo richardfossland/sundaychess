@@ -167,16 +167,24 @@ export function assertCanPair(t: PhysicalTournament, round: number) {
   if (t.players.length < 2) fail("notEnoughPlayers");
 }
 
-function apply(t: PhysicalTournament | null, e: PhysicalEvent): PhysicalTournament {
+type Draft = Omit<PhysicalTournament, "events">;
+
+/**
+ * Muterer `s` på stedet (kaster ved ugyldig hendelse; da er `s` ubrukelig og
+ * kalleren må ha jobbet på en kopi). `seen` = id-ene til hendelsene hittil.
+ * Returnerer arbeidskopien (ny ved createTournament).
+ */
+function step(s: Draft | null, e: PhysicalEvent, seen: Set<string>): Draft {
   if (!e || typeof e !== "object" || typeof e.type !== "string") fail("badEvent");
   if (typeof e.id !== "string" || !e.id) fail("badEvent");
   if (!isIsoTimestamp(e.at)) fail("badTimestamp");
 
   if (e.type === "createTournament") {
-    if (t) fail("alreadyCreated");
+    if (s) fail("alreadyCreated");
     if (typeof e.tournamentId !== "string" || !e.tournamentId) fail("badEvent");
     const title = typeof e.title === "string" ? e.title.trim() : "";
     if (!title || title.length > 80) fail("badTitle");
+    seen.add(e.id);
     return {
       schemaVersion: SCHEMA_VERSION,
       id: e.tournamentId,
@@ -187,15 +195,11 @@ function apply(t: PhysicalTournament | null, e: PhysicalEvent): PhysicalTourname
       players: [],
       rounds: [],
       byeRequests: [],
-      events: [e],
     };
   }
-  if (!t) fail("notCreated");
-  if (t.events.some((x) => x.id === e.id)) fail("duplicateEventId");
-  if (t.status === "finished") fail("finished");
-
-  const { events, ...rest } = t;
-  const s = structuredClone(rest) as Omit<PhysicalTournament, "events">;
+  if (!s) fail("notCreated");
+  if (seen.has(e.id)) fail("duplicateEventId");
+  if (s.status === "finished") fail("finished");
 
   switch (e.type) {
     case "addPlayer": {
@@ -361,21 +365,30 @@ function apply(t: PhysicalTournament | null, e: PhysicalEvent): PhysicalTourname
     default:
       fail("badEvent");
   }
-  return { ...s, events: [...events, e] };
+  seen.add(e.id);
+  return s;
 }
 
-/** Anvend én hendelse. Kaster PhysicalError ved ugyldig hendelse; state er uendret. */
+/** Anvend én hendelse. Kaster PhysicalError ved ugyldig hendelse; state er uendret (inndata muteres aldri). */
 export function reduce(state: PhysicalTournament | null, event: PhysicalEvent): PhysicalTournament {
-  return apply(state, event);
+  if (!state) return { ...step(null, event, new Set()), events: [event] };
+  const { events, ...rest } = state;
+  const work = structuredClone(rest) as Draft;
+  const out = step(work, event, new Set(events.map((x) => x.id)));
+  return { ...out, events: [...events, event] };
 }
 
-/** Bygg state fra en logg. */
+/**
+ * Bygg state fra en logg i O(n): én arbeidskopi muteres, id-sett i stedet for lineært søk og
+ * ingen kopiering av loggen per hendelse. Resultatet er likevel et nytt objekt (inndata urørt).
+ */
 export function replay(events: readonly PhysicalEvent[]): PhysicalTournament {
   if (!Array.isArray(events) || events.length === 0) fail("corruptLog");
   if (events[0].type !== "createTournament") fail("corruptLog");
-  let t: PhysicalTournament | null = null;
-  for (const e of events) t = apply(t, e);
-  return t as PhysicalTournament;
+  const seen = new Set<string>();
+  let work: Draft | null = null;
+  for (const e of events) work = step(work, e, seen);
+  return { ...(work as Draft), events: events.slice() };
 }
 
 /** Fjern siste hendelse og spill av på nytt. */

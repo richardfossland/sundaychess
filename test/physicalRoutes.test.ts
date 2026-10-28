@@ -133,6 +133,7 @@ describe("GET /api/physical/[id] (public)", () => {
 describe("host auth (PUT/GET log, keys, reports, DELETE)", () => {
   it("accepts code or pair token; rejects missing/wrong, counting only wrong codes under scope phys:<id>", async () => {
     const { hostCode, pairToken } = await seed();
+    registerCodeFailure.mockClear(); // the publish itself spends one budget unit under scope "publish"
     const events = published().events;
     expect((await putLog(put(events, 1, hostCode), ctx())).status).toBe(200);
     expect((await getLog(get(`/api/physical/${ID}/log`, { "x-pair-token": pairToken }), ctx())).status).toBe(200);
@@ -228,7 +229,7 @@ describe("POST /api/physical/[id]/report", () => {
   const rep = async (over: Record<string, unknown> = {}, k?: string | null) =>
     report(
       post(`http://x/api/physical/${ID}/report`, {
-        round: 1, board: 1, result: "1-0", reporter: "white", requestId: "req-aaaa-0001",
+        round: 1, board: 1, result: "1-0", reporter: "white", requestId: "req-aaaa-0001", deviceId: "dev-aaaa-0001",
         k: k === undefined ? await key() : k, ...over,
       }),
       ctx(),
@@ -279,14 +280,78 @@ describe("POST /api/physical/[id]/report", () => {
     expect((await rep()).status).toBe(409);
   });
 
-  it("a newer pending report from the same reporter replaces the older; the other reporter's stays", async () => {
+  it("a newer pending report from the same DEVICE replaces the older; another device's stays", async () => {
     await seed();
-    await rep({ requestId: "req-aaaa-0001", result: "1-0", reporter: "white" });
-    await rep({ requestId: "req-aaaa-0002", result: "0-1", reporter: "black" });
-    await rep({ requestId: "req-aaaa-0003", result: "½-½", reporter: "white" });
+    await rep({ requestId: "req-aaaa-0001", result: "1-0", reporter: "white", deviceId: "dev-aaaa-0001" });
+    await rep({ requestId: "req-aaaa-0002", result: "0-1", reporter: "black", deviceId: "dev-bbbb-0002" });
+    await rep({ requestId: "req-aaaa-0003", result: "½-½", reporter: "white", deviceId: "dev-aaaa-0001" });
     const rows = db.tables.physical_result_reports;
     expect(rows).toHaveLength(2);
-    expect(rows.map((r) => `${r.reporter}:${r.result}`).sort()).toEqual(["black:0-1", "white:½-½"]);
+    expect(rows.map((r) => `${r.device_id}:${r.result}`).sort()).toEqual(["dev-aaaa-0001:½-½", "dev-bbbb-0002:0-1"]);
+  });
+
+  it("two players who both leave the side as 'unknown' no longer overwrite each other", async () => {
+    await seed();
+    await rep({ requestId: "req-aaaa-0001", result: "1-0", reporter: "unknown", deviceId: "dev-aaaa-0001" });
+    await rep({ requestId: "req-aaaa-0002", result: "0-1", reporter: "unknown", deviceId: "dev-bbbb-0002" });
+    const rows = db.tables.physical_result_reports;
+    expect(rows).toHaveLength(2);
+    expect(rows.every((r) => r.status === "pending")).toBe(true);
+  });
+
+  it("keeps at most 8 pending reports per board (oldest dropped)", async () => {
+    await seed();
+    for (let i = 0; i < 12; i++) await rep({ requestId: `req-flood-${String(i).padStart(4, "0")}`, deviceId: `dev-flood-${String(i).padStart(4, "0")}` });
+    const rows = db.tables.physical_result_reports;
+    expect(rows).toHaveLength(8);
+    expect(rows.some((r) => r.device_id === "dev-flood-0000")).toBe(false);
+  });
+
+  it("stores the pairing fingerprint from the PUBLIC snapshot and returns it with deviceId", async () => {
+    await seed();
+    const out = await (await rep()).json();
+    const g = published().rounds[0].pairings[0];
+    expect(db.tables.physical_result_reports[0].pairing_fp).toBe(`${g.white}|${g.black}`);
+    expect(out.report).toMatchObject({ deviceId: "dev-aaaa-0001", pairingFp: `${g.white}|${g.black}` });
+  });
+
+  it("409 pairing_changed when the phone saw other players than the board has now", async () => {
+    await seed();
+    const g = published().rounds[0].pairings[0];
+    expect((await rep({ fp: `${g.white}|${g.black}` })).status).toBe(200);
+    const stale = await rep({ requestId: "req-aaaa-0002", deviceId: "dev-bbbb-0002", fp: "old-white|old-black" });
+    expect(stale.status).toBe(409);
+    expect((await stale.json()).error).toBe("pairing_changed");
+    expect(db.tables.physical_result_reports).toHaveLength(1);
+    // a retry of the report that DID land is still answered with the same report
+    expect((await rep({ fp: "old-white|old-black" })).status).toBe(200);
+  });
+
+  it("a swap pushed after a report supersedes it (it is never credited to the new players)", async () => {
+    const { hostCode } = await seed();
+    await rep();
+    expect(db.tables.physical_result_reports[0].status).toBe("pending");
+    const t = published();
+    const swapped = reduce(t, makeEvent({ type: "swapPairing", round: 1, a: { board: 1, side: "white" }, b: { board: 2, side: "white" }, afterPublish: true }));
+    expect((await putLog(put(swapped.events, 1, hostCode), ctx())).status).toBe(200);
+    expect(db.tables.physical_result_reports[0].status).toBe("superseded");
+    // and a new report now gets the NEW fingerprint
+    const g = swapped.rounds[0].pairings[0];
+    await rep({ requestId: "req-aaaa-0005", deviceId: "dev-bbbb-0002" });
+    expect(db.tables.physical_result_reports[1].pairing_fp).toBe(`${g.white}|${g.black}`);
+  });
+
+  it("report POSTs never touch the tournament's updated_at (retention is extended by the host only)", async () => {
+    await seed();
+    const before = db.tables.physical_tournaments[0].updated_at;
+    await rep();
+    expect(db.tables.physical_tournaments[0].updated_at).toBe(before);
+  });
+
+  it("a report reads the stored snapshot: it works even when the stored log is unreplayable garbage", async () => {
+    await seed();
+    db.tables.physical_tournaments[0].event_log = [{ type: "garbage" }];
+    expect((await rep()).status).toBe(200);
   });
 
   it("409 when the board already has a result, the round is completed or still a draft", async () => {
@@ -310,6 +375,9 @@ describe("POST /api/physical/[id]/report", () => {
     expect((await rep({ result: "2-0" })).status).toBe(400);
     expect((await rep({ reporter: "mom" })).status).toBe(400);
     expect((await rep({ requestId: "short" })).status).toBe(400);
+    expect((await rep({ deviceId: "x" })).status).toBe(400);
+    expect((await rep({ deviceId: undefined })).status).toBe(400);
+    expect((await rep({ fp: 5 })).status).toBe(400);
     expect((await rep({ round: "1" })).status).toBe(400);
     expect((await rep({ board: 9 }, await key(1, 9))).status).toBe(404);
     const res = await report(post(`http://x/api/physical/zzz/report`, {}), ctx("zzz"));
@@ -328,7 +396,7 @@ describe("host reports: list + decide", () => {
   it("lists pending reports (host only) and records approve/reject without touching the log", async () => {
     const { hostCode, pairToken } = await seed();
     const k = await signBoardKey(ID, 1, 1);
-    const r = await report(post(`http://x/api/physical/${ID}/report`, { round: 1, board: 1, result: "1-0", reporter: "white", requestId: "req-aaaa-0001", k }), ctx());
+    const r = await report(post(`http://x/api/physical/${ID}/report`, { round: 1, board: 1, result: "1-0", reporter: "white", requestId: "req-aaaa-0001", deviceId: "dev-aaaa-0001", k }), ctx());
     const id = (await r.json()).report.id as string;
 
     expect((await listReports(get(`/api/physical/${ID}/reports`), ctx())).status).toBe(401);

@@ -3,6 +3,7 @@
 // meldinger. Forbigående feil (nett, 5xx, 429) prøves på nytt; permanente stopper.
 
 import type { ReportResult, Reporter } from "./cloudTypes";
+import { newId } from "./events";
 
 export interface ReportInput {
   id: string;
@@ -11,7 +12,28 @@ export interface ReportInput {
   result: ReportResult;
   reporter: Reporter;
   requestId: string;
+  /** Tilfeldig enhets-id (localStorage). */
+  deviceId: string;
+  /** `${hvit-id}|${svart-id}` slik siden viste parringen; serveren avviser hvis den er endret. */
+  fp?: string;
   k: string;
+}
+
+let memDeviceId: string | null = null;
+const DEVICE_KEY = "sundaychess:report-device-id";
+
+/** Tilfeldig id for denne telefonen (localStorage, minne som reserve). Skilles fra requestId: den er stabil på tvers av meldinger. */
+export function getDeviceId(): string {
+  try {
+    const have = localStorage.getItem(DEVICE_KEY);
+    if (have && /^[A-Za-z0-9_-]{8,64}$/.test(have)) return have;
+    const id = memDeviceId ?? newId();
+    memDeviceId = id;
+    localStorage.setItem(DEVICE_KEY, id);
+    return id;
+  } catch {
+    return (memDeviceId ??= newId());
+  }
 }
 
 export type SendOutcome = { ok: true } | { ok: false; code: string };
@@ -27,6 +49,7 @@ export const PERMANENT_CODES = new Set([
   "bad_request",
   "reports_unavailable",
   "request_id_taken",
+  "pairing_changed",
 ]);
 
 export interface SendDeps {

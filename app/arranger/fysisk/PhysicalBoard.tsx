@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@/lib/client/Icon";
 import { no } from "@/lib/locale/no";
+import { dismissReminder, completedRounds, isIos, shouldRemindExport } from "@/lib/physical/exportReminder";
 import { canUndo } from "@/lib/physical/reducer";
+import type { PhysicalTournament } from "@/lib/physical/schema";
 import { NavLink } from "./nav";
 import { FileMenu } from "./FileMenu";
 import { CloudMenu } from "./cloud/CloudMenu";
@@ -16,8 +18,30 @@ import "./physical.css";
 
 type Tab = "round" | "standings" | "crosstable" | "bracket" | "players";
 
+/** Dismissable «eksporter turneringsfila»-påminnelse (sterkere på iOS uten vedvarende lagring). */
+function ExportReminder({ t }: { t: PhysicalTournament }) {
+  const L = no.physicalCloud;
+  const [hidden, setHidden] = useState(false);
+  const [weak, setWeak] = useState(false);
+  const done = completedRounds(t);
+  useEffect(() => {
+    if (!isIos()) return;
+    // Bare spørring (ikke persist(): den kan vise en tillatelsesdialog hver gang).
+    void Promise.resolve(navigator.storage?.persisted?.())
+      .then((persisted) => setWeak(!persisted))
+      .catch(() => setWeak(true));
+  }, []);
+  if (hidden || !shouldRemindExport(t)) return null;
+  return (
+    <div className={`banner ${weak ? "banner-error" : ""} spread`} role="status" data-testid="export-reminder">
+      <span>{weak ? L.exportReminderIos : L.exportReminder(done)}</span>
+      <button type="button" className="btn btn-sm btn-ghost" onClick={() => { dismissReminder(t); setHidden(true); }}>{L.exportReminderDismiss}</button>
+    </div>
+  );
+}
+
 export function PhysicalBoard({ id }: { id: string }) {
-  const { state: t, status, error, setError, apply, run, undo, storeKind, saveState, toast, dismissToast } = usePhysicalTournament(id);
+  const { state: t, status, error, setError, apply, run, undo, readOnly, takeOver, storeKind, saveState, toast, dismissToast } = usePhysicalTournament(id);
   const [tab, setTab] = useState<Tab>("round");
   const p = no.physical;
 
@@ -76,7 +100,8 @@ export function PhysicalBoard({ id }: { id: string }) {
             <span className="pr-save" role="status" aria-live="polite" data-state={saveState} data-testid="save-state">{saveLabel}</span>
             <PrintMenu id={t.id} />
             <FileMenu t={t} />
-            <CloudMenu t={t} run={run} />
+            {/* En skrivebeskyttet fane har kanskje utdatert logg og skal aldri pushe til skyen. */}
+            {!readOnly && <CloudMenu t={t} run={run} />}
             <button type="button" className="btn btn-sm btn-ghost" onClick={undo} disabled={!canUndo(t)}>
               <Icon name="undo" size={14} /> {p.undo}
             </button>
@@ -84,6 +109,20 @@ export function PhysicalBoard({ id }: { id: string }) {
           </div>
         </div>
 
+        {readOnly && (
+          <div className="banner banner-error stack" role="alert" data-testid="readonly-banner" style={{ gap: 6 }}>
+            <b>{no.physicalCloud.lockedTitle}</b>
+            <span style={{ fontSize: 13 }}>{no.physicalCloud.lockedBody}</span>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => { if (window.confirm(no.physicalCloud.lockTakeOverConfirm)) void takeOver(); }}
+            >
+              {no.physicalCloud.lockTakeOver}
+            </button>
+          </div>
+        )}
+        <ExportReminder t={t} />
         {storeKind === "memory" && <div className="banner banner-error">{p.storageMemoryWarn}</div>}
         {saveState === "failed" && <div className="banner banner-error">{p.saveFailed}</div>}
         {error && <div className="banner banner-error" role="alert" onClick={() => setError(null)}>{error}</div>}
@@ -96,6 +135,7 @@ export function PhysicalBoard({ id }: { id: string }) {
           ))}
         </div>
 
+        <fieldset disabled={readOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         <div id="tab-panel" role="tabpanel" aria-labelledby={`tab-${active}`} className="stack">
           {active === "round" && <RoundPanel t={t} apply={apply} run={run} />}
           {active === "standings" && <StandingsPanel t={t} />}
@@ -103,6 +143,7 @@ export function PhysicalBoard({ id }: { id: string }) {
           {active === "bracket" && <BracketPanel t={t} />}
           {active === "players" && <PlayersPanel t={t} apply={apply} />}
         </div>
+        </fieldset>
       </div>
 
       {toast && (

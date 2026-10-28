@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { no } from "@/lib/locale/no";
 import { replay } from "@/lib/physical/reducer";
 import { publicUrl } from "@/lib/physical/cloudMeta";
+import { DEFAULT_PUBLIC_NAMES, type PublicNames } from "@/lib/physical/cloudTypes";
 import type { PhysicalTournament } from "@/lib/physical/schema";
 import { getCloud, useCloudState } from "./cloudRegistry";
 
@@ -25,6 +26,7 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
   const [showCode, setShowCode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [names, setNames] = useState<PublicNames>(DEFAULT_PUBLIC_NAMES);
   const ref = useRef<HTMLDivElement>(null);
   const published = st.status !== "unpublished";
   // En konflikt må løses, så panelet står åpent til den er løst.
@@ -54,7 +56,7 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
   async function publish() {
     setBusy(true);
     setMsg(null);
-    const r = await cloud.publish(t.events);
+    const r = await cloud.publish(t.events, { publicNames: names });
     setBusy(false);
     if (!r.ok) setMsg(cloudErrorText(r.code));
   }
@@ -109,6 +111,18 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
           {!published && (
             <>
               <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.publishIntro}</p>
+              <fieldset className="stack" style={{ gap: 4, border: 0, padding: 0, margin: 0 }} data-testid="public-names">
+                <legend style={{ fontSize: 13, fontWeight: 600, padding: 0 }}>{L.namesTitle}</legend>
+                <label className="row" style={{ gap: 6, alignItems: "flex-start", fontSize: 13 }}>
+                  <input type="radio" name="public-names" checked={names === "initials"} onChange={() => setNames("initials")} />
+                  <span>{L.namesInitials}</span>
+                </label>
+                <label className="row" style={{ gap: 6, alignItems: "flex-start", fontSize: 13 }}>
+                  <input type="radio" name="public-names" checked={names === "full"} onChange={() => setNames("full")} />
+                  <span>{L.namesFull}</span>
+                </label>
+                <span className="muted" style={{ fontSize: 12 }}>{L.namesHelp}</span>
+              </fieldset>
               <button type="button" className="btn btn-primary" disabled={busy} onClick={publish}>
                 {busy ? L.publishing : L.publish}
               </button>

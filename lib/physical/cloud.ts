@@ -14,7 +14,8 @@
 // med falsk transport og falske timere.
 
 import { loadMeta, saveMeta, clearMeta, type CloudMeta } from "./cloudMeta";
-import type { ReportDto } from "./cloudTypes";
+import { logLimitError, type PublicNames, type ReportDto } from "./cloudTypes";
+import { newId } from "./events";
 import type { PhysicalEvent } from "./schema";
 
 export type CloudStatus = "unpublished" | "synced" | "pending" | "offline" | "conflict" | "error";
@@ -39,6 +40,7 @@ export interface Timers {
 export const sigOf = (events: readonly PhysicalEvent[]): string =>
   `${events.length}:${events[events.length - 1]?.id ?? ""}`;
 
+const LIMIT_CODES = new Set(["too_many_events", "too_many_players", "payload_too_large"]);
 export const DEBOUNCE_MS = 800;
 export const BACKOFF_START_MS = 2_000;
 export const BACKOFF_MAX_MS = 60_000;
@@ -82,6 +84,10 @@ export class CloudSync {
     for (const l of this.listeners) l();
   }
   meta = (): CloudMeta | null => loadMeta(this.id);
+  /** Skyens id for denne turneringen (kan avvike fra den lokale). */
+  private get cid(): string {
+    return this.meta()?.cloudId ?? this.id;
+  }
   private auth() {
     const m = this.meta();
     return m ? { hostCode: m.hostCode, pairToken: m.pairToken } : null;
@@ -93,28 +99,49 @@ export class CloudSync {
   }
 
   // ---- publisering ----
-  async publish(events: readonly PhysicalEvent[]): Promise<{ ok: true } | { ok: false; code: string }> {
-    const res = await this.transport("POST", "/api/physical/publish", { events }, null);
-    if (res.status === 200 || res.status === 201) {
-      const d = res.data as { hostCode: string; pairToken: string | null; version: number };
-      saveMeta(this.id, {
-        hostCode: d.hostCode,
-        pairToken: d.pairToken ?? null,
-        syncedVersion: d.version,
-        syncedSig: sigOf(events),
-        keys: loadMeta(this.id)?.keys ?? {},
-      });
-      this.latest = events;
-      this.set({ status: "synced", errorCode: null, serverVersion: null });
-      return { ok: true };
+  async publish(
+    events: readonly PhysicalEvent[],
+    opts: { publicNames?: PublicNames } = {},
+  ): Promise<{ ok: true } | { ok: false; code: string }> {
+    const limit = logLimitError(events);
+    if (limit) return { ok: false, code: limit };
+    // Id-kollisjon (noen har publisert samme id uten at vi eier den): velg en ny sky-id og prøv igjen.
+    let candidate = this.cid;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const res = await this.transport(
+        "POST",
+        "/api/physical/publish",
+        { events, cloudId: candidate, ...(opts.publicNames ? { publicNames: opts.publicNames } : {}) },
+        null,
+      );
+      if (res.status === 200 || res.status === 201) {
+        const d = res.data as { id?: string; hostCode: string; pairToken: string | null; version: number };
+        const cloudId = d.id && d.id !== this.id ? d.id : undefined;
+        saveMeta(this.id, {
+          hostCode: d.hostCode,
+          pairToken: d.pairToken ?? null,
+          syncedVersion: d.version,
+          syncedSig: sigOf(events),
+          ...(cloudId ? { cloudId } : {}),
+          keys: loadMeta(this.id)?.keys ?? {},
+        });
+        this.latest = events;
+        this.set({ status: "synced", errorCode: null, serverVersion: null });
+        return { ok: true };
+      }
+      if (res.status === 409 && res.data.error === "already_published") {
+        candidate = newId();
+        continue;
+      }
+      return { ok: false, code: res.status === 0 ? "offline" : String(res.data.error ?? "server_error") };
     }
-    return { ok: false, code: res.status === 0 ? "offline" : String(res.data.error ?? "server_error") };
+    return { ok: false, code: "already_published" };
   }
 
   async unpublish(): Promise<{ ok: boolean; code?: string }> {
     const a = this.auth();
     if (!a) return { ok: true };
-    const res = await this.transport("DELETE", `/api/physical/${this.id}`, null, a);
+    const res = await this.transport("DELETE", `/api/physical/${this.cid}`, null, a);
     if (res.status === 200 || res.status === 404) {
       if (this.timer !== null) this.timers.clear(this.timer);
       this.timer = null;
@@ -140,6 +167,10 @@ export class CloudSync {
     if (m.syncedSig === sigOf(events)) {
       if (this.state.status === "pending" || this.state.status === "offline") this.set({ status: "synced" });
       return;
+    }
+    // En størrelsesfeil forsvinner av seg selv hvis loggen igjen er innenfor (f.eks. etter angre).
+    if (this.state.status === "error" && this.state.errorCode && LIMIT_CODES.has(this.state.errorCode) && !logLimitError(events)) {
+      this.set({ status: "pending", errorCode: null });
     }
     if (this.state.status === "conflict" || this.state.status === "error") return;
     this.set({ status: this.state.status === "offline" ? "offline" : "pending" });
@@ -171,13 +202,19 @@ export class CloudSync {
       return;
     }
     if (m.syncedSig === sigOf(events)) return;
+    const limit = logLimitError(events);
+    if (limit) {
+      // For stor til skyen: lokalt går alt som før, men vi slutter å pushe og sier fra.
+      this.set({ status: "error", errorCode: limit });
+      return;
+    }
     this.inFlight = true;
     const sent = sigOf(events);
     let res: HttpResult;
     try {
       res = await this.transport(
         "PUT",
-        `/api/physical/${this.id}/log`,
+        `/api/physical/${this.cid}/log`,
         { events, baseVersion: m.syncedVersion },
         { hostCode: m.hostCode, pairToken: m.pairToken },
       );
@@ -200,7 +237,7 @@ export class CloudSync {
       this.set({ status: "conflict", serverVersion: Number(res.data.version) || null, errorCode: null });
       return;
     }
-    if (res.status === 401 || res.status === 404 || res.status === 422 || res.status === 400) {
+    if (res.status === 401 || res.status === 404 || res.status === 413 || res.status === 422 || res.status === 400) {
       // Permanent: koden er avvist / turneringen finnes ikke lenger i skyen / loggen er ugyldig.
       this.set({ status: "error", errorCode: String(res.data.error ?? "server_error") });
       return;
@@ -216,7 +253,7 @@ export class CloudSync {
   async fetchCloudLog(): Promise<{ events: PhysicalEvent[]; version: number } | null> {
     const a = this.auth();
     if (!a) return null;
-    const res = await this.transport("GET", `/api/physical/${this.id}/log`, null, a);
+    const res = await this.transport("GET", `/api/physical/${this.cid}/log`, null, a);
     if (res.status !== 200) return null;
     return { events: res.data.events as PhysicalEvent[], version: Number(res.data.version) };
   }
@@ -248,7 +285,7 @@ export class CloudSync {
     let all = true;
     for (let b = 1; b <= boards; b++) if (!m.keys[`${round}|${b}`]) all = false;
     if (all) return true;
-    const res = await this.transport("GET", `/api/physical/${this.id}/keys?round=${round}&boards=${boards}`, null, {
+    const res = await this.transport("GET", `/api/physical/${this.cid}/keys?round=${round}&boards=${boards}`, null, {
       hostCode: m.hostCode,
       pairToken: m.pairToken,
     });
@@ -261,14 +298,14 @@ export class CloudSync {
   async fetchReports(): Promise<ReportDto[] | null> {
     const a = this.auth();
     if (!a) return null;
-    const res = await this.transport("GET", `/api/physical/${this.id}/reports`, null, a);
+    const res = await this.transport("GET", `/api/physical/${this.cid}/reports`, null, a);
     return res.status === 200 ? (res.data.reports as ReportDto[]) : null;
   }
 
   async decideReport(reportId: string, action: "approve" | "reject"): Promise<boolean> {
     const a = this.auth();
     if (!a) return false;
-    const res = await this.transport("POST", `/api/physical/${this.id}/reports/${reportId}`, { action }, a);
+    const res = await this.transport("POST", `/api/physical/${this.cid}/reports/${reportId}`, { action }, a);
     return res.status === 200;
   }
 }

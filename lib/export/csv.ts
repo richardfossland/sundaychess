@@ -8,10 +8,11 @@ import { standings } from "@/lib/physical/selectors";
 export const CSV_BOM = "﻿";
 export const CSV_SEP = ";";
 
-function cell(v: string | number | null | undefined, opts: { text?: boolean } = {}): string {
+/** ALLE tekstceller (også overskrifter og gruppe-etiketter) går gjennom samme vern mot formelinjeksjon. */
+function cell(v: string | number | null | undefined): string {
   if (v === null || v === undefined) return "";
   let s = typeof v === "number" ? String(v).replace(".", ",") : v;
-  if (opts.text && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  if (typeof v === "string" && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[";\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
@@ -28,8 +29,8 @@ export function standingsCsv(t: PhysicalTournament): string {
       row([
         cell(r.rank),
         cell(r.player.startNo),
-        cell(r.player.name, { text: true }),
-        cell(r.player.club, { text: true }),
+        cell(r.player.name),
+        cell(r.player.club),
         cell(r.player.rating),
         cell(r.score),
         ...tbs.map((k) => cell(r.values[k])),
@@ -53,7 +54,7 @@ export function gamesCsv(t: PhysicalTournament): string {
           : g.result
             ? p.file.csvResults[g.result]
             : "";
-      lines.push(row([cell(r.number), cell(g.board), cell(name(g.white), { text: true }), cell(name(g.black), { text: true }), cell(res)]));
+      lines.push(row([cell(r.number), cell(g.board), cell(name(g.white)), cell(name(g.black)), cell(res)]));
     }
   }
   return CSV_BOM + lines.join("\r\n") + "\r\n";

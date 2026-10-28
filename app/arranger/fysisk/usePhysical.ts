@@ -8,6 +8,7 @@ import type { PhysicalEventBody, PhysicalTournament } from "@/lib/physical/schem
 import { describeEvent } from "@/lib/physical/roundView";
 import { createSaveQueue, type SaveQueue, type SaveState } from "@/lib/physical/saveQueue";
 import { localJournal, loadWithJournal } from "@/lib/physical/journal";
+import { createWriterLock, type WriterLock } from "@/lib/physical/writerLock";
 import { openBestStore, type PhysicalStore } from "@/lib/physical/storage";
 import { no } from "@/lib/locale/no";
 import { cloudSaved } from "./cloud/cloudRegistry";
@@ -33,7 +34,29 @@ export function usePhysicalTournament(id: string) {
   const ref = useRef<PhysicalTournament | null>(null);
   const queue = useRef<SaveQueue | null>(null);
   const toastSeq = useRef(0);
-  queue.current ??= createSaveQueue(getStore, setSaveState, localJournal(), cloudSaved);
+  // Én skriver per turnering (se writerLock.ts): en andre fane er skrivebeskyttet til brukeren tar over.
+  const [readOnly, setReadOnly] = useState(false);
+  const readOnlyRef = useRef(false);
+  const lock = useRef<WriterLock | null>(null);
+  const lockReady = useRef<Promise<void>>(Promise.resolve());
+  const markReadOnly = useCallback((on: boolean, message?: string) => {
+    readOnlyRef.current = on;
+    setReadOnly(on);
+    if (message) setError(message);
+  }, []);
+  queue.current ??= createSaveQueue(getStore, setSaveState, localJournal(), cloudSaved, () =>
+    markReadOnly(true, no.physicalCloud.saveConflict),
+  );
+
+  useEffect(() => {
+    const l = createWriterLock(`physical-${id}`, () => markReadOnly(true, no.physicalCloud.lockLost));
+    lock.current = l;
+    lockReady.current = l.acquire().then((got) => markReadOnly(!got));
+    return () => {
+      l.dispose();
+      lock.current = null;
+    };
+  }, [id, markReadOnly]);
 
   useEffect(() => {
     let alive = true;
@@ -43,8 +66,11 @@ export function usePhysicalTournament(id: string) {
       setStoreKind(store.kind);
       try {
         const { tournament: t, recovered } = await loadWithJournal(store, localJournal(), id);
+        await lockReady.current;
         if (!alive) return;
-        if (t && recovered) queue.current!.enqueue(t);
+        // Vernet mot skriving fra to faner sammenligner med det lageret holdt da vi lastet.
+        queue.current!.setBase(recovered ? null : t);
+        if (t && recovered && !readOnlyRef.current) queue.current!.enqueue(t);
         ref.current = t;
         setState(t);
         setStatus(t ? "ready" : "missing");
@@ -84,9 +110,13 @@ export function usePhysicalTournament(id: string) {
 
   /** Kjør en overgang. Ugyldig hendelse gir feilmelding og endrer ingenting. */
   const run = useCallback(
-    (fn: (t: PhysicalTournament) => PhysicalTournament) => {
+    (fn: (t: PhysicalTournament) => PhysicalTournament): boolean => {
       const cur = ref.current;
-      if (!cur) return;
+      if (!cur) return false;
+      if (readOnlyRef.current) {
+        setError(no.physicalCloud.lockedTitle);
+        return false;
+      }
       try {
         const next = fn(cur);
         commit(next);
@@ -94,17 +124,35 @@ export function usePhysicalTournament(id: string) {
           const text = describeEvent(next, next.events[next.events.length - 1]);
           showToast(text);
         }
+        return true;
       } catch (e) {
         setError(errorMessage(e));
+        return false;
       }
     },
     [commit, showToast],
   );
 
-  const apply = useCallback((body: PhysicalEventBody) => run((t) => reduce(t, makeEvent(body))), [run]);
+  /** Returnerer true når hendelsen ble ført (false = avvist eller skrivebeskyttet). */
+  const apply = useCallback((body: PhysicalEventBody): boolean => run((t) => reduce(t, makeEvent(body))), [run]);
+
+  /** «Ta over»: stjel låsen, last turneringen på nytt fra lageret (den andre fanen kan ha endret den). */
+  const takeOver = useCallback(async () => {
+    await lock.current?.takeOver();
+    const store = await getStore();
+    const { tournament: t } = await loadWithJournal(store, localJournal(), id);
+    if (t) {
+      ref.current = t;
+      setState(t);
+    }
+    queue.current!.setBase(t);
+    markReadOnly(false);
+    setError(null);
+  }, [id, markReadOnly]);
   const undo = useCallback(() => {
     const cur = ref.current;
     if (!cur || !canUndo(cur)) return;
+    if (readOnlyRef.current) return setError(no.physicalCloud.lockedTitle);
     try {
       commit(undoLast(cur));
       showToast(no.physical.toast.undone, false);
@@ -113,5 +161,5 @@ export function usePhysicalTournament(id: string) {
     }
   }, [commit, showToast]);
 
-  return { state, status, error, setError, apply, run, undo, storeKind, saveState, saveFailed: saveState === "failed", toast, dismissToast: () => showToast(null) };
+  return { state, status, error, setError, apply, run, undo, readOnly, takeOver, storeKind, saveState, saveFailed: saveState === "failed", toast, dismissToast: () => showToast(null) };
 }

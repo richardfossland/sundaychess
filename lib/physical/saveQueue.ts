@@ -19,7 +19,17 @@ export interface SaveQueue {
   /** Resolves når køen er tom. */
   idle(): Promise<void>;
   readonly state: SaveState;
+  /**
+   * Hva lageret holder ifølge oss (hendelses-id-er). Settes etter lasting; oppdateres etter hver
+   * vellykket skriving. `null` = ukjent (første skriving sjekkes ikke). Brukes av vernet under.
+   */
+  setBase(t: PhysicalTournament | null): void;
+  /** Etter en konflikt skriver køen ingenting mer før `setBase` kalles igjen. */
+  readonly blocked: boolean;
 }
+
+const idsOf = (t: PhysicalTournament) => t.events.map((e) => e.id);
+const sameIds = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 export function createSaveQueue(
   getStore: () => Promise<PhysicalStore>,
@@ -27,7 +37,12 @@ export function createSaveQueue(
   journal?: Journal,
   /** Kalles etter hver vellykket lokal lagring (sky-synk pusher da). */
   onSaved?: (t: PhysicalTournament) => void,
+  /** Lageret er endret av noen andre enn oss siden vi lastet/skrev sist (annen fane): vi nekter å skrive. */
+  onConflict?: () => void,
 ): SaveQueue {
+  // De siste kjente lagerinnholdene (flush() kan avslutte parallelle skrivinger i annen rekkefølge).
+  let bases: string[][] = [];
+  let blocked = false;
   let pending: PhysicalTournament | null = null;
   let inflight: Promise<void> | null = null;
   let state: SaveState = "idle";
@@ -38,7 +53,31 @@ export function createSaveQueue(
   };
 
   async function write(t: PhysicalTournament): Promise<void> {
-    const ok = await saveTournament(await getStore(), t);
+    if (blocked) return;
+    const store = await getStore();
+    // Defensivt vern: lageret må fortsatt være det vi selv skrev/lastet. Ellers har en annen fane
+    // lagret i mellomtiden, og vi ville overskrevet arbeidet stille.
+    if (bases.length > 0) {
+      let stored: Awaited<ReturnType<typeof store.get>> = null;
+      try {
+        stored = await store.get(t.id);
+      } catch {
+        stored = null;
+      }
+      if (stored && !bases.some((b) => sameIds(stored.events.map((e) => e.id), b))) {
+        blocked = true;
+        pending = null;
+        journal?.clear(t.id);
+        try {
+          onConflict?.();
+        } catch {
+          /* ignorer */
+        }
+        return;
+      }
+    }
+    const ok = await saveTournament(store, t);
+    if (ok) bases = [...bases, idsOf(t)].slice(-3);
     if (!ok) failed = true;
     // Journalen kan ryddes når lageret har bekreftet og ingenting nyere venter.
     else {
@@ -70,7 +109,15 @@ export function createSaveQueue(
   }
 
   return {
+    setBase(t) {
+      bases = t ? [idsOf(t)] : [];
+      blocked = false;
+    },
+    get blocked() {
+      return blocked;
+    },
     enqueue(t) {
+      if (blocked) return;
       pending = t;
       journal?.write(toStored(t));
       set("saving");

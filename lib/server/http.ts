@@ -60,6 +60,43 @@ export async function readJson<T = Record<string, unknown>>(
   }
 }
 
+/** Parse a JSON body but refuse to buffer more than `maxBytes`. The declared
+ * Content-Length is checked first (reject before reading anything); a missing or
+ * lying header is caught while streaming. `too_large` -> answer 413. */
+export async function readJsonLimited<T = Record<string, unknown>>(
+  req: Request,
+  maxBytes: number,
+): Promise<{ body: T } | "too_large" | null> {
+  const declared = Number(req.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > maxBytes) return "too_large";
+  try {
+    if (!req.body) return null;
+    const reader = req.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        void reader.cancel().catch(() => {});
+        return "too_large";
+      }
+      chunks.push(value);
+    }
+    const all = new Uint8Array(total);
+    let off = 0;
+    for (const c of chunks) {
+      all.set(c, off);
+      off += c.byteLength;
+    }
+    const parsed = JSON.parse(new TextDecoder().decode(all)) as T;
+    return parsed && typeof parsed === "object" ? { body: parsed } : null;
+  } catch {
+    return null;
+  }
+}
+
 // ---------- naive in-memory rate limiter ----------
 // Per-process, best-effort. Good enough for a single-classroom deployment; the
 // real backstop for abuse is server-side validation + the unique constraints.

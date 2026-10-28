@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { gamesCsv, standingsCsv } from "@/lib/export/csv";
+import { markExported } from "@/lib/physical/exportReminder";
 import { downloadText, safeFileName } from "@/lib/export/download";
 import { FILE_EXT, tournamentFileText } from "@/lib/export/json";
 import { trf16Text } from "@/lib/export/trf16";
@@ -14,17 +15,18 @@ export function FileMenu({ t }: { t: PhysicalTournament }) {
   const ref = useRef<HTMLDetailsElement>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
-  async function run(fn: () => Promise<"download" | "newtab"> | "download" | "newtab") {
+  async function run(fn: () => Promise<"download" | "newtab"> | "download" | "newtab", isBackup = false) {
     if (ref.current) ref.current.open = false;
     try {
       const how = await fn();
+      if (isBackup) markExported(t);
       setMsg(how === "newtab" ? f.openedInTab : null);
     } catch {
       setMsg(f.exportFailed);
     }
   }
-  const text = (ext: string, body: () => string | Promise<string>, mime: string, bom = false) =>
-    run(async () => downloadText(safeFileName(t.title, ext), await body(), mime, { bom }));
+  const text = (ext: string, body: () => string | Promise<string>, mime: string, bom = false, isBackup = false) =>
+    run(async () => downloadText(safeFileName(t.title, ext), await body(), mime, { bom }), isBackup);
 
   return (
     <span style={{ position: "relative", display: "inline-block" }}>
@@ -33,7 +35,7 @@ export function FileMenu({ t }: { t: PhysicalTournament }) {
           {f.menu}
         </summary>
         <div className="card stack" style={{ position: "absolute", right: 0, zIndex: 20, minWidth: 260, padding: 8, gap: 4 }}>
-          <button type="button" className="btn btn-sm btn-ghost" onClick={() => text(FILE_EXT, () => tournamentFileText(t), "application/json")}>
+          <button type="button" className="btn btn-sm btn-ghost" onClick={() => text(FILE_EXT, () => tournamentFileText(t), "application/json", false, true)}>
             {f.downloadJson}
           </button>
           <button type="button" className="btn btn-sm btn-ghost" title={f.trfNote} onClick={() => text(".trf", () => trf16Text(t), "text/plain")}>
