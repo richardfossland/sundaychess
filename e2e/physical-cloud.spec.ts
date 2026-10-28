@@ -57,7 +57,7 @@ test("publiser → spiller melder via QR-side → arrangør godkjenner → offen
   await p2.goto(`${origin}/f/${id}/r/1/1?k=forged`);
   await p2.getByRole("button", { name: L.resultWhite }).click();
   await p2.getByRole("button", { name: L.repSend }).click();
-  await expect(p2.getByRole("alert")).toHaveText(L.repBadKey, { timeout: 20_000 });
+  await expect(p2.locator(".banner-error")).toHaveText(L.repBadKey, { timeout: 20_000 });
 
   await p2.goto(`${origin}/f/${id}/r/1/1?k=${encodeURIComponent(k!)}`);
   await p2.getByRole("button", { name: L.repIWhite }).click();
