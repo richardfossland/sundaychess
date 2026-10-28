@@ -28,6 +28,10 @@ export interface HistoryGame {
   result: GameResult;
   /** Only for byes. Absent = "full". */
   byeType?: ByeType;
+  /** The game was never played (forfeit / walkover / opponent absent). FIDE: an
+   * unplayed game is neither a "met before" pairing nor a colour — it counts for
+   * points only. Absent = played. */
+  forfeit?: boolean;
 }
 
 export interface PairingInput {
@@ -50,6 +54,9 @@ export interface BoardPairing {
 
 export interface PairingOutput {
   pairings: BoardPairing[];
+  /** Set when the matching search hit its node budget and the pairing was built
+   * with relaxed constraints (colour rules dropped / greedy fallback). */
+  relaxed?: "budget";
 }
 
 export type Colour = "W" | "B";

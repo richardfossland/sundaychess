@@ -47,7 +47,7 @@ export function gamesToHistory(games: Game[], rounds: Round[]): TiebreakGame[] {
     out.push({
       ...base,
       result,
-      ...(g.result_source && FORFEIT_SOURCES.has(g.result_source) ? { forfeit: true } : {}),
+      ...(isUnplayed(g) ? { forfeit: true } : {}),
     });
   }
   return out;
@@ -156,11 +156,18 @@ export function computeStandings(
   return rows;
 }
 
-/** Pairs that have already played (for the no-rematch constraint). */
+/** True for a game that was never actually played (walkover / opponent absent).
+ * FIDE: such a game gives points but is neither a meeting nor a colour. */
+export function isUnplayed(g: Pick<Game, "result_source">): boolean {
+  return !!g.result_source && FORFEIT_SOURCES.has(g.result_source);
+}
+
+/** Pairs that have already played (for the no-rematch constraint). Unplayed
+ * (forfeit) games do not count as a meeting. */
 export function metBeforeSet(games: Game[]): Set<string> {
   const set = new Set<string>();
   for (const g of games) {
-    if (!g.black_player_id) continue;
+    if (!g.black_player_id || isUnplayed(g)) continue;
     const a = g.white_player_id;
     const b = g.black_player_id;
     set.add(a < b ? `${a}|${b}` : `${b}|${a}`);
@@ -198,7 +205,7 @@ export function colorCounts(
     counts.set(id, c);
   };
   for (const g of games) {
-    if (g.status === "bye") continue; // byes have no colour
+    if (g.status === "bye" || isUnplayed(g)) continue; // byes / forfeits have no colour
     bump(g.white_player_id, "white");
     if (g.black_player_id) bump(g.black_player_id, "black");
   }

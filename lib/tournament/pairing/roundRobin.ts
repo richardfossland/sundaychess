@@ -14,6 +14,16 @@
 // recommends, the last two rounds of the FIRST cycle are swapped (option
 // `swapLastTwo`, default true) to avoid three games in a row with the same colour.
 //
+// The dummy's "bye" is a FREE ROUND (fri runde), not a win: it scores 0 and is
+// emitted with byeType "zero" (unless the player requested a bye type). Only a
+// game forfeited by an inactive opponent gives the active player a "full" bye.
+//
+// CALLERS MUST PASS ALL REGISTERED PLAYERS, withdrawn ones included, on every
+// call: the table (pairing numbers, dummy slot) is derived from the whole list, so
+// dropping a withdrawn player renumbers everyone and moves every later round.
+// pairRoundRobin throws if `history` mentions a player that is missing from
+// `players`, and on duplicate ids.
+//
 // Withdrawn / absent players (documented rule): the table is fixed from ALL players
 // in the input, so nobody's schedule moves. A game against an inactive player is
 // not played: an active opponent gets a "full" bye (a forfeit win, 1 pt); if both
@@ -132,6 +142,15 @@ export function roundRobinRounds(n: number, double = false): number {
 
 /** Shared-interface entry: round `input.round` from the table. See file header for withdrawals. */
 export function pairRoundRobin(input: PairingInput, opts: RoundRobinOptions = {}): PairingOutput {
+  const known = new Set(input.players.map((p) => p.id));
+  if (known.size !== input.players.length) throw new Error("pairRoundRobin: duplicate player id");
+  for (const g of input.history) {
+    if (!known.has(g.white) || (g.black !== null && !known.has(g.black))) {
+      throw new Error(
+        "pairRoundRobin: history mentions a player missing from `players` — pass ALL registered players (incl. withdrawn) or the table shifts",
+      );
+    }
+  }
   const sched = roundRobinSchedule(input.players, opts);
   const games = sched.rounds[input.round - 1];
   if (!games) return { pairings: [] };
@@ -144,10 +163,10 @@ export function pairRoundRobin(input: PairingInput, opts: RoundRobinOptions = {}
   const byes: Omit<BoardPairing, "board">[] = [];
   for (const g of games) {
     if (g.black === null) {
-      // table bye (odd n) or … the owner of a table bye
+      // Table bye (odd n): the dummy opponent. A free round — scores 0.
       if (!active(g.white)) continue;
       const req = reqMap.get(g.white);
-      byes.push({ white: g.white, black: null, byeType: req ?? "full" });
+      byes.push({ white: g.white, black: null, byeType: req ?? "zero" });
       continue;
     }
     const wa = active(g.white);

@@ -131,7 +131,8 @@ describe("pairRoundRobin (shared interface)", () => {
       "2:p3-p4",
       "3:p1-bye",
     ]);
-    expect(out.pairings[2].byeType).toBe("full");
+    // the dummy's bye is a free round, not a win
+    expect(out.pairings[2].byeType).toBe("zero");
   });
 
   it("round beyond the schedule → empty", () => {
@@ -162,5 +163,37 @@ describe("pairRoundRobin (shared interface)", () => {
     const input = { players: mk(6), history: [], round: 2 };
     expect(pairRound("roundRobin", input)).toEqual(pairRoundRobin(input));
     expect(pairRound("roundRobin", input, { double: true }).pairings).toHaveLength(3);
+  });
+});
+
+describe("round robin: dummy bye + full player list", () => {
+  it("the odd-n dummy bye is a free round (zero), a forfeit by an inactive opponent is a full bye", () => {
+    const players = mk(5).map((p) => (p.id === "p4" ? { ...p, status: "withdrawn" as const } : p));
+    const out = pairRoundRobin({ players, history: [], round: 1 });
+    const byes = out.pairings.filter((p) => p.black === null);
+    // table bye p1 → zero; p3 lost its opponent p4 → forfeit win (full)
+    expect(byes.find((b) => b.white === "p1")?.byeType).toBe("zero");
+    expect(byes.find((b) => b.white === "p3")?.byeType).toBe("full");
+  });
+
+  it("a requested bye type still wins over the default for the table bye", () => {
+    const players = mk(5).map((p) => (p.id === "p1" ? { ...p, byeRequest: "half" as const } : p));
+    const out = pairRoundRobin({ players, history: [], round: 1 });
+    expect(out.pairings.find((b) => b.white === "p1")?.byeType).toBe("half");
+  });
+
+  it("guard: history naming a player that was left out of `players` throws (table would shift)", () => {
+    const history = [{ round: 1, white: "p1", black: "p9", result: "1-0" as const }];
+    expect(() => pairRoundRobin({ players: mk(4), history, round: 2 })).toThrow(/ALL registered players/);
+  });
+
+  it("guard: duplicate ids throw; passing all players incl. withdrawn keeps the table stable", () => {
+    expect(() => pairRoundRobin({ players: [...mk(4), ...mk(1)], history: [], round: 1 })).toThrow(/duplicate/);
+    const all = mk(6);
+    const withdrawn = all.map((p) => (p.id === "p6" ? { ...p, status: "withdrawn" as const } : p));
+    const a = pairRoundRobin({ players: all, history: [], round: 3 }).pairings.map((p) => `${p.white}-${p.black}`);
+    const b = pairRoundRobin({ players: withdrawn, history: [], round: 3 }).pairings.map((p) => `${p.white}-${p.black}`);
+    // same table: only the game against p6 turns into a bye for its opponent
+    expect(b.filter((x) => !x.endsWith("null"))).toEqual(a.filter((x) => !x.includes("p6")));
   });
 });
