@@ -42,6 +42,12 @@ export function historyOf(t: PhysicalTournament, opts: { includeOpen?: boolean }
   for (const r of t.rounds) {
     if (r.status !== "completed" && !opts.includeOpen) continue;
     if (r.status === "draft") continue;
+    // Senpåmeldte med ½ poeng for tapte runder: virtuell halv frirunde.
+    for (const pl of t.players) {
+      if (pl.missedRoundPoints === 0.5 && pl.lateEntryRound !== undefined && r.number < pl.lateEntryRound) {
+        out.push({ round: r.number, white: pl.id, black: null, result: "bye", byeType: "half" });
+      }
+    }
     for (const p of r.pairings) {
       if (p.black === null) {
         out.push({ round: r.number, white: p.white, black: null, result: "bye", byeType: p.byeType ?? "full" });
@@ -99,6 +105,13 @@ export function crosstable(t: PhysicalTournament, opts: { includeOpen?: boolean 
   );
   for (const r of t.rounds) {
     if (r.status === "draft" || (r.status !== "completed" && !opts.includeOpen)) continue;
+    for (const pl of t.players) {
+      if (pl.missedRoundPoints === 0.5 && pl.lateEntryRound !== undefined && r.number < pl.lateEntryRound) {
+        const row = rows.get(pl.id)!;
+        row.byePoints += 0.5;
+        row.score += 0.5;
+      }
+    }
     for (const p of r.pairings) {
       if (p.black === null) {
         const pts = p.byeType === "half" ? 0.5 : p.byeType === "zero" ? 0 : 1;

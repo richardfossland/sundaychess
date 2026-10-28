@@ -19,6 +19,7 @@ import {
   type PhysicalRound,
   type PhysicalSettings,
   type PhysicalTournament,
+  type ResultCode,
 } from "./schema";
 
 /** Antall runder turneringen har i alt. Utslag og alle-mot-alle utledes av spillerantallet. */
@@ -128,6 +129,34 @@ function checkPairings(t: PhysicalTournament, round: number, raw: PhysicalPairin
   return out.sort((a, b) => a.board - b.board);
 }
 
+/** Walkover-resultat når en eller begge spillerne er trukket, ellers null. */
+export function forfeitResult(
+  g: Pick<PhysicalPairing, "white" | "black">,
+  isWithdrawn: (id: string) => boolean,
+): ResultCode | null {
+  if (g.black === null) return null;
+  const w = isWithdrawn(g.white);
+  const b = isWithdrawn(g.black);
+  if (w && b) return "=";
+  if (w) return "-+";
+  if (b) return "+-";
+  return null;
+}
+
+/** Sett walkover på uferdige brett med trukne spillere (valgfritt: bare brett med `only`). */
+function forfeitOpenBoards(s: Omit<PhysicalTournament, "events">, round: PhysicalRound, only?: string) {
+  const out = new Set(s.players.filter((p) => p.status === "withdrawn").map((p) => p.id));
+  for (const g of round.pairings) {
+    if (g.black === null || g.result) continue;
+    if (only && g.white !== only && g.black !== only) continue;
+    const res = forfeitResult(g, (id) => out.has(id));
+    if (!res) continue;
+    if (s.settings.system === "knockout" && res === "=") continue;
+    g.result = res;
+    g.resultSource = "arbiter";
+  }
+}
+
 export function assertCanPair(t: PhysicalTournament, round: number) {
   if (t.rounds.length + 1 !== round) fail("roundWrongNumber");
   const last = t.rounds[t.rounds.length - 1];
@@ -187,6 +216,8 @@ function apply(t: PhysicalTournament | null, e: PhysicalEvent): PhysicalTourname
         if (!s.settings.allowLateEntry) fail("lateEntryOff");
         if (s.settings.system !== "monrad" && s.settings.system !== "swiss") fail("lateEntryUnsupported");
         player.lateEntryRound = s.rounds.length + 1;
+        if (e.missedRoundPoints !== undefined && e.missedRoundPoints !== 0 && e.missedRoundPoints !== 0.5) fail("badEvent");
+        if (e.missedRoundPoints === 0.5) player.missedRoundPoints = 0.5;
       }
       s.players.push(player);
       break;
@@ -211,6 +242,10 @@ function apply(t: PhysicalTournament | null, e: PhysicalEvent): PhysicalTourname
       const p = playerOf(s as PhysicalTournament, e.playerId);
       if (p.status === "withdrawn") fail("playerNotActive");
       p.status = "withdrawn";
+      if (e.forfeit) {
+        const open = s.rounds[s.rounds.length - 1];
+        if (open && open.status === "published") forfeitOpenBoards(s, open, p.id);
+      }
       break;
     }
     case "reinstatePlayer": {
@@ -246,13 +281,19 @@ function apply(t: PhysicalTournament | null, e: PhysicalEvent): PhysicalTourname
     }
     case "manualPairing": {
       const r = roundOf(s as PhysicalTournament, e.round);
-      if (r.status !== "draft") fail("roundNotDraft");
-      r.pairings = checkPairings(s as PhysicalTournament, e.round, e.pairings).map((p) => ({ ...p, manual: true }));
+      if (r.status === "completed") fail("roundCompleted");
+      if (r.status !== "draft" && !e.afterPublish) fail("roundNotDraft");
+      const before = r.pairings;
+      r.pairings = checkPairings(s as PhysicalTournament, e.round, e.pairings).map((p) => {
+        const old = before.find((o) => o.board === p.board && o.white === p.white && o.black === p.black);
+        return { ...p, manual: true, ...(old?.result ? { result: old.result, resultSource: old.resultSource } : {}) };
+      });
       break;
     }
     case "swapPairing": {
       const r = roundOf(s as PhysicalTournament, e.round);
-      if (r.status !== "draft") fail("roundNotDraft");
+      if (r.status === "completed") fail("roundCompleted");
+      if (r.status !== "draft" && !e.afterPublish) fail("roundNotDraft");
       const pa = r.pairings.find((p) => p.board === e.a?.board);
       const pb = r.pairings.find((p) => p.board === e.b?.board);
       if (!pa || !pb) fail("boardNotFound");
@@ -266,12 +307,18 @@ function apply(t: PhysicalTournament | null, e: PhysicalEvent): PhysicalTourname
       (pb as unknown as Record<string, string | null>)[sb] = tmp;
       pa.manual = true;
       pb.manual = true;
+      // Nye motstandere: gamle resultater gjelder ikke lenger.
+      for (const g of [pa, pb]) {
+        g.result = null;
+        delete g.resultSource;
+      }
       break;
     }
     case "publishRound": {
       const r = roundOf(s as PhysicalTournament, e.round);
       if (r.status !== "draft") fail("roundNotDraft");
       r.status = "published";
+      if (e.autoForfeit) forfeitOpenBoards(s, r);
       break;
     }
     case "setResult": {
