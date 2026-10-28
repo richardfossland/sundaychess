@@ -2,6 +2,7 @@
 
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { report } from "@/lib/client/telemetry";
 
 // Why this exists: supabase-js dedupes channels by topic (client.channel(topic)
 // returns the SAME RealtimeChannel for a repeated topic) and removeChannel is
@@ -51,6 +52,12 @@ interface Entry {
   /** Index into RECREATE_BACKOFF_MS for the NEXT scheduled recreate; reset to 0
    * by a real SUBSCRIBED (the channel proved itself healthy again). */
   backoffStep: number;
+  /** Consecutive CHANNEL_ERRORs since the last SUBSCRIBED. A private join that
+   * RLS refuses (policies dropped, "public channels" turned off) fails like this
+   * every time — retrying every 30 s forever helps nobody (polling carries the
+   * UI meanwhile), so after CHANNEL_ERROR_CAP_AFTER of them the backoff keeps
+   * growing to RECREATE_BACKOFF_MAX_MS and one telemetry event is sent. */
+  errorStreak: number;
 }
 
 const entries = new Map<string, Entry>();
@@ -66,6 +73,19 @@ const entries = new Map<string, Entry>();
 // (1s, 2s, 5s, 10s, 30s) so broadcasts resume on their own within seconds of
 // the socket coming back, instead of only on the next visible poll.
 const RECREATE_BACKOFF_MS: readonly number[] = [1000, 2000, 5000, 10000, 30000];
+/** Extra steps used ONLY while joins keep failing with CHANNEL_ERROR. */
+const RECREATE_BACKOFF_ERROR_TAIL_MS: readonly number[] = [60_000, 120_000, 300_000];
+export const RECREATE_BACKOFF_MAX_MS = 300_000;
+/** Consecutive CHANNEL_ERRORs after which we log once and escalate past 30 s. */
+export const CHANNEL_ERROR_CAP_AFTER = 5;
+
+function backoffFor(entry: Entry): number {
+  if (entry.errorStreak < CHANNEL_ERROR_CAP_AFTER) {
+    return RECREATE_BACKOFF_MS[Math.min(entry.backoffStep, RECREATE_BACKOFF_MS.length - 1)];
+  }
+  const i = Math.min(entry.errorStreak - CHANNEL_ERROR_CAP_AFTER, RECREATE_BACKOFF_ERROR_TAIL_MS.length - 1);
+  return RECREATE_BACKOFF_ERROR_TAIL_MS[i];
+}
 
 function cancelRecreate(entry: Entry): void {
   if (entry.recreateTimer !== null) {
@@ -78,12 +98,12 @@ function scheduleRecreate(entry: Entry): void {
   // Nobody left to serve, or already scheduled — nothing to do. (Guards a
   // late/duplicate status callback as much as a real double-schedule.)
   if (entry.subs.size === 0 || entry.recreateTimer !== null) return;
-  const step = Math.min(entry.backoffStep, RECREATE_BACKOFF_MS.length - 1);
+  const delay = backoffFor(entry);
   entry.backoffStep = Math.min(entry.backoffStep + 1, RECREATE_BACKOFF_MS.length - 1);
   entry.recreateTimer = setTimeout(() => {
     entry.recreateTimer = null;
     recreateEntry(entry);
-  }, RECREATE_BACKOFF_MS[step]);
+  }, delay);
 }
 
 /** Destroy the dead channel and create+subscribe a fresh one on the SAME
@@ -150,12 +170,23 @@ function bindChannel(entry: Entry): void {
       // starts back at the shortest backoff step.
       cancelRecreate(entry);
       entry.backoffStep = 0;
+      entry.errorStreak = 0;
       entry.subscribed = true;
       // Every sub that carries a key, not just the one that created the entry —
       // so a recreate re-advertises presence for all of them.
       for (const s of entry.subs) if (s.trackKey) void channel.track({ online: true });
     } else if (status === "CLOSED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
       entry.subscribed = false;
+      if (status === "CHANNEL_ERROR") {
+        entry.errorStreak++;
+        // Log ONCE per streak (telemetry also dedupes) — never the topic, which
+        // carries ids; a coarse class is enough to spot a policy/setting outage.
+        if (entry.errorStreak === CHANNEL_ERROR_CAP_AFTER) {
+          report("channel_error", { status, attempts: entry.errorStreak, topicKind: entry.topic.split(":").slice(0, 2).join(":").slice(0, 24) });
+        }
+      } else {
+        entry.errorStreak = 0;
+      }
       scheduleRecreate(entry);
     }
   });
@@ -264,6 +295,7 @@ export function acquireChannel(
     subscribed: false,
     recreateTimer: null,
     backoffStep: 0,
+    errorStreak: 0,
   };
   entries.set(topic, entry);
   bindChannel(entry);
