@@ -14,6 +14,14 @@ export function fail(status: number, error: string, extra?: Record<string, unkno
  * 5xx must never end a session (see shouldClearSession in lib/client/api.ts). */
 export const TRANSIENT_ERROR = "server_error";
 
+/** Thrown by the DB-backed wrong-code guard (lib/server/attempts.ts) when an IP
+ * has failed too many codes for a scope. withApi turns it into a 429. */
+export class RateLimitedError extends Error {
+  constructor() {
+    super("rate_limited");
+  }
+}
+
 /** Wrap a route handler: any uncaught throw (typically a Supabase/network
  * error) becomes JSON 503 `server_error`, never Next's HTML 500 or a Worker
  * exception page. Handlers keep returning their own 4xx for client mistakes. */
@@ -24,6 +32,7 @@ export function withApi<A extends unknown[]>(
     try {
       return await handler(...args);
     } catch (e) {
+      if (e instanceof RateLimitedError) return fail(429, "rate_limited");
       const first = args[0];
       const where = first instanceof Request ? new URL(first.url).pathname : "?";
       console.error("[api]", where, e);
@@ -103,29 +112,36 @@ export function __bucketCount(): number {
   return buckets.size;
 }
 
-/** Per-IP rate-limit guard for host-code-authenticated routes. The host code is
- * the only secret protecting a tournament's resume codes (≈270M-code space), and
- * those routes had NO throttle — a student who knows their tournament id could
- * brute-force it to harvest classmates' bearer tokens. 90/min per IP is far more
- * than any real teacher clicks, but it is honestly a PER-ISOLATE × PER-SOURCE-IP
- * bound, not a hard ceiling on brute force: the bucket Map above lives in one
- * Worker isolate, so a request that lands on a different isolate (Cloudflare
- * spins up more under load, or routes to another PoP) gets its own untouched
- * bucket, and an attacker spread across N source IPs multiplies this bound by
- * N. It is a real deterrent — a single well-behaved teacher never gets near it,
- * and one script from one IP is capped at ~90/min (millennia for the full
- * space) — but not a guarantee against a distributed attempt. The honest fix is
- * a shared store all isolates read/write (edge KV or a Durable Object);
- * tracked in docs/ROBUSTNESS-BACKLOG.md ("Rate limiter → shared store"). Returns
- * a 429 Response when over the cap, else null. */
-export function hostRateLimit(req: Request): Response | null {
-  if (!rateLimit(`host:${clientIp(req)}`, 90, 60_000)) {
-    return fail(429, "rate_limited");
-  }
-  return null;
-}
-
 export function clientIp(req: Request): string {
   const fwd = req.headers.get("x-forwarded-for");
   return fwd?.split(",")[0]?.trim() || "local";
+}
+
+/** Limiter/attempt key for an IP. IPv4 → as is. IPv6 → the /64 prefix: a single
+ * subscriber gets a whole /64 and can rotate through 2^64 addresses, so keying
+ * on the full address would let one client mint a fresh bucket per request. */
+export function ipKeyOf(ip: string): string {
+  if (!ip.includes(":")) return ip;
+  let a = ip.toLowerCase().split("%")[0];
+  const v4 = a.match(/^(.*:)(\d+\.\d+\.\d+\.\d+)$/); // ::ffff:1.2.3.4
+  if (v4) {
+    const o = v4[2].split(".").map(Number);
+    if (o.some((n) => n > 255)) return ip;
+    if (/^(::ffff:|0*:0*:0*:0*:0*:ffff:)$/.test(v4[1])) return v4[2];
+    a = v4[1] + ((o[0] << 8) | o[1]).toString(16) + ":" + ((o[2] << 8) | o[3]).toString(16);
+  }
+  const [head, tail, extra] = a.split("::");
+  if (extra !== undefined) return ip;
+  const h = head ? head.split(":") : [];
+  const t = tail === undefined ? [] : tail ? tail.split(":") : [];
+  const fill = tail === undefined ? 0 : 8 - h.length - t.length;
+  if (fill < 0 || (tail === undefined && h.length !== 8)) return ip;
+  const groups = [...h, ...Array(fill).fill("0"), ...t];
+  if (groups.length !== 8 || groups.some((g) => !/^[0-9a-f]{1,4}$/.test(g))) return ip;
+  return groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, "")).join(":") + "::/64";
+}
+
+/** THE key to use for wrong-code counting. */
+export function ipKey(req: Request): string {
+  return ipKeyOf(clientIp(req));
 }

@@ -113,13 +113,11 @@ describe("POST /api/tournament/[id]/diagnostics", () => {
     expect((await res.json()).error).toBe("server_error");
   });
 
-  it("shares the host brute-force throttle (429 past 90/min per IP)", async () => {
-    authHost.mockResolvedValue(null);
-    for (let i = 0; i < 90; i++) {
-      const res = await POST(req(VALID_ID, "AAAA-AA", "7.7.7.7"), params(VALID_ID));
-      expect(res.status).toBe(401);
-    }
-    const over = await POST(req(VALID_ID, "AAAA-AA", "7.7.7.7"), params(VALID_ID));
-    expect(over.status).toBe(429);
+  it("429s when the wrong-code guard trips (RateLimitedError from authHost)", async () => {
+    const { RateLimitedError } = await import("@/lib/server/http");
+    authHost.mockRejectedValue(new RateLimitedError());
+    const res = await POST(req(VALID_ID, "AAAA-AA", "7.7.7.7"), params(VALID_ID));
+    expect(res.status).toBe(429);
   });
+
 });

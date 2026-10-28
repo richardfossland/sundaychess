@@ -8,7 +8,7 @@ import { afterGameResolved } from "@/lib/server/gameEvents";
 import { broadcast } from "@/lib/server/broadcast";
 import { defer } from "@/lib/server/defer";
 import { channels, events } from "@/lib/realtime";
-import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
+import { fail, ok, readJson, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 import type { GameStatus } from "@/lib/types";
 
@@ -19,8 +19,6 @@ import type { GameStatus } from "@/lib/types";
 export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
-  const limited = hostRateLimit(req);
-  if (limited) return limited;
   const body = await readJson<{
     gameId?: string;
     hostCode?: string;
@@ -36,7 +34,7 @@ async function handlePost(req: Request): Promise<Response> {
   const game = await getGame(body.gameId);
   if (!game) return fail(404, "no_game");
 
-  const t = await authHost(game.tournament_id, body.hostCode);
+  const t = await authHost(game.tournament_id, body.hostCode, req);
   if (!t) return fail(401, "unauthorized");
 
   const isWhite = game.white_player_id === absentPlayerId;

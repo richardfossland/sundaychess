@@ -3,6 +3,9 @@ import "server-only";
 import { createAuthClient } from "@/lib/supabase/auth-server";
 import { getPlayer, getTournament } from "@/lib/server/store";
 import { isUuid, normalizeResumeCode } from "@/lib/codes";
+import { RateLimitedError } from "@/lib/server/http";
+import { isCodeBlocked, registerCodeFailure } from "@/lib/server/attempts";
+import { PAIR_HEADER, verifyPairToken } from "@/lib/server/pair";
 import type { Player, Tournament } from "@/lib/types";
 
 // SHAPE-CHECK THE ID HERE, NOT IN EVERY CALLER (H2). `getPlayer`/`getTournament`
@@ -29,16 +32,34 @@ export async function authPlayer(
 }
 
 /** Authenticate the teacher for a tournament by its host code. Returns null for
- * a non-UUID `tournamentId` (see above) rather than letting Postgres throw. */
+ * a non-UUID `tournamentId` (see above) rather than letting Postgres throw.
+ *
+ * With `req` the wrong-code guard is on (DB-backed, migration 0015): a valid
+ * pairing token for THIS tournament's current host code (x-pair-token, minted
+ * on create/open) is accepted outright, so one pupil guessing wrong codes from
+ * the shared school IP can never lock out the teacher. Otherwise an IP that has
+ * already failed too often for this tournament gets RateLimitedError (429 via
+ * withApi), and a WRONG code is counted. Correct codes are never counted, and
+ * an unknown tournament id is not counted (ids are unguessable). */
 export async function authHost(
   tournamentId: unknown,
   hostCode: unknown,
+  req?: Request,
 ): Promise<Tournament | null> {
   if (!isUuid(tournamentId) || typeof hostCode !== "string") return null;
+  const token = req?.headers.get(PAIR_HEADER) ?? null;
+  // Start the block lookup in parallel with the tournament read (token-less only).
+  const blocked = req && !token ? isCodeBlocked(tournamentId, req) : undefined;
   const t = await getTournament(tournamentId);
-  if (!t) return null;
-  if (t.host_code !== normalizeResumeCode(hostCode)) return null;
-  return t;
+  if (!t) {
+    void blocked?.catch(() => {});
+    return null;
+  }
+  if (req && token && (await verifyPairToken(t.id, t.host_code, token))) return t;
+  if (req && (await (blocked ?? isCodeBlocked(t.id, req)))) throw new RateLimitedError();
+  if (t.host_code === normalizeResumeCode(hostCode)) return t;
+  if (req && (await registerCodeFailure(t.id, req))) throw new RateLimitedError();
+  return null;
 }
 
 // ---------------------------------------------------------------------------

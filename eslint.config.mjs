@@ -24,6 +24,8 @@ const eslintConfig = defineConfig([
     // Generated deploy output (OpenNext / Wrangler):
     ".open-next/**",
     ".wrangler/**",
+    // Vendored third-party code (see THIRD-PARTY-NOTICES.md):
+    "lib/vendor/**",
   ]),
 ]);
 

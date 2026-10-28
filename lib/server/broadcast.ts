@@ -16,6 +16,26 @@ import "server-only";
 // failure like any other here: log and move on, never throw.
 const BROADCAST_TIMEOUT_MS = 5000;
 
+/** TRANSITION (one release cycle, then delete): also send a PUBLIC copy so tabs
+ * still running the previous bundle (public channels) keep getting live hints
+ * until they reload. Public and private channels on one topic are separate, so
+ * the copy never reaches the new private subscribers twice. Messages are
+ * `private: true` otherwise (migration 0014); service_role bypasses Realtime
+ * RLS, so the server may send anywhere. */
+export const LEGACY_PUBLIC_COPY = true;
+
+/** The REST `messages` body for one broadcast. */
+export function broadcastMessages(
+  topic: string,
+  event: string,
+  payload: Record<string, unknown>,
+  legacy: boolean = LEGACY_PUBLIC_COPY,
+): Array<{ topic: string; event: string; payload: Record<string, unknown>; private: boolean }> {
+  const msgs = [{ topic, event, payload, private: true }];
+  if (legacy) msgs.push({ topic, event, payload, private: false });
+  return msgs;
+}
+
 export async function broadcast(
   topic: string,
   event: string,
@@ -38,7 +58,7 @@ export async function broadcast(
         Authorization: `Bearer ${key}`,
       },
       body: JSON.stringify({
-        messages: [{ topic, event, payload }],
+        messages: broadcastMessages(topic, event, payload),
       }),
       signal: ctrl.signal,
     });

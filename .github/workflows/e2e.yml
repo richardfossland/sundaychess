@@ -140,7 +140,25 @@ jobs:
         # First start applies supabase/migrations/* in order and then runs
         # supabase/seed.sql — which is deliberately empty (see its header): the
         # suite mints every row it needs through the real API.
-        run: supabase start -x studio,inbucket,imgproxy,edge-runtime,analytics,vector,functions,storage
+        #
+        # Retried: the image registry rate-limits pulls in bursts
+        # ("toomanyrequests … allowed: 44000/minute"), which failed every e2e
+        # run on 10-27 before a single test ran. A short backoff clears it.
+        run: |
+          # ghcr.io (the registry setup-cli selects) kept rate-limiting all four
+          # attempts too, so each retry also rotates to a mirror registry.
+          registries=(ghcr.io public.ecr.aws docker.io ghcr.io public.ecr.aws docker.io)
+          for attempt in 1 2 3 4 5 6; do
+            export SUPABASE_INTERNAL_IMAGE_REGISTRY="${registries[$((attempt - 1))]}"
+            echo "supabase start via $SUPABASE_INTERNAL_IMAGE_REGISTRY (attempt $attempt)"
+            if supabase start -x studio,inbucket,imgproxy,edge-runtime,analytics,vector,functions,storage; then
+              exit 0
+            fi
+            echo "::warning::supabase start failed via $SUPABASE_INTERNAL_IMAGE_REGISTRY (attempt $attempt), retrying"
+            supabase stop --no-backup || true
+            sleep $((attempt * 15))
+          done
+          exit 1
 
       - name: Point the app at the local Supabase
         # MUST run before the build: NEXT_PUBLIC_* are inlined by the compiler,

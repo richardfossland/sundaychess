@@ -1,5 +1,7 @@
 import { openTournamentByHostCode } from "@/lib/server/store";
-import { fail, ok, readJson, rateLimit, clientIp, hostRateLimit, withApi } from "@/lib/server/http";
+import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
+import { isCodeBlocked, registerCodeFailure } from "@/lib/server/attempts";
+import { signPairToken } from "@/lib/server/pair";
 import { isResumeCodeShape, normalizeResumeCode } from "@/lib/codes";
 
 // POST /api/tournament/open — reopen a tournament board with the host code.
@@ -24,13 +26,15 @@ async function handlePost(req: Request): Promise<Response> {
   }
   // H5: this route is unauthenticated-until-the-DB-lookup AND the best
   // host-code brute-force oracle in the app — it searches EVERY tournament,
-  // including one row per casual game — so a well-shaped guess also counts
-  // against the shared host bucket that override/absent/extend/kick use, not
-  // just this route's own tighter 20/min cap.
-  const limited = hostRateLimit(req);
-  if (limited) return limited;
+  // including one row per casual game. Only WRONG guesses count, in the
+  // database (shared by all isolates), per IP (IPv6 by /64): see migration 0015.
+  if (await isCodeBlocked("open", req)) return fail(429, "rate_limited");
 
   const t = await openTournamentByHostCode(code);
-  if (!t) return fail(404, "not_found");
-  return ok({ id: t.id });
+  if (!t) {
+    if (await registerCodeFailure("open", req)) return fail(429, "rate_limited");
+    return fail(404, "not_found");
+  }
+  // pairToken: proof of a correct host code (null when PAIR_SECRET is unset).
+  return ok({ id: t.id, pairToken: await signPairToken(t.id, t.host_code) });
 }
