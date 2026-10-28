@@ -25,10 +25,10 @@ test("eksport → slett → import → neste runde, offline", async ({ page, con
 
   await page.getByRole("button", { name: no.physical.pairRound(1) }).click();
   await page.getByRole("button", { name: no.physical.publishRound }).click();
-  const selects = page.locator("select");
-  await selects.nth(0).selectOption("1-0");
-  await selects.nth(1).selectOption("½-½");
+  await page.getByRole("button", { name: no.physical.setResultLabel(1, no.physical.results["1-0"]) }).click();
+  await page.getByRole("button", { name: no.physical.setResultLabel(2, no.physical.results["½-½"]) }).click();
   await page.getByRole("button", { name: no.physical.completeRound }).click();
+  await page.getByRole("tab", { name: no.physical.tabs.standings }).click();
   await expect(page.getByText(no.physical.standingsAfter(1))).toBeVisible();
 
   // Eksporter
@@ -73,7 +73,9 @@ test("eksport → slett → import → neste runde, offline", async ({ page, con
   await page.getByTestId("import-file-input").setInputFiles(path);
   await page.getByRole("button", { name: no.physical.file.importButton }).click();
   await expect(page.getByRole("heading", { name: "Filtest" })).toBeVisible();
+  await page.getByRole("tab", { name: no.physical.tabs.standings }).click();
   await expect(page.getByText(no.physical.standingsAfter(1))).toBeVisible();
+  await page.getByRole("tab", { name: no.physical.tabs.round }).click();
 
   // Fortsett: runde 2
   await page.getByRole("button", { name: no.physical.pairRound(2) }).click();
