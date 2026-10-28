@@ -51,6 +51,9 @@ export interface TournamentConfig {
    * header, the finished screen's print header) read it straight off
    * `tournament.config.notes` instead. */
   notes?: string;
+  /** Rekkefølge på tiebreaks (se lib/tournament/tiebreaks.ts). Absent ⇒ kun
+   * Buchholz, som i dag. Ligger i jsonb — ingen migrasjon. */
+  tiebreaks?: string[];
 }
 
 export interface Tournament {
