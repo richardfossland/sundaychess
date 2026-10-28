@@ -27,6 +27,8 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
   const [msg, setMsg] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const published = st.status !== "unpublished";
+  // En konflikt må løses, så panelet står åpent til den er løst.
+  const panelOpen = open || st.status === "conflict";
 
   // Ved oppstart: push ev. endringer gjort offline før omlasting. Senere endringer pushes av
   // lagringskøen etter vellykket lokal lagring (cloudSaved i usePhysical).
@@ -35,10 +37,6 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
   useEffect(() => {
     cloud.notifyLocalChange(eventsRef.current);
   }, [cloud]);
-
-  useEffect(() => {
-    if (st.status === "conflict") setOpen(true);
-  }, [st.status]);
 
   useEffect(() => {
     if (!open) return;
@@ -103,11 +101,11 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
 
   return (
     <div ref={ref} style={{ position: "relative", display: "inline-block" }} data-testid="cloud-menu">
-      <button type="button" className="btn btn-sm btn-ghost" aria-haspopup="menu" aria-expanded={open} aria-label={L.menuAria} onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="btn btn-sm btn-ghost" aria-haspopup="menu" aria-expanded={panelOpen} aria-label={L.menuAria} onClick={() => setOpen((o) => !o)}>
         <span aria-hidden style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: dot, marginRight: 6 }} />
         {L.menu}: <span data-testid="cloud-status">{L.status[st.status]}</span>
       </button>
-      {open && (
+      {panelOpen && (
         <div className="card stack" style={{ position: "absolute", right: 0, top: "100%", zIndex: 30, width: "min(92vw, 340px)", gap: 8, padding: 12 }}>
           {!published && (
             <>
