@@ -8,6 +8,7 @@ import { makeEvent, newId } from "@/lib/physical/events";
 import { canUndo, reduce, totalRounds } from "@/lib/physical/reducer";
 import { RESULT_CODES, type PhysicalPairing, type PhysicalTournament, type ResultCode } from "@/lib/physical/schema";
 import { nextRoundPairing, openRound, standings } from "@/lib/physical/selectors";
+import { FileMenu } from "./FileMenu";
 import { usePhysicalTournament } from "./usePhysical";
 import { PrintMenu } from "./print/PrintMenu";
 
@@ -56,6 +57,7 @@ export function PhysicalBoard({ id }: { id: string }) {
             <button type="button" className="btn btn-sm btn-ghost" onClick={undo} disabled={!canUndo(t)}>
               <Icon name="undo" size={14} /> {p.undo}
             </button>
+            <FileMenu t={t} />
             <NavLink href="/arranger/fysisk" className="btn btn-sm btn-ghost">{p.backToList}</NavLink>
           </div>
         </div>

@@ -62,3 +62,27 @@ Alle har `id` (unik i loggen) og `at` (ISO 8601).
 - **M4 (fil, TRF16, CSV):** eksport = `{schemaVersion, hash, ...toStored(t)}`; import = valider `schemaVersion`, hash, deretter `replay(events)` (reduceren avviser ugyldige logger med norske meldinger). Utled TRF16/CSV fra `historyOf`/`standings`. Resultatkoder er allerede mappet i `GAME_RESULT` (selectors.ts).
 - **M5 (sky):** `result_source ∈ {arbiter, player_report}` – feltet `resultSource` finnes (`'arbiter'`); utvid unionen og lag en hendelse for godkjent spillerrapport. Hendelses-`id` er idempotensnøkkel. Skjema-bump krever en `migrate(v1)`-funksjon før `replay`.
 - **M6 (PWA):** `/arranger/fysisk` og `/ny` er rene klientsider uten serverkall; `getStore()` er det eneste lagringsinngangspunktet.
+
+## Fil, TRF16 og CSV (M4)
+
+Alt skjer i nettleseren (Blob), uten nett. UI: `FileMenu.tsx` («Fil»-menyen i turneringshodet) og `ImportFile.tsx` («Åpne turneringsfil» i listen).
+
+| Fil | Rolle |
+|---|---|
+| `lib/export/json.ts` | `.sundaychess.json`: `{format:"sundaychess-tournament", schemaVersion, exportedAt, app, tournament:{id,title,createdAt,events,snapshot}, sha256}`. `events` er sannhetskilden, `snapshot` er avledet (kun lesbarhet + kryssjekk). `sha256` = SHA-256 over kanonisk JSON (sorterte nøkler) av `events`. |
+| `lib/export/hash.ts` | `canonicalJson`, `sha256Hex` (WebCrypto, med ren JS-fallback på usikre kontekster). |
+| `lib/export/download.ts` | `downloadBlob`: skjult `<a download>`; uten `download`-støtte (eldre iOS Safari) åpnes blob-URL i ny fane. |
+| `lib/export/trf16.ts` | TRF16 (FIDE C.04 Annex 2). |
+| `lib/export/csv.ts` | Stilling og partier. |
+| `lib/import/parse.ts` | `parseTournamentFile`: format → `schemaVersion` (+ `migrate.ts`-krok) → hash → replay gjennom reduceren (feil oppgis som «Hendelse nr. N …») → kryssjekk av `snapshot` → varsel om umerkede gjentatte parringer. |
+| `lib/import/apply.ts` | `classifyConflict` (none/same/localNewer/fileNewer/diverged, på hendelses-id), `asNewCopy` (ny turnerings-id + « (kopi)»), `saveImported`. |
+
+**Import-regler.** Hash-avvik eller avvikende snapshot → advarsel «filen er endret utenfor appen», og importen er sperret til brukeren huker av «importer likevel». Hash sjekkes mot loggen slik den står i fila, FØR en eventuell migrering. Finnes samme turnerings-id lokalt: «Erstatt», «Behold begge (ny kopi)» eller avbryt; har den lokale kopien flere hendelser som utvider filens logg, står det at lokal kopi er nyere.
+
+**TRF16.** Kolonner (1-basert): `001` 1–3, startnr 5–8, kjønn 10, tittel 11–13, navn 15–47 (`Etternavn, Fornavn`, best effort: siste ord = etternavn), rating 49–52, forbund 54–56, FIDE-nr 58–68, fødselsdato 70–79, poeng 81–84 (`11.5`), plassering 86–89, deretter 10-tegns blokk per runde fra kol. 90: motstander 92–95, farge 97 (`w`/`b`/`-`), resultat 99. Resultatkoder: `1`/`0`/`=` spilt; `+`/`-` walkover; `=` (begge uteble) → `-` for begge; frirunde → motstander `0000`, farge `-`, kode `U` (full, tildelt av parringen), `H` (halv), `Z` (null/fravær). Spillere som ikke er satt opp i en runde (trukket, utslått, senpåmeldt) får `0000 - Z`. Bare fullførte runder tas med. Headerlinjer 012/022/032/042/052/062/072/092/102/122 (by, arbitrer og betenkningstid er tomme med mindre de gis som `Trf16Options`; forbund = `NOR`). Linjer slutter med CRLF (Remark 1: CR).
+*Tegnsett:* spesifikasjonen sier ikke noe om koding, og bbpPairings/JaVaFo teller kolonner i byte. Æ/Ø/Å ville forskjøvet alle kolonner i UTF-8, så navnene translittereres til ren ASCII (æ→ae, ø→oe, å→aa, é→e …).
+*Validering (eier):* bbpPairings er ikke tilgjengelig via npm/pip, så den er ikke i CI. Last ned bbpPairings og kjør `bbpPairings.exe --dutch fil.trf -c` (bruk `trf16Text(t, { xxr: true })` hvis programmet krever `XXR`-linjen med antall runder), eller åpne fila i Swiss-Manager/Vega. Enhetstesten sjekker kolonnene mot en håndkontrollert golden-fil.
+
+**CSV.** UTF-8 med BOM, `;` som skilletegn, CRLF, desimalkomma (norsk Excel). Tabell: `#;Nr;Navn;Klubb/klasse;Rating;Poeng;<tiebreaks>`. Partier: `Runde;Brett;Hvit;Svart;Resultat`. Tekstceller som begynner med `= + - @` får `'` foran (formelinjeksjon).
+
+**Tester.** `test/export/*` (rundtur-egenskapstest på 60 tilfeldige turneringer, tukling, versjon/migrering, konflikter, TRF- og CSV-golden, nedlasting) og `e2e/physical-file.spec.ts` (eksport → slett → importer → neste runde, offline).

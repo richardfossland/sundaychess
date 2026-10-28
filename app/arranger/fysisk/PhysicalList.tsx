@@ -7,6 +7,7 @@ import { no } from "@/lib/locale/no";
 import { Icon } from "@/lib/client/Icon";
 import { deleteTournament, listTournaments, type StorageKind } from "@/lib/physical/storage";
 import type { StoredTournament } from "@/lib/physical/schema";
+import { ImportFile } from "./ImportFile";
 import { getStore } from "./usePhysical";
 
 export function PhysicalList() {
@@ -59,6 +60,8 @@ export function PhysicalList() {
         <NavLink href="/arranger/fysisk/ny" className="btn btn-primary btn-block btn-lg">
           <Icon name="more" size={16} /> {t.newTournament}
         </NavLink>
+
+        <ImportFile />
 
         {items && items.length === 0 && <p className="muted text-center">{t.emptyList}</p>}
         <div className="stack" style={{ gap: 8 }}>
