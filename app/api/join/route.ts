@@ -25,6 +25,11 @@ async function handlePost(req: Request): Promise<Response> {
   const t = await getTournamentByPin(pin);
   if (!t) return fail(404, "invalid_pin");
   if (t.status !== "lobby") return fail(409, "already_started");
+  // Continued from a physical tournament: only the pre-registered names may play,
+  // unless the physical tournament allowed late entry (M5b).
+  if (t.config.fromPhysical && t.current_round > 0 && !t.config.fromPhysical.allowFreeJoin) {
+    return fail(403, "names_only");
+  }
 
   try {
     const player = await addPlayer(t.id, displayName, t.config.teams ?? []);

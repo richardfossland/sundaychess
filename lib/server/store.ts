@@ -344,6 +344,121 @@ export async function setPlayerStatus(
   if (error) throw error;
 }
 
+// ---------------- physical continuation (migration 0017, M5b) ----------------
+
+export interface NewPreRegistered {
+  display_name: string;
+  resume_code: string;
+  rating: number | null;
+  club: string | null;
+  start_no: number;
+  status: Player["status"];
+}
+
+const CHUNK = 200;
+
+/** Bulk-insert roster players pre-registered from a physical tournament. */
+export async function insertPreRegisteredPlayers(
+  tournamentId: string,
+  rows: NewPreRegistered[],
+): Promise<Player[]> {
+  const db = createServiceClient();
+  const out: Player[] = [];
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const part = rows.slice(i, i + CHUNK).map((r) => ({
+      ...r,
+      tournament_id: tournamentId,
+      pre_registered: true,
+    }));
+    const { data, error } = await db.from("players").insert(part).select("*");
+    if (error) throw error;
+    out.push(...((data as Player[]) ?? []));
+  }
+  return out;
+}
+
+export interface NewFinishedGame {
+  roundId: string;
+  whitePlayerId: string;
+  blackPlayerId: string | null;
+  status: Game["status"];
+  resultSource: NonNullable<Game["result_source"]>;
+  slot: number;
+}
+
+/** Bulk-insert result-only games (no moves) with the standard start position. */
+export async function insertFinishedGames(
+  tournamentId: string,
+  games: NewFinishedGame[],
+  startFen: string = START_FEN,
+): Promise<void> {
+  const db = createServiceClient();
+  for (let i = 0; i < games.length; i += CHUNK) {
+    const part = games.slice(i, i + CHUNK).map((g) => ({
+      tournament_id: tournamentId,
+      round_id: g.roundId,
+      white_player_id: g.whitePlayerId,
+      black_player_id: g.blackPlayerId,
+      fen: startFen,
+      pgn: "",
+      status: g.status,
+      result_source: g.resultSource,
+      turn: "w",
+      slot: g.slot,
+    }));
+    const { error } = await db.from("games").insert(part);
+    if (error) throw error;
+  }
+}
+
+/** Best-effort cleanup of a half-created tournament (children cascade). */
+export async function deleteTournament(id: string): Promise<void> {
+  const db = createServiceClient();
+  await db.from("tournaments").delete().eq("id", id);
+}
+
+/** Atomically claim a pre-registered name (RPC claim_player, 0017). Returns the
+ * player on success, or null when the name was already taken / is not claimable. */
+export async function claimPlayer(
+  tournamentId: string,
+  playerId: string,
+): Promise<Player | null> {
+  const db = createServiceClient();
+  const { data, error } = await db.rpc("claim_player", {
+    p_tournament_id: tournamentId,
+    p_player_id: playerId,
+  });
+  if (error) throw error;
+  const rows = (data as Player[] | null) ?? [];
+  return rows[0] ?? null;
+}
+
+/** Host: free a claimed name again. A NEW resume code is issued so the previous
+ * holder's device can no longer act as this player. */
+export async function resetClaim(
+  tournamentId: string,
+  playerId: string,
+): Promise<Player | null> {
+  const db = createServiceClient();
+  const existing = await listPlayers(tournamentId);
+  const taken = new Set(existing.map((p) => p.resume_code));
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const resume_code = generateUnique(generateResumeCode, taken);
+    taken.add(resume_code);
+    const { data, error } = await db
+      .from("players")
+      .update({ claimed_at: null, resume_code })
+      .eq("id", playerId)
+      .eq("tournament_id", tournamentId)
+      .eq("pre_registered", true)
+      .select("*")
+      .maybeSingle();
+    if (!error) return (data as Player) ?? null;
+    if (!isUniqueViolation(error)) throw error;
+  }
+  throw new Error("reset_claim_failed");
+}
+
 // ---------------- rounds / games (used from Phase 2/3) ----------------
 
 export async function getRound(id: string): Promise<Round | null> {

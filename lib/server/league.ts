@@ -16,6 +16,9 @@ import { afterGameResolved } from "@/lib/server/gameEvents";
 import { broadcast } from "@/lib/server/broadcast";
 import { channels, events } from "@/lib/realtime";
 import { pair, type PairablePlayer } from "@/lib/tournament/pair";
+import { pairRound } from "@/lib/tournament/pairing";
+import type { PairingPlayer } from "@/lib/tournament/pairing/types";
+import { computeStandings as computeTiebreakStandings, resolveTiebreaks } from "@/lib/tournament/tiebreaks";
 import { variantStartFen } from "@/lib/chess/variants";
 import {
   byeCounts,
@@ -25,7 +28,50 @@ import {
   metBeforeSet,
 } from "@/lib/tournament/score";
 import { maybeStartPlayoff } from "@/lib/server/playoff";
-import type { Game, Tournament } from "@/lib/types";
+import type { Game, Player, Round, Tournament } from "@/lib/types";
+
+/** Pair a league round with the configured engine (`config.pairingSystem`):
+ * real start numbers, ratings, bye types and forfeit-aware history — so rounds
+ * carried over from a physical tournament count exactly as they did there.
+ * Exported for tests. Returns the pairings as `{white, black, byeType}` in board order. */
+export function enginePairings(
+  tournament: Tournament,
+  players: Player[],
+  games: Game[],
+  rounds: Round[],
+  roundNumber: number,
+) {
+  const system = tournament.config.pairingSystem!;
+  const history = gamesToHistory(games, rounds);
+  const order = resolveTiebreaks(tournament.config.tiebreaks);
+  const table = computeTiebreakStandings(
+    players.map((p) => ({ id: p.id, rating: p.rating ?? undefined })),
+    history,
+    order,
+  );
+  const byId = new Map(table.map((r) => [r.playerId, r]));
+  // Start numbers: stored ones first; players without (free joiners) follow in join order.
+  let next = players.reduce((m, p) => Math.max(m, p.start_no ?? 0), 0);
+  const pairing: PairingPlayer[] = players.map((p) => ({
+    id: p.id,
+    startNo: p.start_no ?? ++next,
+    rating: p.rating ?? undefined,
+    score: byId.get(p.id)?.score ?? 0,
+    tiebreak: byId.get(p.id)?.values.buchholz ?? 0,
+    status: p.status === "active" ? "active" : "withdrawn",
+  }));
+  const out = pairRound(
+    system,
+    { players: pairing, history, round: roundNumber },
+    { double: !!tournament.config.doubleRoundRobin },
+  );
+  const halfBye = tournament.config.byePoints === 0.5 && system !== "roundRobin";
+  return out.pairings.map((b) => ({
+    white: b.white,
+    black: b.black,
+    byeType: b.black === null ? (b.byeType === "full" || !b.byeType ? (halfBye ? ("half" as const) : ("full" as const)) : b.byeType) : undefined,
+  }));
+}
 
 /** Build pairings for a league round from current standings + history, then
  * create the round and its games (including a bye game when odd). */
@@ -38,6 +84,33 @@ async function pairLeagueRound(
     listGames(tournament.id),
     listRounds(tournament.id),
   ]);
+  const startFen = variantStartFen(tournament.config.variant);
+
+  if (tournament.config.pairingSystem) {
+    const pairings = enginePairings(tournament, players, games, rounds, roundNumber);
+    const round = await createRound(tournament.id, roundNumber, "league", "live");
+    for (let i = 0; i < pairings.length; i++) {
+      const p = pairings[i];
+      const bt = p.byeType;
+      await createGame({
+        tournamentId: tournament.id,
+        roundId: round.id,
+        whitePlayerId: p.white,
+        blackPlayerId: p.black,
+        startFen,
+        slot: i,
+        ...(p.black === null && bt && bt !== "full"
+          ? {
+              status: bt === "half" ? ("draw" as const) : ("aborted" as const),
+              resultSource: "physical" as const,
+            }
+          : {}),
+      });
+    }
+    await recomputeScores(tournament.id);
+    return;
+  }
+
   const active = players.filter((p) => p.status === "active");
   const standings = computeStandings(active, games);
   const scoreById = new Map(standings.map((s) => [s.playerId, s]));
@@ -61,7 +134,6 @@ async function pairLeagueRound(
 
   const round = await createRound(tournament.id, roundNumber, "league", "live");
 
-  const startFen = variantStartFen(tournament.config.variant);
   for (let i = 0; i < pairings.length; i++) {
     const p = pairings[i];
     await createGame({
@@ -77,13 +149,16 @@ async function pairLeagueRound(
   await recomputeScores(tournament.id);
 }
 
-/** Start the league: lobby → league, pair round 1, broadcast. */
+/** Start the league: lobby → league, pair the next round (round 1, or — for a
+ * tournament continued from a physical one — the round after the carried-over
+ * ones), broadcast. */
 export async function startLeague(tournament: Tournament): Promise<void> {
-  await pairLeagueRound(tournament, 1);
-  await updateTournament(tournament.id, { status: "league", current_round: 1 });
+  const next = (tournament.current_round ?? 0) + 1;
+  await pairLeagueRound(tournament, next);
+  await updateTournament(tournament.id, { status: "league", current_round: next });
   await broadcast(channels.lobby(tournament.id), events.tournament, {
     started: true,
-    round: 1,
+    round: next,
   });
 }
 

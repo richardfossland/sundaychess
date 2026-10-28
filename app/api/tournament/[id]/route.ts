@@ -7,7 +7,7 @@ import {
   predictionPoints,
 } from "@/lib/server/store";
 import { computeClocks } from "@/lib/chess/clock";
-import { computeScores, computeStandings } from "@/lib/tournament/score";
+import { computeScores, computeStandings, standingsOptions } from "@/lib/tournament/score";
 import { fail, ok, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 import type { PublicGame } from "@/lib/dto";
@@ -119,7 +119,7 @@ async function handleGet(
       const clock = clockByGame.get(g.id);
       return clock ? { ...pub, clock } : pub;
     }),
-    standings: computeStandings(players, standingsGames),
+    standings: computeStandings(players, standingsGames, standingsOptions(t.config, rounds)),
     rounds: rounds.map((r) => ({
       id: r.id,
       number: r.number,

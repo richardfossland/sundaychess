@@ -2,6 +2,7 @@ import { createTournament, DEFAULT_CONFIG } from "@/lib/server/store";
 import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { signPairToken } from "@/lib/server/pair";
 import { getHost } from "@/lib/server/auth";
+import { resolveTiebreaks } from "@/lib/tournament/tiebreaks";
 import { isVariant } from "@/lib/chess/variants";
 import type { TournamentConfig } from "@/lib/types";
 
@@ -59,6 +60,16 @@ async function handlePost(req: Request): Promise<Response> {
   } else {
     delete config.notes;
   }
+
+  // Server-only marker: never accepted from a client (only /from-physical sets it).
+  delete config.fromPhysical;
+  // Optional pairing config (validated; absent ⇒ legacy Monrad adapter).
+  if (!["monrad", "swiss", "roundRobin"].includes(config.pairingSystem as string)) delete config.pairingSystem;
+  if (config.pairingSystem !== "roundRobin") delete config.doubleRoundRobin;
+  else config.doubleRoundRobin = config.doubleRoundRobin === true;
+  if (config.byePoints !== 0.5) delete config.byePoints;
+  if (Array.isArray(config.tiebreaks)) config.tiebreaks = resolveTiebreaks(config.tiebreaks);
+  else delete config.tiebreaks;
 
   const title = body?.title?.toString().slice(0, 80).trim() || null;
 
