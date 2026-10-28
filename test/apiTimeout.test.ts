@@ -80,6 +80,41 @@ describe("client fetch timeouts", () => {
   });
 });
 
+describe("which responses count as connectivity failures", () => {
+  const respond = (status: number, body: unknown) =>
+    vi.stubGlobal("fetch", () => Promise.resolve({ ok: false, status, json: () => Promise.resolve(body) }));
+
+  it("a deliberate application 503 (predictions_unavailable) never degrades connectivity", async () => {
+    respond(503, { error: "predictions_unavailable" });
+    for (let i = 0; i < 4; i++) await api.board("t").catch(() => {});
+    expect(getConnectivity().failures).toBe(0);
+    expect(isDegraded(getConnectivity())).toBe(false);
+  });
+
+  it("502/503/504 with the transient server_error code, or with no envelope (edge page), do", async () => {
+    for (const [status, body] of [[502, { error: "server_error" }], [503, { error: "server_error" }], [504, {}], [502, { error: "" }]] as const) {
+      __resetConnectivity();
+      respond(status, body);
+      await api.board("t").catch(() => {});
+      expect(getConnectivity().failures).toBe(1);
+    }
+  });
+
+  it("timeouts and network errors still do", async () => {
+    vi.stubGlobal("fetch", () => Promise.reject(new TypeError("offline")));
+    await api.board("t").catch(() => {});
+    expect(getConnectivity().failures).toBe(1);
+  });
+
+  it("an app 5xx counts as the server answering: it resets earlier failures", async () => {
+    vi.stubGlobal("fetch", () => Promise.reject(new TypeError("offline")));
+    await api.board("t").catch(() => {});
+    respond(503, { error: "predictions_unavailable" });
+    await api.board("t").catch(() => {});
+    expect(getConnectivity().failures).toBe(0);
+  });
+});
+
 describe("move keeps the short deadline", () => {
   it("a hung move POST aborts at 8 s, not 15 s", async () => {
     vi.useFakeTimers();

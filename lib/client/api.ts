@@ -76,6 +76,21 @@ const DEFAULT_TIMEOUT = READ_TIMEOUT_MS;
  * the lock within the read deadline (e2e/server-errors.spec.ts), so it keeps 8 s. */
 const MOVE_TIMEOUT_MS = READ_TIMEOUT_MS;
 
+/** Stable transient error code (mirrors TRANSIENT_ERROR in lib/server/http.ts). */
+const TRANSIENT_CODE = "server_error";
+
+/** Does this HTTP response say "the network/server is unreachable or failing"?
+ * Only 5xx whose body is either the transient `server_error` envelope or no API
+ * envelope at all (an edge/proxy page for 502/503/504, a crashed 500). A
+ * DELIBERATE application 5xx that names its own code (e.g. 503
+ * `predictions_unavailable` when a table is not migrated) is the API answering
+ * normally — it must not flip the whole app into the offline banner. */
+export function isConnectivityFailure(status: number, data: unknown): boolean {
+  if (status < 500) return false;
+  const code = apiErrorCode(data);
+  return code === null || code === TRANSIENT_CODE;
+}
+
 /** fetch + JSON parse under ONE hard timeout — a hung request must never freeze
  * the UI. CRUCIAL: the timeout spans BOTH the fetch AND reading the response
  * body, because a flaky/slow network can deliver headers and then stall the body
@@ -100,7 +115,7 @@ export async function timedJson(
       if (e instanceof DOMException && e.name === "AbortError") throw e;
       return {};
     });
-    if (res.status >= 500) noteRequestFailed();
+    if (isConnectivityFailure(res.status, data)) noteRequestFailed();
     else noteRequestOk();
     return { ok: res.ok, status: res.status, data };
   } catch (e) {
