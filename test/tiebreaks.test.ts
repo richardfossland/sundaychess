@@ -42,7 +42,7 @@ describe("golden: 4 spillere, 3 runder, ingen bye", () => {
   });
 });
 
-describe("bye, forfeit og uttrekk (virtuell motstander)", () => {
+describe("bye, forfeit og uttrekk (FIDE C.07 art. 16: dummy)", () => {
   // 3 runder. A bye R1 (full), A-B R2 1-0, A-C R3 1/2. B-C R1 1/2, C-B... 
   const h = [
     g(1, "A", null, "bye"),
@@ -53,13 +53,13 @@ describe("bye, forfeit og uttrekk (virtuell motstander)", () => {
     g(3, "B", "D", "1-0"),
   ];
   const rows = computeStandings(P("A", "B", "C", "D"), h, ["buchholz"]);
-  it("full bye gir 1 poeng og virtuell motstand min(egen sum, ½×runder)", () => {
-    // A = 1+1+0.5 = 2.5; cap = 1.5 → VO = 1.5. Opp: B(0.5+0+1=1.5), C(0.5+1+0.5=2).
+  it("full bye gir 1 poeng og teller som parti mot dummy med spillerens EGNE poeng (art. 16.4, uten tak)", () => {
+    // A = 1+1+0.5 = 2.5 → dummy = 2.5 (ikke min(2.5, ½×runder)). Opp: B(1.5), C(2).
     expect(row(rows, "A").score).toBe(2.5);
-    expect(row(rows, "A").values.buchholz).toBe(1.5 + 1.5 + 2);
+    expect(row(rows, "A").values.buchholz).toBe(2.5 + 1.5 + 2);
   });
-  it("uttrekk/fravær: runder uten parti gir virtuell motstander og 0 poeng", () => {
-    // D: R1 intet parti (VO), R2 tap mot C (2), R3 tap mot B (1.5). D=0, VO=min(0,1.5)=0
+  it("uttrekk/fravær: runder uten parti er null-poengs bye → dummy med egne poeng (0)", () => {
+    // D: R1 intet parti (dummy = D's 0), R2 tap mot C (2), R3 tap mot B (1.5).
     expect(row(rows, "D").score).toBe(0);
     expect(row(rows, "D").values.buchholz).toBe(0 + 2 + 1.5);
   });
@@ -75,7 +75,8 @@ describe("bye, forfeit og uttrekk (virtuell motstander)", () => {
       hist, TIEBREAK_KEYS as TiebreakKey[],
     );
     expect(row(r, "A").values.wins).toBe(1); // kun over brettet
-    expect(row(r, "A").values.buchholz).toBe(1 + 0); // B=1, C=0
+    // R1 er en ubrukt runde (forfeit-seier, 16.2.2): dummy med A's egne 2 poeng; R2 mot C (0).
+    expect(row(r, "A").values.buchholz).toBe(2 + 0);
     expect(row(r, "A").values.avg_opponent_rating).toBe(1400); // forfeit utelatt
   });
   it("ARO null når en spiller mangler rating", () => {
@@ -87,6 +88,51 @@ describe("bye, forfeit og uttrekk (virtuell motstander)", () => {
       [{ id: "A", rating: 1000 }, { id: "B", rating: 1001 }, { id: "C", rating: 1000 }],
       [g(1, "A", "B", "1-0"), g(2, "A", "C", "1-0")], ["avg_opponent_rating"]);
     expect(row(r, "A").values.avg_opponent_rating).toBe(1001); // (1001+1000)/2 = 1000.5 → 1001
+  });
+});
+
+describe("FIDE C.07 art. 16.3 og 16.5", () => {
+  it("16.3: ønsket bye/fravær uten etterfølgende spillbar runde regnes som remis for motstanderne", () => {
+    // R1 A-X 1-0, B-C 1-0; R2 A-B 1/2, C full bye, X uteblir (trekker seg) → X score 0, justert 0.5.
+    const h = [g(1, "A", "X", "1-0"), g(1, "B", "C", "1-0"), g(2, "A", "B", "1/2-1/2"), g(2, "C", null, "bye")];
+    const r = computeStandings(P("A", "B", "C", "X"), h, ["buchholz"]);
+    expect(row(r, "X").score).toBe(0);
+    expect(row(r, "A").values.buchholz).toBe(0.5 + 1.5); // X justert til ½, ikke 0
+    expect(row(r, "C").values.buchholz).toBe(1.5 + 1); // tap mot B (1.5) + full bye → dummy = C's 1
+    expect(row(r, "X").values.buchholz).toBe(1.5 + 0); // A (1.5) + fravær → dummy = X's 0
+  });
+
+  it("16.3: ønsket bye FØR en spillbar runde teller med tildelte poeng (ikke remis)", () => {
+    // X: R1 halv bye (½), R2 spilt mot A (taper). Bye etterfølges av en spillbar runde → ingen justering.
+    const h = [g(1, "X", null, "bye", { byeType: "half" }), g(1, "A", "B", "1/2-1/2"), g(2, "A", "X", "1-0")];
+    const r = computeStandings(P("A", "B", "X"), h, ["buchholz"]);
+    expect(row(r, "X").score).toBe(0.5);
+    // B uteblir i R2 (trailing → justert 0.5+0.5=1); X er IKKE justert (bye fulgt av spilt runde): ½.
+    expect(row(r, "A").values.buchholz).toBe(1 + 0.5);
+  });
+
+  it("16.5: cut-1 stryker laveste bidrag fra forfeit-tap/ønsket bye, ikke laveste totalt", () => {
+    const h = [
+      g(1, "P", "O1", "1-0"), g(2, "P", "O2", "1-0"), g(3, "P", "O3", "1-0"),
+      g(4, "O4", "P", "1-0", { forfeit: true }), // forfeit-tap for P (16.2.4)
+    ];
+    const r = computeStandings(P("P", "O1", "O2", "O3", "O4"), h, TIEBREAK_KEYS as TiebreakKey[]);
+    expect(row(r, "P").score).toBe(3);
+    // Motstanderes justerte sum: O1 1.5, O2 1.0, O3 0.5 (trailing fravær = remis); dummy for forfeit-tapet = P's 3.
+    expect(row(r, "P").values.buchholz).toBe(1.5 + 1 + 0.5 + 3);
+    // Vanlig cut-1 ville strøket O3 (0.5). Art. 16.5 stryker dummy-bidraget (3) i stedet.
+    expect(row(r, "P").values.buchholz_cut1).toBe(1.5 + 1 + 0.5);
+    // Median-1: samme stryk, deretter høyeste (1.5) → 1 + 0.5.
+    expect(row(r, "P").values.buchholz_median).toBe(1 + 0.5);
+    // Sonneborn-Berger: forfeit-tapet (0 poeng) bidrar 0 uansett dummy.
+    expect(row(r, "P").values.sonneborn_berger).toBe(1.5 + 1 + 0.5);
+  });
+
+  it("uten forfeit-tap/ønsket bye er cut-1 vanlig: strykes laveste motstander", () => {
+    const h = [g(1, "A", "B", "1-0"), g(2, "A", "C", "1/2-1/2"), g(1, "C", "D", "1-0"), g(2, "B", "D", "1-0")];
+    const r = computeStandings(P("A", "B", "C", "D"), h, ["buchholz", "buchholz_cut1"]);
+    // A: B=1, C=1.5 → cut-1 = 1.5
+    expect(row(r, "A").values.buchholz_cut1).toBe(1.5);
   });
 });
 

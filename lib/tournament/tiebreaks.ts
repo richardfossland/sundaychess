@@ -1,9 +1,19 @@
 // Konfigurerbare tiebreaks for sveitsisk/alle-mot-alle. Rene funksjoner over
-// historikken fra pairing/types.ts. Bygger på FIDE C.07 (Tie-Break Regulations):
-//  - ubrukte runder (bye, fravær, forfeit) får «virtuell motstander» (art. 16.4):
-//    poengsum = min(egen sluttsum, ½ × antall runder); forfeit teller mot den
-//    oppsatte motstanderens sum.
-//  - innbyrdes oppgjør er en rekursiv minitabell blant likestilte (art. 6).
+// historikken fra pairing/types.ts. Følger FIDE C.07 (Tie-Break Regulations,
+// gyldig fra 1. sept. 2023), art. 16 «Unplayed Rounds Management»:
+//  - ingen «virtuell motstander»-formel med tak; i stedet «dummy» (art. 16.4):
+//    en ubrukt runde (bye, forfeit, fravær/uttrekk) i spillerens EGEN tiebreak
+//    regnes som parti mot en dummy med like mange poeng som spilleren selv
+//    (sluttsum), med resultat lik tildelte poeng.
+//  - for MOTSTANDERNES tiebreak (art. 16.3) justeres spillerens sum: bye/forfeit
+//    teller med tildelte poeng, men «ønsket bye» (halv/null/fravær) som IKKE
+//    etterfølges av noen runde spilleren kunne spille (art. 16.2.5) teller som
+//    remis (½).
+//  - cut-modifikatorer (art. 16.5): har spilleren forfeit-tap eller ønsket bye,
+//    strykes det laveste bidraget fra slike runder i stedet for det laveste
+//    bidraget totalt (så lenge det ikke er lavere enn det).
+//  - innbyrdes oppgjør er en rekursiv minitabell blant likestilte (art. 6);
+//    forfeit utelates (art. 6.1.1).
 // Mønsteret (konfigurerbar rekkefølge + rekursiv minitabell) er portet fra
 // sundayturnering/lib/tournament/standings.ts.
 
@@ -67,7 +77,10 @@ export interface StandingRow {
 
 const r6 = (n: number) => Math.round(n * 1e6) / 1e6;
 
-type Kind = "played" | "forfeit" | "bye";
+/** played = spilt over brettet. fullBye = pairing-allocated / full-point bye (16.2.1).
+ * forfeitWin (16.2.2) / forfeitLoss (16.2.4). requested = ønsket halv/null-bye
+ * eller runde uten parti (fravær, uttrekk = null-poengs bye, 16.1.1). */
+type Kind = "played" | "forfeitWin" | "forfeitLoss" | "fullBye" | "requested";
 interface Entry {
   round: number;
   opp: string | null;
@@ -111,13 +124,20 @@ export function computeStandings(
   for (const id of ids) entries.set(id, []);
   for (const g of history) {
     if (g.black === null || g.result === "bye") {
-      entries.get(g.white)!.push({ round: g.round, opp: null, pts: byePoints(g.byeType), kind: "bye" });
+      const kind: Kind = g.byeType === "half" || g.byeType === "zero" ? "requested" : "fullBye";
+      entries.get(g.white)!.push({ round: g.round, opp: null, pts: byePoints(g.byeType), kind });
       continue;
     }
     const [w, b] = sidePoints(g.result);
-    const kind: Kind = g.forfeit || g.result === "0-0" ? "forfeit" : "played";
-    entries.get(g.white)!.push({ round: g.round, opp: g.black, pts: w, kind });
-    entries.get(g.black)!.push({ round: g.round, opp: g.white, pts: b, kind });
+    const forfeit = g.forfeit || g.result === "0-0";
+    const kindOf = (pts: number): Kind => (!forfeit ? "played" : pts > 0 ? "forfeitWin" : "forfeitLoss");
+    entries.get(g.white)!.push({ round: g.round, opp: g.black, pts: w, kind: kindOf(w) });
+    entries.get(g.black)!.push({ round: g.round, opp: g.white, pts: b, kind: kindOf(b) });
+  }
+  // Runder uten noe parti = null-poengs bye (fravær/uttrekk, art. 16.1.1) = ønsket bye.
+  for (const list of entries.values()) {
+    const seen = new Set(list.map((e) => e.round));
+    for (let r = 1; r <= R; r++) if (!seen.has(r)) list.push({ round: r, opp: null, pts: 0, kind: "requested" });
   }
 
   const score = new Map<string, number>();
@@ -133,30 +153,58 @@ export function computeStandings(
     perRound.set(id, arr);
   }
 
-  const cap = 0.5 * R;
-  const vo = (id: string) => Math.min(score.get(id)!, cap);
+  // Art. 16.3: summen motstanderne ser. Ønskede byes uten noen etterfølgende
+  // «available-to-play»-runde (spilt, full bye, forfeit-seier) regnes som remis.
+  const adjusted = new Map<string, number>();
+  for (const [id, list] of entries) {
+    const availAt = list
+      .filter((e) => e.kind === "played" || e.kind === "fullBye" || e.kind === "forfeitWin")
+      .reduce((m, e) => Math.max(m, e.round), 0);
+    let adj = score.get(id)!;
+    for (const e of list) if (e.kind === "requested" && e.round > availAt) adj += 0.5 - e.pts;
+    adjusted.set(id, r6(adj));
+  }
 
   interface Contribution {
     pts: number;
-    value: number; // motstanderens (eller virtuell motstanders) sum
+    value: number; // motstanderens justerte sum, eller (ubrukt runde) spillerens egen sum
+    /** Art. 16.5: forfeit-tap og ønsket bye kan strykes først av en cut. */
+    cuttable: boolean;
   }
   const contributions = new Map<string, Contribution[]>();
   for (const [id, list] of entries) {
-    const cs: Contribution[] = list.map((e) => ({
-      pts: e.pts,
-      value: e.opp === null ? vo(id) : score.get(e.opp)!,
-    }));
-    // Runder uten noe parti = nullpoengs bye (fravær/uttrekk) → virtuell motstander.
-    const seen = new Set(list.map((e) => e.round));
-    for (let r = 1; r <= R; r++) if (!seen.has(r)) cs.push({ pts: 0, value: vo(id) });
-    contributions.set(id, cs);
+    contributions.set(
+      id,
+      list.map((e) =>
+        e.kind === "played"
+          ? { pts: e.pts, value: adjusted.get(e.opp!)!, cuttable: false }
+          : // Art. 16.4: ubrukt runde = parti mot dummy med spillerens egne poeng.
+            { pts: e.pts, value: score.get(id)!, cuttable: e.kind === "forfeitLoss" || e.kind === "requested" },
+      ),
+    );
   }
+
+  /** Sum av verdiene etter å ha strøket `n` laveste (art. 14.1 + 16.5). */
+  const cutLowest = (cs: Contribution[], n: number): Contribution[] => {
+    let rest = cs.slice().sort((a, b) => a.value - b.value);
+    for (let i = 0; i < n && rest.length; i++) {
+      // 16.5: lavest av forfeit-tap/ønsket bye, hvis ikke lavere enn laveste totalt.
+      const lowest = rest[0].value;
+      const idx = rest.findIndex((c) => c.cuttable && c.value >= lowest);
+      rest = rest.filter((_, j) => j !== (idx >= 0 ? idx : 0));
+    }
+    return rest;
+  };
 
   const values = new Map<string, Record<TiebreakKey, number | null>>();
   const allRated = [...ids].every((id) => typeof rating.get(id) === "number");
   for (const id of ids) {
-    const vals = contributions.get(id)!.map((c) => c.value).sort((a, b) => a - b);
+    const cs = contributions.get(id)!;
     const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
+    const vals = (xs: Contribution[]) => xs.map((c) => c.value);
+    const cut1 = cutLowest(cs, 1);
+    // Median-1: lavest strykes (med 16.5), deretter høyest.
+    const median = cut1.length > 1 ? cut1.slice().sort((a, b) => a.value - b.value).slice(0, -1) : [];
     const played = entries.get(id)!.filter((e) => e.kind === "played");
     const aro =
       allRated && played.length
@@ -165,9 +213,9 @@ export function computeStandings(
     let cum = 0;
     const prog = perRound.get(id)!.reduce((acc, p) => acc + (cum += p), 0);
     values.set(id, {
-      buchholz: r6(sum(vals)),
-      buchholz_cut1: r6(sum(vals.slice(1))),
-      buchholz_median: r6(sum(vals.length > 2 ? vals.slice(1, -1) : [])),
+      buchholz: r6(sum(vals(cs))),
+      buchholz_cut1: r6(sum(vals(cut1))),
+      buchholz_median: r6(sum(cs.length > 2 ? vals(median) : [])),
       sonneborn_berger: r6(sum(contributions.get(id)!.map((c) => c.pts * c.value))),
       direct_encounter: null, // avgjøres i minitabellen
       wins: played.filter((e) => e.pts === 1).length,
