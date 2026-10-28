@@ -331,7 +331,7 @@ function apply(t: PhysicalTournament | null, e: PhysicalEvent): PhysicalTourname
       if (p.black === null) fail("resultOnBye");
       if (s.settings.system === "knockout" && (e.result === "½-½" || e.result === "=")) fail("resultNoDraw");
       p.result = e.result;
-      p.resultSource = "arbiter";
+      p.resultSource = e.source === "player_report" ? "player_report" : "arbiter";
       break;
     }
     case "clearResult": {

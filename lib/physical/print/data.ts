@@ -1,6 +1,7 @@
 // Rene datahjelpere for utskrifter og storskjerm. Ingen DOM, ingen lagring.
 // All visning leses fra selectors (standings, crosstable) – ingen nye hendelser.
 
+import { reportUrl } from "@/lib/physical/cloudMeta";
 import type { PhysicalPairing, PhysicalPlayer, PhysicalRound, PhysicalTournament } from "@/lib/physical/schema";
 import { crosstable, standings, type StandingWithPlayer } from "@/lib/physical/selectors";
 
@@ -220,12 +221,10 @@ export function dateText(iso: string): string {
 }
 
 /**
- * Plassholder for QR på bordkort. M5 lar den peke til resultatrapport-URL i
- * skyen; til da returnerer den null og QR-en tegnes ikke.
+ * URL i QR på bordkortet (M5a): resultatrapport-siden for dette brettet, når
+ * turneringen er publisert og bordnøklene er hentet (de caches lokalt, så
+ * utskrift virker uten nett etter ett oppslag). Ellers null – QR tegnes ikke.
  */
 export function boardQrUrl(tournament: PhysicalTournament, round: number, board: number): string | null {
-  void tournament;
-  void round;
-  void board;
-  return null;
+  return reportUrl(tournament.id, round, board);
 }

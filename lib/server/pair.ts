@@ -39,11 +39,7 @@ export function ctEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-/** Sign a token for (tournament, host code); null when tokens are disabled. */
-export async function signPairToken(
-  tournamentId: string,
-  hostCode: string,
-): Promise<string | null> {
+async function hmac(message: string): Promise<string | null> {
   const s = secret();
   if (!s) return null;
   const enc = new TextEncoder();
@@ -54,8 +50,39 @@ export async function signPairToken(
     false,
     ["sign"],
   );
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(`host|${tournamentId}|${hostCode}`));
-  return b64url(sig);
+  return b64url(await crypto.subtle.sign("HMAC", key, enc.encode(message)));
+}
+
+/** Sign a token for (tournament, host code); null when tokens are disabled. */
+export async function signPairToken(
+  tournamentId: string,
+  hostCode: string,
+): Promise<string | null> {
+  return hmac(`host|${tournamentId}|${hostCode}`);
+}
+
+/** Physical-tournament host token. Own message prefix (`phys|`), so a token for
+ * a chess tournament can never authenticate a physical one or vice versa. */
+export async function signPhysicalToken(id: string, hostCode: string): Promise<string | null> {
+  return hmac(`phys|${id}|${hostCode}`);
+}
+
+export async function verifyPhysicalToken(id: string, hostCode: string, token: unknown): Promise<boolean> {
+  if (typeof token !== "string" || token.length === 0 || token.length > 200) return false;
+  const expected = await signPhysicalToken(id, hostCode);
+  return expected !== null && ctEqual(expected, token);
+}
+
+/** Board key `k` printed in the QR on a board card: proves the reporter holds
+ * that card. Unforgeable without PAIR_SECRET; null when it is missing. */
+export async function signBoardKey(id: string, round: number, board: number): Promise<string | null> {
+  return hmac(`board|${id}|${round}|${board}`);
+}
+
+export async function verifyBoardKey(id: string, round: number, board: number, k: unknown): Promise<boolean> {
+  if (typeof k !== "string" || k.length === 0 || k.length > 200) return false;
+  const expected = await signBoardKey(id, round, board);
+  return expected !== null && ctEqual(expected, k);
 }
 
 /** True only for a token minted for exactly this tournament + host code. */

@@ -49,12 +49,15 @@ export interface PhysicalPairing {
   black: string | null;
   byeType?: ByeType;
   result?: ResultCode | null;
-  resultSource?: "arbiter";
+  resultSource?: ResultSource;
   /** Omkamp som ikke kunne unngås. */
   rematch?: boolean;
   /** Parringen er endret manuelt av arrangør. */
   manual?: boolean;
 }
+
+/** Hvem førte resultatet: arrangøren selv, eller en spillerrapport (QR) som arrangøren godkjente. */
+export type ResultSource = "arbiter" | "player_report";
 
 export type RoundStatus = "draft" | "published" | "completed";
 
@@ -131,7 +134,7 @@ export type PhysicalEventBody =
     }
   /** `autoForfeit`: brett med trukne spillere får walkover straks runden publiseres. */
   | { type: "publishRound"; round: number; autoForfeit?: boolean }
-  | { type: "setResult"; round: number; board: number; result: ResultCode }
+  | { type: "setResult"; round: number; board: number; result: ResultCode; source?: ResultSource }
   | { type: "clearResult"; round: number; board: number }
   | { type: "completeRound"; round: number }
   | { type: "finishTournament" };
