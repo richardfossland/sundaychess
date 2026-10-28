@@ -38,7 +38,7 @@ export function loadMeta(id: string): CloudMeta | null {
   if (!raw) return null;
   try {
     const m = JSON.parse(raw) as CloudMeta;
-    return m && typeof m.hostCode === "string" && Number.isInteger(m.syncedVersion) ? { keys: {}, ...m } : null;
+    return m && typeof m.hostCode === "string" && Number.isInteger(m.syncedVersion) ? { ...m, keys: m.keys ?? {} } : null;
   } catch {
     return null;
   }
