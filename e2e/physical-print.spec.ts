@@ -18,13 +18,14 @@ async function createTournament(page: Page, title: string) {
 }
 
 async function playRound(page: Page, n: number) {
+  await page.getByRole("tab", { name: no.physical.tabs.round }).click();
   await page.getByRole("button", { name: no.physical.pairRound(n) }).click();
   await page.getByRole("button", { name: no.physical.publishRound }).click();
-  const selects = page.locator("select");
-  await expect(selects).toHaveCount(2);
-  await selects.nth(0).selectOption("1-0");
-  await selects.nth(1).selectOption("½-½");
+  await expect(page.locator(".pr-board")).toHaveCount(2);
+  await page.getByRole("button", { name: no.physical.setResultLabel(1, no.physical.results["1-0"]) }).click();
+  await page.getByRole("button", { name: no.physical.setResultLabel(2, no.physical.results["½-½"]) }).click();
   await page.getByRole("button", { name: no.physical.completeRound }).click();
+  await page.getByRole("tab", { name: no.physical.tabs.standings }).click();
   await expect(page.getByText(no.physical.standingsAfter(n))).toBeVisible();
 }
 
@@ -92,7 +93,7 @@ test("storskjerm oppdateres når resultat føres i arrangørfanen", async ({ pag
   const fit = await big.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1);
   expect(fit).toBe(true);
 
-  await page.locator("select").nth(0).selectOption("1-0");
+  await page.getByRole("button", { name: no.physical.setResultLabel(1, no.physical.results["1-0"]) }).click();
   await expect(big.getByTestId("ss-result").first()).toHaveText("1–0");
 
   // nedtelling settes på skjermen
