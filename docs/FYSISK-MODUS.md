@@ -13,7 +13,7 @@ Lokal-først: en fysisk turnering lever helt i nettleseren (IndexedDB → localS
 | `lib/physical/storage.ts` | `PhysicalStore` (indexedDB/localStorage/memory), `openBestStore(env)`, `saveTournament`/`loadTournament`/`listTournaments`/`deleteTournament`, `toStored`/`fromStored`. |
 | `lib/physical/roster.ts` | `parseRoster` – innlimt liste / CSV. |
 | `lib/physical/errors.ts` | `PhysicalError` med stabil `code` og norsk melding fra `no.physical.errors`. |
-| `app/arranger/fysisk/` | `/arranger/fysisk` (liste), `/ny` (veiviser), `/[id]` (minimal oversikt), `usePhysical.ts` (last + autosave). |
+| `app/arranger/fysisk/` | Én catch-all-side `[[...slug]]` → `PhysicalApp` (klient) som velger visning fra `window.location`: liste, `/ny` (veiviser), `/<id>` (`PhysicalBoard`, minimal oversikt). `nav.tsx` navigerer med `history.pushState` (ingen RSC-henting), slik at PWA-skallet (`/arranger/fysisk`) virker for alle stier uten nett. `usePhysical.ts` = last + autosave. Ingen serverdata på disse sidene. |
 
 Alle strenger ligger i `lib/locale/no.ts` under `physical`. Parring og tiebreaks gjenbrukes fra fase 1 (`lib/tournament/pairing`, `tiebreaks.ts`, `bracket.ts`), ingenting er reimplementert.
 
