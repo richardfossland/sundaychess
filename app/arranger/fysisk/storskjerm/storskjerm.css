@@ -1,0 +1,198 @@
+/* Storskjerm (projektor). Fyller nøyaktig 100vh – ingen scrolling; lister
+   blar seg selv. Egne farger så den er lesbar uansett app-tema. */
+.ss-root {
+  --ss-bg: #0e1117;
+  --ss-fg: #f4efe4;
+  --ss-dim: #a3a9b6;
+  --ss-line: rgba(255, 255, 255, 0.14);
+  --ss-accent: #ebb84b;
+  --ss-row: rgba(255, 255, 255, 0.05);
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--ss-bg);
+  color: var(--ss-fg);
+  display: grid;
+  grid-template-rows: 14vh 1fr;
+  font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  color-scheme: dark;
+}
+.ss-root.ss-light {
+  --ss-bg: #fbf8f0;
+  --ss-fg: #14171e;
+  --ss-dim: #4a5160;
+  --ss-line: rgba(0, 0, 0, 0.18);
+  --ss-accent: #8a6410;
+  --ss-row: rgba(0, 0, 0, 0.05);
+  color-scheme: light;
+}
+.ss-root.ss-idle {
+  cursor: none;
+}
+body:has(.ss-root) .theme-toggle,
+body:has(.ss-root) .offline-banner {
+  display: none !important;
+}
+.ss-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2vw;
+  padding: 0 3vw;
+  border-bottom: 1px solid var(--ss-line);
+}
+.ss-title {
+  min-width: 0;
+}
+.ss-title h1 {
+  margin: 0;
+  font-size: 5.2vh;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ss-title p {
+  margin: 0.4vh 0 0;
+  font-size: 3vh;
+  color: var(--ss-accent);
+  font-weight: 700;
+}
+.ss-clock {
+  font-size: 9vh;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--ss-accent);
+}
+.ss-clock.ss-up {
+  color: #e5584b;
+  animation: ss-blink 1s steps(2, start) infinite;
+  font-size: 6vh;
+}
+@keyframes ss-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ss-clock.ss-up {
+    animation: none;
+  }
+}
+.ss-body {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 3vw;
+  padding: 2vh 3vw 3vh;
+  min-height: 0;
+}
+.ss-body.ss-single {
+  grid-template-columns: 1fr;
+}
+.ss-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.ss-col-head {
+  height: 5vh;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 2.6vh;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ss-dim);
+  font-weight: 700;
+}
+.ss-rows {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.ss-row {
+  display: grid;
+  align-items: center;
+  gap: 1.2vw;
+  padding: 0 1.2vw;
+  margin-bottom: 0.5vh;
+  background: var(--ss-row);
+  border-radius: 0.8vh;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.ss-row-pair {
+  grid-template-columns: 4ch 1fr 1fr 6ch;
+}
+.ss-row-stand {
+  grid-template-columns: 3ch 1fr 5ch;
+}
+.ss-row > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ss-n {
+  font-weight: 800;
+  color: var(--ss-accent);
+  font-variant-numeric: tabular-nums;
+}
+.ss-res {
+  font-weight: 800;
+  text-align: right;
+}
+.ss-pts {
+  font-weight: 800;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ss-dim {
+  color: var(--ss-dim);
+}
+.ss-empty {
+  margin: auto;
+  font-size: 4vh;
+  color: var(--ss-dim);
+  text-align: center;
+  padding: 4vh;
+}
+.ss-tools {
+  position: fixed;
+  right: 1vw;
+  bottom: 1vh;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(20, 22, 28, 0.9);
+  color: #f4efe4;
+  font-size: 14px;
+  transition: opacity 0.3s;
+  z-index: 3;
+}
+.ss-tools button,
+.ss-tools input {
+  font: inherit;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid #777;
+  background: #1f232c;
+  color: #f4efe4;
+  cursor: pointer;
+}
+.ss-tools input {
+  width: 5ch;
+  cursor: text;
+}
+.ss-idle .ss-tools {
+  opacity: 0;
+  pointer-events: none;
+}

@@ -8,6 +8,7 @@
 
 import { fail } from "./errors";
 import { replay } from "./reducer";
+import { notifyChanged } from "./sync";
 import { SCHEMA_VERSION, type PhysicalTournament, type StoredTournament } from "./schema";
 
 export type StorageKind = "indexedDB" | "localStorage" | "memory";
@@ -169,6 +170,7 @@ export async function openBestStore(env: StorageEnv = browserEnv()): Promise<Phy
 export async function saveTournament(store: PhysicalStore, t: PhysicalTournament): Promise<boolean> {
   try {
     await store.put(toStored(t));
+    notifyChanged(t.id);
     return true;
   } catch {
     return false;

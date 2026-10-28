@@ -1,0 +1,419 @@
+/* Utskrifter (fysisk modus M3). Alltid svart på hvitt, uavhengig av tema.
+   Ingen eksterne skrifter – kun systemskrifter, så det virker uten nett. */
+.pp-root {
+  background: #d9d9d9;
+  color: #000;
+  min-height: 100vh;
+  padding-bottom: 40px;
+  font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  color-scheme: light;
+}
+.pp-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 16px;
+  background: #1d1f24;
+  color: #fff;
+  font-size: 14px;
+}
+.pp-toolbar a,
+.pp-toolbar label {
+  color: #fff;
+}
+.pp-toolbar select,
+.pp-toolbar button {
+  font: inherit;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #888;
+  background: #fff;
+  color: #000;
+  cursor: pointer;
+}
+.pp-toolbar .pp-print-btn {
+  background: #ebb84b;
+  border-color: #ebb84b;
+  font-weight: 700;
+}
+.pp-page {
+  width: 210mm;
+  height: 296mm;
+  margin: 14px auto;
+  padding: 14mm;
+  box-sizing: border-box;
+  background: #fff;
+  color: #000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  position: relative;
+  break-after: page;
+  page-break-after: always;
+  display: flex;
+  flex-direction: column;
+}
+.pp-landscape .pp-page {
+  width: 297mm;
+  height: 208mm;
+}
+.pp-page h1 {
+  margin: 0 0 2mm;
+  font-size: 30pt;
+  line-height: 1.1;
+}
+.pp-page h2 {
+  margin: 0 0 3mm;
+  font-size: 18pt;
+}
+.pp-sub {
+  margin: 0 0 6mm;
+  font-size: 13pt;
+  color: #333;
+}
+.pp-foot {
+  margin-top: auto;
+  padding-top: 3mm;
+  font-size: 9pt;
+  color: #444;
+  display: flex;
+  justify-content: space-between;
+}
+.pp-empty {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 24px;
+  background: #fff;
+  color: #000;
+  border-radius: 8px;
+}
+
+/* ---- tabeller ---- */
+.pp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12pt;
+}
+.pp-table th,
+.pp-table td {
+  border-bottom: 0.4mm solid #000;
+  padding: 1.6mm 2mm;
+  text-align: left;
+  vertical-align: middle;
+}
+.pp-table th {
+  border-bottom-width: 0.8mm;
+  font-size: 10pt;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pp-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.pp-wall {
+  font-size: 22pt;
+}
+.pp-wall td,
+.pp-wall th {
+  padding: 2.2mm 3mm;
+}
+.pp-wall .pp-bn {
+  font-weight: 800;
+  font-size: 28pt;
+  width: 26mm;
+}
+.pp-find {
+  column-count: 2;
+  column-gap: 10mm;
+  font-size: 15pt;
+}
+.pp-find-row {
+  break-inside: avoid;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4mm;
+  align-items: baseline;
+  border-bottom: 0.3mm solid #000;
+  padding: 1.6mm 0;
+}
+.pp-find-row b {
+  font-size: 19pt;
+}
+.pp-find-sub {
+  display: block;
+  font-size: 10.5pt;
+  color: #333;
+}
+.pp-cross {
+  font-size: 10pt;
+}
+.pp-cross th,
+.pp-cross td {
+  border: 0.3mm solid #000;
+  padding: 1mm 1.2mm;
+  text-align: center;
+}
+.pp-cross td.pp-diag {
+  background: repeating-linear-gradient(45deg, #fff 0 1.5mm, #bbb 1.5mm 1.9mm);
+}
+.pp-cross .pp-name {
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* ---- bordkort og lapper ---- */
+.pp-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1;
+}
+.pp-card {
+  flex: 1;
+  border: 0.6mm dashed #000;
+  margin-bottom: 6mm;
+  padding: 8mm;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto 1fr auto;
+  gap: 4mm 8mm;
+  min-height: 0;
+}
+.pp-card:last-child {
+  margin-bottom: 0;
+}
+.pp-card-head {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 0.6mm solid #000;
+  padding-bottom: 3mm;
+}
+.pp-card-board {
+  font-size: 54pt;
+  font-weight: 800;
+  line-height: 1;
+}
+.pp-card-round {
+  font-size: 22pt;
+  font-weight: 700;
+}
+.pp-card-players {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5mm;
+}
+.pp-side {
+  display: flex;
+  align-items: center;
+  gap: 5mm;
+  font-size: 26pt;
+  font-weight: 700;
+}
+.pp-side small {
+  display: block;
+  font-size: 11pt;
+  font-weight: 400;
+  color: #333;
+}
+.pp-swatch {
+  flex: none;
+  width: 11mm;
+  height: 11mm;
+  border: 0.7mm solid #000;
+  border-radius: 1mm;
+}
+.pp-swatch.pp-w {
+  background: #fff;
+}
+.pp-swatch.pp-b {
+  background: #000;
+}
+.pp-qr {
+  align-self: center;
+  text-align: center;
+  font-size: 9pt;
+}
+.pp-qr img {
+  width: 38mm;
+  height: 38mm;
+  display: block;
+  margin: 0 auto 1mm;
+}
+.pp-boxes {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5mm;
+}
+.pp-box {
+  border: 0.8mm solid #000;
+  border-radius: 3mm;
+  text-align: center;
+  padding: 3mm 1mm;
+  font-size: 28pt;
+  font-weight: 800;
+}
+.pp-box small {
+  display: block;
+  font-size: 10.5pt;
+  font-weight: 400;
+}
+.pp-hint {
+  grid-column: 1 / -1;
+  text-align: center;
+  font-size: 10pt;
+  color: #333;
+  margin-top: -2mm;
+}
+.pp-slips {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.pp-slip {
+  flex: 1;
+  border-bottom: 0.4mm dashed #000;
+  padding: 4mm 0;
+  display: grid;
+  grid-template-columns: 30mm 1fr 78mm;
+  gap: 4mm 6mm;
+  align-items: center;
+  min-height: 0;
+}
+.pp-slip:last-child {
+  border-bottom: 0;
+}
+.pp-slip-no {
+  font-size: 11pt;
+}
+.pp-slip-no b {
+  display: block;
+  font-size: 30pt;
+  line-height: 1;
+}
+.pp-slip .pp-side {
+  font-size: 16pt;
+  gap: 3mm;
+}
+.pp-slip .pp-swatch {
+  width: 6mm;
+  height: 6mm;
+}
+.pp-slip .pp-boxes {
+  grid-column: auto;
+  gap: 2mm;
+}
+.pp-slip .pp-box {
+  font-size: 14pt;
+  padding: 1.5mm 0;
+  border-width: 0.5mm;
+}
+.pp-slip .pp-box small {
+  font-size: 7.5pt;
+}
+.pp-sign {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12mm;
+  font-size: 9pt;
+  color: #333;
+}
+.pp-sign span {
+  border-top: 0.3mm solid #000;
+  padding-top: 1mm;
+}
+
+/* ---- diplom ---- */
+.pp-cert {
+  padding: 10mm;
+}
+.pp-cert-frame {
+  flex: 1;
+  border: 1.4mm double #000;
+  padding: 10mm 14mm;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  text-align: center;
+  font-family: Georgia, "Times New Roman", Times, serif;
+}
+.pp-cert-title {
+  font-size: 54pt;
+  letter-spacing: 0.25em;
+  font-weight: 700;
+  margin: 0;
+}
+.pp-cert-orn {
+  font-size: 30pt;
+  line-height: 1;
+}
+.pp-cert-place {
+  font-size: 30pt;
+  font-style: italic;
+}
+.pp-cert-name {
+  font-size: 46pt;
+  font-weight: 700;
+  line-height: 1.1;
+  border-bottom: 0.5mm solid #000;
+  padding: 0 10mm 2mm;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.pp-cert-text {
+  font-size: 16pt;
+  max-width: 200mm;
+}
+.pp-cert-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  width: 100%;
+  font-size: 13pt;
+}
+.pp-cert-sig {
+  width: 70mm;
+  border-top: 0.4mm solid #000;
+  padding-top: 1mm;
+  font-size: 11pt;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+  .pp-root {
+    background: #fff;
+    padding: 0;
+  }
+  .pp-toolbar {
+    display: none !important;
+  }
+  .pp-page {
+    margin: 0;
+    box-shadow: none;
+  }
+  .pp-pages > .pp-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  body:has(.pp-root) .offline-banner,
+  body:has(.pp-root) .theme-toggle {
+    display: none !important;
+  }
+}
+@media (max-width: 800px) {
+  .pp-root {
+    overflow-x: auto;
+  }
+}
