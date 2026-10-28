@@ -37,6 +37,8 @@ export interface PhysicalPlayer {
   status: "active" | "withdrawn";
   /** Første runde en senpåmeldt spiller kunne parres i. */
   lateEntryRound?: number;
+  /** Senpåmeldt: ½ poeng for hver runde som ble gått glipp av (frirunde). Utelatt = 0 (standard). */
+  missedRoundPoints?: 0.5;
 }
 
 export interface PhysicalPairing {
@@ -101,28 +103,34 @@ export type PhysicalEventBody =
       name: string;
       rating?: number;
       club?: string;
+      /** Bare for senpåmeldte: gi ½ poeng for tapte runder. Utelatt/0 = ingen poeng. */
+      missedRoundPoints?: 0 | 0.5;
     }
   | {
       type: "editPlayer";
       playerId: string;
       patch: { name?: string; rating?: number | null; club?: string | null };
     }
-  | { type: "withdrawPlayer"; playerId: string }
+  /** `forfeit`: spillerens uferdige partier i den publiserte runden får walkover til motstanderen. */
+  | { type: "withdrawPlayer"; playerId: string; forfeit?: boolean }
   | { type: "reinstatePlayer"; playerId: string }
   | { type: "requestBye"; playerId: string; round: number; byeType: "half" | "zero" }
   | { type: "cancelByeRequest"; playerId: string; round: number }
   /** Lagrer de beregnede parringene – replay kaller aldri parringsmotoren. */
   | { type: "pairRound"; round: number; pairings: PhysicalPairing[] }
   /** Arrangør overstyrer alle parringene i en utkast-runde. */
-  | { type: "manualPairing"; round: number; pairings: PhysicalPairing[] }
+  | { type: "manualPairing"; round: number; pairings: PhysicalPairing[]; afterPublish?: boolean }
   /** Bytter to spillere (eller farger når samme brett) i en utkast-runde. */
   | {
       type: "swapPairing";
       round: number;
       a: { board: number; side: "white" | "black" };
       b: { board: number; side: "white" | "black" };
+      /** Eksplisitt endring av en allerede publisert runde (resultater på berørte brett nullstilles). */
+      afterPublish?: boolean;
     }
-  | { type: "publishRound"; round: number }
+  /** `autoForfeit`: brett med trukne spillere får walkover straks runden publiseres. */
+  | { type: "publishRound"; round: number; autoForfeit?: boolean }
   | { type: "setResult"; round: number; board: number; result: ResultCode }
   | { type: "clearResult"; round: number; board: number }
   | { type: "completeRound"; round: number }
