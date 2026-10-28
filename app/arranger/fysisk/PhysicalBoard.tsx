@@ -6,6 +6,7 @@ import { no } from "@/lib/locale/no";
 import { canUndo } from "@/lib/physical/reducer";
 import { NavLink } from "./nav";
 import { FileMenu } from "./FileMenu";
+import { CloudMenu } from "./cloud/CloudMenu";
 import { PrintMenu } from "./print/PrintMenu";
 import { PlayersPanel } from "./PlayersPanel";
 import { RoundPanel } from "./RoundPanel";
@@ -75,6 +76,7 @@ export function PhysicalBoard({ id }: { id: string }) {
             <span className="pr-save" role="status" aria-live="polite" data-state={saveState} data-testid="save-state">{saveLabel}</span>
             <PrintMenu id={t.id} />
             <FileMenu t={t} />
+            <CloudMenu t={t} run={run} />
             <button type="button" className="btn btn-sm btn-ghost" onClick={undo} disabled={!canUndo(t)}>
               <Icon name="undo" size={14} /> {p.undo}
             </button>

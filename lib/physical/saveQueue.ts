@@ -25,6 +25,8 @@ export function createSaveQueue(
   getStore: () => Promise<PhysicalStore>,
   onState: (s: SaveState) => void = () => {},
   journal?: Journal,
+  /** Kalles etter hver vellykket lokal lagring (sky-synk pusher da). */
+  onSaved?: (t: PhysicalTournament) => void,
 ): SaveQueue {
   let pending: PhysicalTournament | null = null;
   let inflight: Promise<void> | null = null;
@@ -39,7 +41,14 @@ export function createSaveQueue(
     const ok = await saveTournament(await getStore(), t);
     if (!ok) failed = true;
     // Journalen kan ryddes når lageret har bekreftet og ingenting nyere venter.
-    else if (!pending && journal) journal.clear(t.id);
+    else {
+      if (!pending && journal) journal.clear(t.id);
+      try {
+        onSaved?.(t);
+      } catch {
+        /* sky-synk skal aldri velte lokal lagring */
+      }
+    }
   }
 
   function pump(): Promise<void> {

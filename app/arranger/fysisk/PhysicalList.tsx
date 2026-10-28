@@ -8,6 +8,7 @@ import { Icon } from "@/lib/client/Icon";
 import { deleteTournament, listTournaments, type StorageKind } from "@/lib/physical/storage";
 import type { StoredTournament } from "@/lib/physical/schema";
 import { ImportFile } from "./ImportFile";
+import { OpenPublished } from "./cloud/OpenPublished";
 import { getStore } from "./usePhysical";
 
 export function PhysicalList() {
@@ -62,6 +63,7 @@ export function PhysicalList() {
         </NavLink>
 
         <ImportFile />
+        <OpenPublished />
 
         {items && items.length === 0 && <p className="muted text-center">{t.emptyList}</p>}
         <div className="stack" style={{ gap: 8 }}>

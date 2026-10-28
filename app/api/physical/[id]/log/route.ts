@@ -1,4 +1,5 @@
 import { fail, ok, readJson, withApi } from "@/lib/server/http";
+import { signPhysicalToken } from "@/lib/server/pair";
 import { authPhysicalHost, hashLog, hostCodeOf, getPhysical, updateLog, validateLog } from "@/lib/server/physical";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -9,7 +10,15 @@ export const GET = withApi(async (req: Request, { params }: Ctx) => {
   const { id } = await params;
   const row = await authPhysicalHost(id, hostCodeOf(req), req);
   if (!row) return fail(401, "invalid_code");
-  return ok({ events: row.event_log, version: row.log_version, hash: row.log_hash });
+  // The caller just proved the host code, so hand back the code (normalised) and a
+  // pair token too: that is how a second device ends up "paired" after opening.
+  return ok({
+    events: row.event_log,
+    version: row.log_version,
+    hash: row.log_hash,
+    hostCode: row.host_code,
+    pairToken: await signPhysicalToken(row.id, row.host_code),
+  });
 });
 
 // PUT /api/physical/[id]/log { events, baseVersion, hostCode? } — push the log.
