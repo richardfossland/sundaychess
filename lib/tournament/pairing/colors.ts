@@ -2,11 +2,12 @@ import type { Colour, ColourState, HistoryGame } from "./types";
 
 export const NO_COLOURS: ColourState = { diff: 0, last: null, run: 0 };
 
-/** Fold a game history (any order) into per-player colour states. Byes carry no colour. */
+/** Fold a game history (any order) into per-player colour states. Byes and
+ * unplayed (forfeit) games carry no colour (FIDE). */
 export function colourStatesFromHistory(history: readonly HistoryGame[]): Map<string, ColourState> {
   const out = new Map<string, ColourState>();
   const games = history
-    .filter((g) => g.black !== null)
+    .filter((g) => g.black !== null && !g.forfeit)
     .map((g, i) => ({ g, i }))
     .sort((a, b) => a.g.round - b.g.round || a.i - b.i);
   const bump = (id: string, c: Colour) => {

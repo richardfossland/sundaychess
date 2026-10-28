@@ -238,3 +238,40 @@ describe("property: colour constraints over whole tournaments", () => {
     expect(violations / games).toBeLessThan(0.01);
   });
 });
+
+describe("unplayed (forfeit) games", () => {
+  it("a forfeit is not a meeting: those two may be paired again, no rematch flag", () => {
+    const history: HistoryGame[] = [{ ...g(1, "p1", "p2", "1-0"), forfeit: true }];
+    const out = monrad({ players: withScores(2, history), history, round: 2 });
+    expect(view(out)).toEqual(["p1-p2"]);
+    expect(out.pairings[0].rematch).toBeUndefined();
+    // …whereas a PLAYED game is a meeting
+    const played = monrad({ players: withScores(2, [g(1, "p1", "p2", "1-0")]), history: [g(1, "p1", "p2", "1-0")], round: 2 });
+    expect(played.pairings[0].rematch).toBe(true);
+  });
+
+  it("a forfeit carries no colour (colour state ignores it)", () => {
+    const st = colourStatesFromHistory([
+      { ...g(1, "p1", "p2", "1-0"), forfeit: true },
+      g(2, "p1", "p3", "1-0"),
+    ]);
+    expect(st.get("p1")).toEqual({ diff: 1, last: "W", run: 1 });
+    expect(st.get("p2")).toBeUndefined();
+  });
+});
+
+describe("node budget", () => {
+  it("reports relaxed: 'budget' when the search is cut short, and not otherwise", () => {
+    // 24 players: A (21, mutually fresh) and B (3, mutually fresh); every A–B pair
+    // already met → no perfect matching exists and the backtracking blows the budget.
+    const ids = Array.from({ length: 24 }, (_, i) => `p${i + 1}`);
+    const A = ids.slice(0, 21);
+    const B = ids.slice(21);
+    const history: HistoryGame[] = [];
+    A.forEach((a) => B.forEach((b) => history.push(g(1, a, b, "1/2-1/2"))));
+    const out = monrad({ players: mk(24), history, round: 2 });
+    expect(out.relaxed).toBe("budget");
+    expect(out.pairings).toHaveLength(12); // still produces a pairing
+    expect(monrad({ players: mk(8), history: [], round: 1 }).relaxed).toBeUndefined();
+  });
+});

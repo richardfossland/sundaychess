@@ -68,6 +68,7 @@ beforeEach(() => {
   store.createGame.mockResolvedValue({});
   store.listPlayers.mockResolvedValue(players(4));
   store.listGames.mockResolvedValue([]);
+  store.listRounds.mockResolvedValue([]);
 });
 
 describe("startLeague", () => {

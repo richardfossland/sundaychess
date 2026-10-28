@@ -688,8 +688,8 @@ export const no = {
   },
   /** Tiebreaks: kort navn + én setning forklaring (brukes i UI, fase 2). */
   tiebreaks: {
-    buchholz: { label: "Buchholz", help: "Summen av motstandernes poeng. Den som har møtt sterkere motstand, rangeres høyere." },
-    buchholz_cut1: { label: "Buchholz uten laveste", help: "Buchholz hvor den laveste motstanderens poeng er strøket." },
+    buchholz: { label: "Buchholz", help: "Summen av motstandernes poeng. Den som har møtt sterkere motstand, rangeres høyere. Frirunder og walkover regnes etter FIDE C.07 (art. 16)." },
+    buchholz_cut1: { label: "Buchholz uten laveste", help: "Buchholz hvor det laveste bidraget er strøket (har du tapt på walkover eller hatt ønsket frirunde, strykes det bidraget først)." },
     buchholz_median: { label: "Median-Buchholz", help: "Buchholz hvor både høyeste og laveste motstanders poeng er strøket." },
     sonneborn_berger: { label: "Sonneborn-Berger", help: "Summen av poengene til motstanderne du slo, pluss halvparten av dem du spilte remis mot." },
     direct_encounter: { label: "Innbyrdes oppgjør", help: "Resultatene mellom spillerne som står likt avgjør rekkefølgen." },

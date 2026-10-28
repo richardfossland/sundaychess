@@ -21,6 +21,7 @@ import {
   byeCounts,
   colorCounts,
   computeStandings,
+  gamesToHistory,
   metBeforeSet,
 } from "@/lib/tournament/score";
 import { maybeStartPlayoff } from "@/lib/server/playoff";
@@ -32,9 +33,10 @@ async function pairLeagueRound(
   tournament: Tournament,
   roundNumber: number,
 ): Promise<void> {
-  const [players, games] = await Promise.all([
+  const [players, games, rounds] = await Promise.all([
     listPlayers(tournament.id),
     listGames(tournament.id),
+    listRounds(tournament.id),
   ]);
   const active = players.filter((p) => p.status === "active");
   const standings = computeStandings(active, games);
@@ -52,6 +54,9 @@ async function pairLeagueRound(
     metBefore: metBeforeSet(games),
     byeCounts: byeCounts(games),
     colors: colorCounts(games),
+    // Real colour sequences (round numbers + forfeit flag) so "never 3 of the
+    // same colour in a row" holds in the league, and forfeits give no colour.
+    history: gamesToHistory(games, rounds),
   });
 
   const round = await createRound(tournament.id, roundNumber, "league", "live");

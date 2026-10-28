@@ -208,3 +208,27 @@ describe("hard edges", () => {
     expect(result[0].blackId).toBeNull();
   });
 });
+
+describe("league adapter: real colour sequences + forfeits", () => {
+  const h = (round: number, white: string, black: string, forfeit = false) => ({
+    round, white, black, result: "1-0" as const, ...(forfeit ? { forfeit: true } : {}),
+  });
+
+  it("with `history` no one gets 3 of the same colour in a row (counts alone cannot see runs)", () => {
+    // p1 has had white twice in a row; p2..p4 have had colours that make them
+    // white-neutral in COUNT terms. Counts: p1 2W/2B (balanced!) but last two = W,W.
+    const history = [h(1, "p2", "p1"), h(2, "p3", "p1"), h(3, "p1", "p4"), h(4, "p1", "p2")];
+    const players = ["p1", "p2", "p3", "p4"].map((id) => ({ id, score: 0, tiebreak: 0 }));
+    const out = pair({ players, round: 5, history, metBefore: new Set() });
+    const p1 = out.find((g) => g.whiteId === "p1" || g.blackId === "p1")!;
+    expect(p1.blackId).toBe("p1"); // forced black: last two were white
+  });
+
+  it("a forfeit gives no colour: forfeited games do not push a player towards black", () => {
+    const history = [h(1, "p1", "p2", true), h(2, "p1", "p3", true)];
+    const players = ["p1", "p2", "p3", "p4"].map((id) => ({ id, score: 0, tiebreak: 0 }));
+    const out = pair({ players, round: 3, history, metBefore: new Set() });
+    // nobody has a colour history → p1 (top of the order) keeps white
+    expect(out.some((g) => g.whiteId === "p1")).toBe(true);
+  });
+});

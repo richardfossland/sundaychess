@@ -22,7 +22,8 @@ export function pairKey(a: string, b: string): string {
 
 export function contextFromHistory(history: PairingInput["history"]): PairingContext {
   const met = new Set<string>();
-  for (const g of history) if (g.black !== null) met.add(pairKey(g.white, g.black));
+  // Unplayed (forfeit) games are not a meeting: those two may still be paired.
+  for (const g of history) if (g.black !== null && !g.forfeit) met.add(pairKey(g.white, g.black));
   return { met, byeCounts: byeCountsFromHistory(history), colours: colourStatesFromHistory(history) };
 }
 
@@ -45,10 +46,13 @@ interface Match {
 
 const NODE_BUDGET = 200_000;
 
-/** Backtracking perfect matching, nearest-first. null when none (or budget spent). */
+/** Backtracking perfect matching, nearest-first. null when none (or budget spent).
+ * `status.exhausted` is set when the search was CUT SHORT by the node budget (a
+ * null then does not prove that no matching exists). */
 function solve(
   queue: readonly string[],
   ok: (a: string, b: string) => boolean,
+  status: { exhausted: boolean } = { exhausted: false },
 ): Match[] | null {
   const used = new Array<boolean>(queue.length).fill(false);
   const out: Match[] = [];
@@ -60,7 +64,10 @@ function solve(
     used[i] = true;
     for (let j = i + 1; j < queue.length; j++) {
       if (used[j] || !ok(queue[i], queue[j])) continue;
-      if (++nodes > NODE_BUDGET) break;
+      if (++nodes > NODE_BUDGET) {
+        status.exhausted = true;
+        break;
+      }
       used[j] = true;
       out.push({ hi: queue[i], lo: queue[j] });
       if (rec()) return true;
@@ -102,13 +109,20 @@ function greedy(queue: readonly string[], met: ReadonlySet<string>): Match[] {
   return out;
 }
 
-function matchQueue(queue: readonly string[], ctx: PairingContext): Match[] | null {
+/** `budget` is true when the colour-respecting search ran out of nodes and the
+ * result had to fall back to a looser one (colour constraints dropped). */
+function matchQueue(
+  queue: readonly string[],
+  ctx: PairingContext,
+): { matches: Match[] | null; budget: boolean } {
   const cs = (id: string): ColourState => ctx.colours.get(id) ?? NO_COLOURS;
   const fresh = (a: string, b: string) => !ctx.met.has(pairKey(a, b));
-  return (
-    solve(queue, (a, b) => fresh(a, b) && !colourConflict(cs(a), cs(b))) ??
-    solve(queue, fresh)
-  );
+  const strict = { exhausted: false };
+  const m1 = solve(queue, (a, b) => fresh(a, b) && !colourConflict(cs(a), cs(b)), strict);
+  if (m1) return { matches: m1, budget: false };
+  const loose = { exhausted: false };
+  const m2 = solve(queue, fresh, loose);
+  return { matches: m2, budget: strict.exhausted || loose.exhausted };
 }
 
 /**
@@ -126,14 +140,16 @@ export function monradWithContext(
   let queue = rankIds;
   let matches: Match[] | null = null;
   let autoBye: string | null = null;
+  let budget = false;
 
   if (rankIds.length % 2 === 0) {
-    matches = matchQueue(queue, ctx);
+    ({ matches, budget } = matchQueue(queue, ctx));
   } else {
     const cands = byeCandidates(ranked, ctx.byeCounts);
     for (const c of cands) {
       const q = rankIds.filter((id) => id !== c);
-      const m = matchQueue(q, ctx);
+      const { matches: m, budget: b } = matchQueue(q, ctx);
+      budget ||= b;
       if (m) {
         autoBye = c;
         queue = q;
@@ -156,7 +172,9 @@ export function monradWithContext(
   }
   if (autoBye !== null) pairings.push({ board: board++, white: autoBye, black: null, byeType: "full" });
   for (const r of requested) pairings.push({ board: board++, white: r.id, black: null, byeType: r.byeType });
-  return { pairings };
+  // `relaxed: "budget"` = the search budget ran out and constraints (colours,
+  // possibly repeats) were dropped silently before; now the caller can tell.
+  return budget ? { pairings, relaxed: "budget" } : { pairings };
 }
 
 export function monrad(input: PairingInput): PairingOutput {

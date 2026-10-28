@@ -167,3 +167,19 @@ describe("computeStandings med konfigurerte tiebreaks", () => {
     expect(cfg[0].tiebreaks?.wins).toBe(1);
   });
 });
+
+describe("unplayed games (walkover / opponent_absent)", () => {
+  const forfeit = (w: string, b: string, src: "walkover" | "opponent_absent") => ({
+    ...game(w, b, "white_win"),
+    result_source: src,
+  });
+  it("metBeforeSet ignores forfeits but keeps played games", () => {
+    const set = metBeforeSet([forfeit("a", "b", "walkover"), forfeit("c", "d", "opponent_absent"), game("e", "f", "draw")]);
+    expect([...set]).toEqual(["e|f"]);
+  });
+  it("colorCounts gives no colour for a forfeit", () => {
+    const c = colorCounts([forfeit("a", "b", "walkover"), game("a", "c", "draw")]);
+    expect(c.get("a")).toEqual({ white: 1, black: 0 });
+    expect(c.get("b")).toBeUndefined();
+  });
+});

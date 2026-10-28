@@ -1,9 +1,12 @@
+const reportMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/client/telemetry", () => ({ report: reportMock }));
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   acquireChannel,
   sendOnTopic,
   __setChannelDriver,
   __entryCount,
+  RECREATE_BACKOFF_MAX_MS,
 } from "@/lib/supabase/channelRegistry";
 
 // A minimal fake RealtimeChannel: records .on bindings, fires SUBSCRIBED on
@@ -353,6 +356,47 @@ describe("channelRegistry", () => {
       vi.advanceTimersByTime(1);
       expect(created).toHaveLength(4);
 
+      sub.release();
+    });
+
+    it("repeated CHANNEL_ERROR backs off past 30 s up to a cap, and logs once", () => {
+      vi.useFakeTimers();
+      reportMock.mockClear();
+      const created: ReturnType<typeof fakeChannel>[] = [];
+      __setChannelDriver({
+        create: () => {
+          const c = fakeChannel({ autoSubscribe: false });
+          created.push(c);
+          return c as never;
+        },
+        remove: vi.fn(),
+      });
+      const sub = acquireChannel("chess:game:11111111-1111-4111-8111-111111111111", {});
+      const waits: number[] = [];
+      for (let i = 0; i < 9; i++) {
+        const before = created.length;
+        created[before - 1].__status("CHANNEL_ERROR");
+        let waited = 0;
+        while (created.length === before && waited < 400_000) {
+          vi.advanceTimersByTime(1000);
+          waited += 1000;
+        }
+        waits.push(waited);
+      }
+      expect(waits.slice(0, 4)).toEqual([1000, 2000, 5000, 10000]);
+      expect(waits.slice(4)).toEqual([60000, 120000, 300000, 300000, 300000]);
+      expect(Math.max(...waits)).toBe(RECREATE_BACKOFF_MAX_MS);
+      // one telemetry event for the whole streak, no ids in it
+      expect(reportMock).toHaveBeenCalledTimes(1);
+      expect(reportMock.mock.calls[0][0]).toBe("channel_error");
+      expect(JSON.stringify(reportMock.mock.calls[0][1])).not.toMatch(/1111/);
+
+      // a real SUBSCRIBED resets the streak
+      const n = created.length;
+      created[n - 1].__status("SUBSCRIBED");
+      created[n - 1].__status("CHANNEL_ERROR");
+      vi.advanceTimersByTime(1000);
+      expect(created.length).toBe(n + 1); // back to the 1 s step
       sub.release();
     });
   });

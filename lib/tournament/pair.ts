@@ -2,15 +2,18 @@
 // lib/tournament/pairing/monrad.ts (Monrad per NSF rules, shared colour + bye layer).
 //
 // Differences from the old greedy implementation (see PR): colours now also
-// influence which opponent is chosen (never 3 in a row / diff within ±2 where a
-// legal matching exists), a bye candidate is skipped if that would force a
-// repeat pairing, and colour preference uses white−black balance.
+// influence which opponent is chosen, a bye candidate is skipped if that would
+// force a repeat pairing, and colour preference uses white−black balance.
+// "Never 3 of the same colour in a row" only applies when the caller passes the
+// real game `history` (colour SEQUENCES with round numbers): the bare `colors`
+// counts carry no order, so they can only balance white−black (|diff| ≤ 2),
+// never detect a run. The league (lib/server/league.ts) passes `history`.
 // Round 1 still shuffles with the injected RNG, so seeded behaviour is unchanged.
 
 import type { Rng } from "@/lib/codes";
-import { colourStateFromCounts } from "@/lib/tournament/pairing/colors";
+import { colourStateFromCounts, colourStatesFromHistory } from "@/lib/tournament/pairing/colors";
 import { monradWithContext, pairKey } from "@/lib/tournament/pairing/monrad";
-import type { ColourState, PairingPlayer } from "@/lib/tournament/pairing/types";
+import type { ColourState, HistoryGame, PairingPlayer } from "@/lib/tournament/pairing/types";
 
 export { pairKey };
 
@@ -34,8 +37,13 @@ export interface PairInput {
   hadBye?: ReadonlySet<string>;
   /** Per-player bye counts — preferred over hadBye, for even distribution. */
   byeCounts?: ReadonlyMap<string, number>;
-  /** Per-player colour history for balancing white/black. */
+  /** Per-player colour COUNTS for balancing white/black. No order, so no run
+   * detection — prefer `history`. */
   colors?: ReadonlyMap<string, ColorCount>;
+  /** Real game history (round numbers, forfeit flag). When given, colour state
+   * (balance AND same-colour runs) is derived from it and overrides `colors`
+   * for every player who has played; forfeits carry no colour. */
+  history?: readonly HistoryGame[];
   rng?: Rng;
 }
 
@@ -77,6 +85,7 @@ export function pair(input: PairInput): Pairing[] {
     input.byeCounts ?? new Map([...(input.hadBye ?? [])].map((id) => [id, 1]));
   const colours = new Map<string, ColourState>();
   for (const [id, c] of input.colors ?? []) colours.set(id, colourStateFromCounts(c.white, c.black));
+  if (input.history) for (const [id, s] of colourStatesFromHistory(input.history)) colours.set(id, s);
 
   const { pairings } = monradWithContext(players, {
     met: input.metBefore ?? new Set<string>(),

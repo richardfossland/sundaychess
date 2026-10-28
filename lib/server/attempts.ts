@@ -14,6 +14,9 @@ import { ipKey } from "@/lib/server/http";
 export const CODE_WINDOW_S = 600;
 export const CODE_MAX_FAILURES = 20;
 
+/** Optional per-call override of the failure threshold (default CODE_MAX_FAILURES). */
+export type AttemptOpts = { max?: number };
+
 const CACHE_MAX = 2000;
 const NOT_BLOCKED_TTL_MS = 30_000;
 const cache = new Map<string, { blocked: boolean; until: number }>();
@@ -29,7 +32,7 @@ export function __resetAttemptsCache(): void {
   cache.clear();
 }
 
-export async function isCodeBlocked(scope: string, req: Request): Promise<boolean> {
+export async function isCodeBlocked(scope: string, req: Request, opts: AttemptOpts = {}): Promise<boolean> {
   const key = `${scope}|${ipKey(req)}`;
   const hit = cache.get(key);
   if (hit && hit.until > Date.now()) return hit.blocked;
@@ -38,7 +41,7 @@ export async function isCodeBlocked(scope: string, req: Request): Promise<boolea
       p_scope: scope,
       p_ip: ipKey(req),
       p_window_s: CODE_WINDOW_S,
-      p_max: CODE_MAX_FAILURES,
+      p_max: opts.max ?? CODE_MAX_FAILURES,
     });
     if (error) throw error;
     if (data === true) return true; // not cached: re-ask, the window may have lapsed
@@ -51,13 +54,13 @@ export async function isCodeBlocked(scope: string, req: Request): Promise<boolea
 }
 
 /** Record one wrong guess. Returns true when the IP is now blocked. */
-export async function registerCodeFailure(scope: string, req: Request): Promise<boolean> {
+export async function registerCodeFailure(scope: string, req: Request, opts: AttemptOpts = {}): Promise<boolean> {
   try {
     const { data, error } = await createServiceClient().rpc("register_code_failure", {
       p_scope: scope,
       p_ip: ipKey(req),
       p_window_s: CODE_WINDOW_S,
-      p_max: CODE_MAX_FAILURES,
+      p_max: opts.max ?? CODE_MAX_FAILURES,
     });
     if (error) throw error;
     if (data === true) remember(`${scope}|${ipKey(req)}`, true, CODE_WINDOW_S * 1000);
