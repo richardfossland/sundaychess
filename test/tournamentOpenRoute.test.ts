@@ -44,10 +44,10 @@ const tournament = (): Tournament =>
     created_at: "",
   }) as Tournament;
 
-const req = (body: unknown) =>
+const req = (body: unknown, cookie?: string) =>
   new Request("http://x/api/tournament/open", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...(cookie ? { cookie } : {}) },
     body: JSON.stringify(body),
   });
 
@@ -135,14 +135,60 @@ describe("POST /api/tournament/open", () => {
     isCodeBlocked.mockResolvedValue(true);
     const res = await POST(req({ hostCode: "HOST-01" }));
     expect(res.status).toBe(429);
-    expect(isCodeBlocked).toHaveBeenCalledWith("open", expect.any(Request));
     expect(openTournamentByHostCode).not.toHaveBeenCalled();
+  });
+
+  it("device layer: a blocked device is refused, its IP ceiling uses a much higher threshold", async () => {
+    await POST(req({ hostCode: "HOST-01" }));
+    const calls = isCodeBlocked.mock.calls;
+    const dev = calls.find((c) => String(c[0]).startsWith("open:d:"))!;
+    const ip = calls.find((c) => c[0] === "open")!;
+    expect(dev[2].max).toBe(20);
+    expect(ip[2].max).toBeGreaterThanOrEqual(200);
+  });
+
+  it("pupils' failures on the shared IP do not lock out the teacher's device", async () => {
+    // Simulate the DB: the shared `open` IP row is below its high ceiling, and
+    // only the PUPIL device's own scope is blocked.
+    isCodeBlocked.mockImplementation(async (scope: string) => scope === `open:d:${"a".repeat(32)}`);
+    const pupil = await POST(req({ hostCode: "HOST-01" }, `sc_dev=${"a".repeat(32)}`));
+    expect(pupil.status).toBe(429);
+    const teacher = await POST(req({ hostCode: "HOST-01" }, `sc_dev=${"b".repeat(32)}`));
+    expect(teacher.status).toBe(200);
+    expect((await teacher.json()).id).toBe(T_ID);
+  });
+
+  it("sets an httpOnly device cookie when missing (also on 404), reuses a valid one, ignores a malformed one", async () => {
+    const r1 = await POST(req({ hostCode: "HOST-01" }));
+    const c = r1.headers.get("set-cookie")!;
+    expect(c).toMatch(/^sc_dev=[0-9a-f]{32}; /);
+    expect(c).toContain("HttpOnly");
+    openTournamentByHostCode.mockResolvedValue(null);
+    expect((await POST(req({ hostCode: "ZZZZ-99" }))).headers.get("set-cookie")).toContain("sc_dev=");
+    const r2 = await POST(req({ hostCode: "HOST-01" }, `sc_dev=${"c".repeat(32)}`));
+    expect(r2.headers.get("set-cookie")).toBeNull();
+    const r3 = await POST(req({ hostCode: "ZZZZ-99" }, "sc_dev=<script>"));
+    expect(r3.headers.get("set-cookie")).toMatch(/^sc_dev=[0-9a-f]{32}/);
+  });
+
+  it("counts a wrong guess against BOTH the device and the IP scope", async () => {
+    openTournamentByHostCode.mockResolvedValue(null);
+    await POST(req({ hostCode: "ZZZZ-99" }, `sc_dev=${"d".repeat(32)}`));
+    const scopes = registerCodeFailure.mock.calls.map((c) => c[0]);
+    expect(scopes).toContain(`open:d:${"d".repeat(32)}`);
+    expect(scopes).toContain("open");
+  });
+
+  it("the IP ceiling still blocks a guesser who rotates the cookie", async () => {
+    isCodeBlocked.mockImplementation(async (scope: string) => scope === "open");
+    const res = await POST(req({ hostCode: "HOST-01" }, `sc_dev=${"e".repeat(32)}`));
+    expect(res.status).toBe(429);
   });
 
   it("counts a wrong code, and 429s on the failure that trips the block", async () => {
     openTournamentByHostCode.mockResolvedValue(null);
     expect((await POST(req({ hostCode: "ZZZZ-99" }))).status).toBe(404);
-    expect(registerCodeFailure).toHaveBeenCalledWith("open", expect.any(Request));
+    expect(registerCodeFailure).toHaveBeenCalledWith("open", expect.any(Request), expect.anything());
     registerCodeFailure.mockResolvedValue(true);
     expect((await POST(req({ hostCode: "ZZZZ-99" }))).status).toBe(429);
   });
