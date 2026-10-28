@@ -4,6 +4,7 @@ import { useState } from "react";
 import { no } from "@/lib/locale/no";
 import { NavLink } from "../nav";
 import { usePhysicalTournament } from "../usePhysical";
+import { useBoardKeys } from "../cloud/useBoardKeys";
 import { isPrintKind, pickRound, type PrintKind } from "@/lib/physical/print/data";
 import { BoardCards, Certificates, CrosstablePage, PairingList, ResultSlips, StandingsPages } from "./PrintViews";
 import "./print.css";
@@ -26,6 +27,7 @@ function readParams() {
 export function PrintView({ id, kind }: { id: string; kind: string }) {
   const { state: t, status } = usePhysicalTournament(id);
   const [params, setParams] = useState(readParams);
+  useBoardKeys(t, kind === "bordkort" && t ? pickRound(t, params.round)?.number ?? null : null);
 
   function update(patch: Partial<typeof params>) {
     const next = { ...params, ...patch };

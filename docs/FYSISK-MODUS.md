@@ -86,3 +86,52 @@ Alt skjer i nettleseren (Blob), uten nett. UI: `FileMenu.tsx` («Fil»-menyen i 
 **CSV.** UTF-8 med BOM, `;` som skilletegn, CRLF, desimalkomma (norsk Excel). Tabell: `#;Nr;Navn;Klubb/klasse;Rating;Poeng;<tiebreaks>`. Partier: `Runde;Brett;Hvit;Svart;Resultat`. Tekstceller som begynner med `= + - @` får `'` foran (formelinjeksjon).
 
 **Tester.** `test/export/*` (rundtur-egenskapstest på 60 tilfeldige turneringer, tukling, versjon/migrering, konflikter, TRF- og CSV-golden, nedlasting) og `e2e/physical-file.spec.ts` (eksport → slett → importer → neste runde, offline).
+
+## Sky: publisering og QR-rapportering (M5a)
+
+Lokal-først er uendret: den lokale hendelsesloggen er sannhetskilden og turneringen virker uten nett. «Sky»-menyen (`CloudMenu`) legger bare en kopi i Supabase (migrasjon 0016, se `docs/MIGRATIONS-0016.md`) som gir (1) en live side for spillere og foresatte og (2) resultatmelding via QR som arrangøren godkjenner.
+
+| Fil | Rolle |
+|---|---|
+| `supabase/migrations/0016_physical_cloud.sql` | `physical_tournaments`, `physical_result_reports` (RLS på, ingen policyer, kun service_role), `cleanup_physical_tournaments()` (30 dager). |
+| `lib/server/physical.ts` | DB-tilgang, `validateLog` (replay gjennom reduceren), `authPhysicalHost` (pair-token eller kode, `code_attempts` med scope `phys:<id>`, `fresh`-sjekk som `authHost`), rapporter. |
+| `lib/server/pair.ts` | `signPhysicalToken` (`phys|<id>|<kode>`), `signBoardKey` (`board|<id>|<runde>|<brett>`). |
+| `app/api/physical/**` | Rutene under. Alle `withApi`. |
+| `lib/physical/cloud.ts` | Synk-motoren `CloudSync` (ren, testbar med falsk transport/timere). |
+| `lib/physical/cloudMeta.ts` | Lokal sky-tilstand i localStorage (`sundaychess:physical-cloud:<id>`): arrangørkode, pair-token, siste synkroniserte versjon, bordnøkler. **Ikke** del av turneringsfila. |
+| `lib/physical/snapshot.ts` | Offentlig, avledet visning (aldri kode, aldri rålogg, utkastrunder skjult). |
+| `lib/physical/reportClient.ts` | Sending av melding med samme `requestId` ved hvert forsøk. |
+| `app/arranger/fysisk/cloud/` | `CloudMenu`, `ReportsPanel`, `OpenPublished`, `useBoardKeys`, `cloudRegistry`. |
+| `app/f/[id]` | Offentlig side (poller hvert 15. s). `app/f/[id]/r/[runde]/[brett]?k=…` = rapportside. |
+
+### API
+
+| Rute | Auth | Innhold |
+|---|---|---|
+| `POST /api/physical/publish` `{events}` | åpen (rate limit 20/10 min/IP) | Oppretter raden (id = lokal id), genererer arrangørkode, svarer `{hostCode, pairToken, version}`. Logg valideres (422 `invalid_log`). Finnes id fra før: 409 `already_published` (med kode/token = overskriving). |
+| `PUT /api/physical/[id]/log` `{events, baseVersion}` | vert | Optimistisk samtidighet på `log_version`: 409 `version_conflict` (+ `version`). Samme innhold to ganger = 200 (idempotent). Logg spilles av før lagring (422). |
+| `GET /api/physical/[id]/log` | vert | Hele loggen + `hostCode` + `pairToken` (åpne på ny enhet). |
+| `GET /api/physical/[id]` | **offentlig** | Avledet snapshot. Aldri `host_code`, aldri logg. |
+| `DELETE /api/physical/[id]` | vert | Avpubliser (cascade sletter rapporter). |
+| `GET /api/physical/[id]/keys?round=N&boards=M` | vert | Bordnøkler `k` til QR; caches lokalt slik at utskrift virker uten nett. |
+| `POST /api/physical/[id]/report` | `k` | `{round, board, result, reporter, requestId, k}`. `k` = HMAC(PAIR_SECRET, `board|<id>|<runde>|<brett>`): 403 `bad_key` ved feil. Idempotent på `requestId`; maks 1 ventende per (runde, brett, melder), nyere erstatter eldre; bare publisert, ikke-fullført runde uten resultat på brettet (409 `round_not_open`/`round_closed`/`already_has_result`). Rate limit 120/10 min/IP. |
+| `GET /api/physical/[id]/reports` | vert | Ventende meldinger. |
+| `POST /api/physical/[id]/reports/[reportId]` `{action}` | vert | `approve`/`reject`. Serveren skriver **aldri** resultater. |
+
+Vertsauth: header `x-pair-token` (utstedt ved publisering/åpning) ELLER `x-host-code`/`hostCode` i body. Feilkoder er stabile engelske koder; norske meldinger ligger i `no.physicalCloud` (`errors`, `rep*`).
+
+### Synk
+
+`CloudSync.notifyLocalChange(events)` kalles av `CloudMenu` ved hver endring. Utboksen er den lokale loggen selv: vi sender alltid siste state med `baseVersion`, debounce 800 ms, backoff 2 s → 60 s ved nettfeil/5xx/429, og straks på `online`. Statuser: Ikke publisert / Synkronisert / Synkroniserer / Venter på nett / Konflikt / Synk stoppet. **Konflikt** (409): panelet viser «En annen enhet har endret turneringen» med «Last skyversjonen» (erstatter lokalt, bekreftes) eller «Overskriv skyen med min» (bekreftes); ingenting pushes før valget er tatt.
+
+### Godkjenning av spillerrapport
+
+`ReportsPanel` poller hvert 10. s (synlig fane, åpen publisert runde). Godkjenn = `setResult` med `source: 'player_report'` føres LOKALT (så `resultSource = 'player_report'`), deretter får skyen beskjed (best effort; et ført brett filtreres bort uansett) og loggen pushes av synk-motoren. «Godkjenn alle samstemte» = begge spillerne har meldt det samme. Resultater med walkover/«begge uteble» meldes ikke av spillere (bare 1–0, ½–½, 0–1).
+
+### Åpne på ny enhet
+
+Listen → «Åpne publisert turnering»: turnerings-id (eller lenke) + arrangørkode → `GET …/log` → replay lokalt → lagres + sky-tilstand (kode, token) settes.
+
+### Plass for M2
+
+M2 eier `PhysicalBoard.tsx`. M5a la inn to linjer: `<CloudMenu t run />` i hodet og `<ReportsPanel t apply />` over runde-tabellen. Per-brett-merke kan M2 bygge med `relevantReports(t, reports)` (`ReportsPanel.tsx`) og `useReports(id, active)`.

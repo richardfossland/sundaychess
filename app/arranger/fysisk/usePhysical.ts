@@ -10,6 +10,7 @@ import { createSaveQueue, type SaveQueue, type SaveState } from "@/lib/physical/
 import { localJournal, loadWithJournal } from "@/lib/physical/journal";
 import { openBestStore, type PhysicalStore } from "@/lib/physical/storage";
 import { no } from "@/lib/locale/no";
+import { cloudSaved } from "./cloud/cloudRegistry";
 
 let storePromise: Promise<PhysicalStore> | null = null;
 /** Én delt store per fane. */
@@ -32,7 +33,7 @@ export function usePhysicalTournament(id: string) {
   const ref = useRef<PhysicalTournament | null>(null);
   const queue = useRef<SaveQueue | null>(null);
   const toastSeq = useRef(0);
-  queue.current ??= createSaveQueue(getStore, setSaveState, localJournal());
+  queue.current ??= createSaveQueue(getStore, setSaveState, localJournal(), cloudSaved);
 
   useEffect(() => {
     let alive = true;

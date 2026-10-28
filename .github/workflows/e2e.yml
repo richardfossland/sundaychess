@@ -202,6 +202,10 @@ jobs:
             # The QR/join links read this and fall back to window.location.origin;
             # pinning it keeps the copy deterministic under `next start`.
             echo "NEXT_PUBLIC_BASE_URL=http://localhost:3000"
+            # Physical-tournament cloud (M5a): pair tokens and board keys need a
+            # secret, and `next start` runs with NODE_ENV=production, which has
+            # no dev fallback. Throwaway value, local runner only.
+            echo "PAIR_SECRET=e2e-only-pair-secret"
           } >> "$GITHUB_ENV"
 
       - name: Build the production bundle
@@ -233,6 +237,7 @@ jobs:
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY"
             echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY"
             echo "NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL"
+            echo "PAIR_SECRET=$PAIR_SECRET"
           } > .dev.vars
           echo "wrote .dev.vars: $(cut -d= -f1 .dev.vars | tr '\n' ' ')"
 

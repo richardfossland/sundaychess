@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { BoardReports, ReportsPanel } from "./cloud/ReportsPanel";
+import { Fragment, useRef, useState } from "react";
 import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { Icon } from "@/lib/client/Icon";
 import { no } from "@/lib/locale/no";
@@ -135,6 +136,7 @@ export function RoundPanel({ t, apply, run }: { t: PhysicalTournament; apply: Ap
           )}
           {editing && <div className="banner banner-warn" style={{ textAlign: "left" }} role="status">{picked ? p.editPairingPicked(names(picked.side === "white" ? round.pairings.find((g) => g.board === picked.board)!.white : round.pairings.find((g) => g.board === picked.board)!.black)) : p.editPairingHelp}</div>}
 
+          <ReportsPanel t={t} apply={apply} />
           <div className="pr-table" role="table" aria-label={p.roundN(round.number)}>
             <div className="pr-head" role="row">
               <span role="columnheader">{p.board}</span>
@@ -142,8 +144,8 @@ export function RoundPanel({ t, apply, run }: { t: PhysicalTournament; apply: Ap
               <span role="columnheader">{p.result}</span>
             </div>
             {round.pairings.map((g) => (
+              <Fragment key={g.board}>
               <BoardRow
-                key={g.board}
                 g={g}
                 names={names}
                 knockout={knockout}
@@ -158,6 +160,8 @@ export function RoundPanel({ t, apply, run }: { t: PhysicalTournament; apply: Ap
                 onKey={(e) => onKey(e, g)}
                 setRef={(el) => (el ? rows.current.set(g.board, el) : rows.current.delete(g.board))}
               />
+              <BoardReports t={t} board={g.board} apply={apply} />
+              </Fragment>
             ))}
           </div>
           {canEditResults && <span className="pr-hint">{p.keyboardHint}</span>}
