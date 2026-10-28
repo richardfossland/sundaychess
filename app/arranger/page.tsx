@@ -101,6 +101,12 @@ export default function HostEntry() {
             >
               {no.host.enterTitle}
             </button>
+            <Link href="/arranger/fysisk" className="btn btn-block btn-lg">
+              <b>{no.physical.entryTitle}</b>
+              <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
+                {no.physical.entrySub}
+              </span>
+            </Link>
             <Link href="/" className="btn btn-ghost btn-block">
               <Icon name="back" size={16} /> {no.common.back}
             </Link>
