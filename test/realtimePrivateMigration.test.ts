@@ -80,11 +80,12 @@ beforeAll(async () => {
     create function cron.unschedule(text) returns boolean language sql as 'select true';
   `);
   const files = readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort();
-  expect(files.at(-1)).toBe("0015_code_attempts.sql");
+  expect(files.at(-1)).toBe("0016_physical_cloud.sql");
   for (const f of files) await db.exec(sqlOf(f));
   // Re-applying must be a no-op (idempotent).
   await db.exec(sqlOf("0014_realtime_private.sql"));
   await db.exec(sqlOf("0015_code_attempts.sql"));
+  await db.exec(sqlOf("0016_physical_cloud.sql"));
 
   await db.query(
     "insert into public.tournaments (id, join_pin, host_code) values ($1, '123456', 'AAAA-11')",
@@ -194,6 +195,88 @@ describe("0015 code_attempts", () => {
       } finally {
         await db.exec("rollback");
       }
+    }
+  });
+});
+
+describe("0016 physical cloud", () => {
+  const P = "dddddddd-2222-4333-8444-555555555555";
+  const report = (id: string, rid: string, result = "1-0") =>
+    db.query(
+      "insert into public.physical_result_reports (tournament_id, round, board, result, reporter, request_id) values ($1, 1, 1, $3, 'white', $2)",
+      [id, rid, result],
+    );
+
+  it("enforces result/reporter/status checks and unique request_id", async () => {
+    await db.query(
+      "insert into public.physical_tournaments (id, host_code, title, event_log, log_hash) values ($1, 'AAAA-11', 't', '[]', 'h')",
+      [P],
+    );
+    await report(P, "req-1");
+    await expect(report(P, "req-1")).rejects.toThrow(/unique|duplicate/i);
+    await expect(report(P, "req-2", "2-0")).rejects.toThrow(/check/i);
+    await expect(
+      db.query(
+        "insert into public.physical_result_reports (tournament_id, round, board, result, reporter, request_id) values ($1,1,1,'1-0','mom','req-3')",
+        [P],
+      ),
+    ).rejects.toThrow(/check/i);
+    await expect(report("99999999-8888-4777-8666-555555555555", "req-4")).rejects.toThrow(/foreign key/i);
+  });
+
+  it("anon/authenticated cannot touch the tables or the cleanup function", async () => {
+    for (const q of [
+      "select * from public.physical_tournaments",
+      "select * from public.physical_result_reports",
+      "delete from public.physical_tournaments",
+      "select public.cleanup_physical_tournaments()",
+    ]) {
+      for (const role of ["anon", "authenticated"]) {
+        await db.exec("begin");
+        try {
+          await db.exec(`set local role ${role}`);
+          await expect(db.query(q)).rejects.toThrow(/permission denied/i);
+        } finally {
+          await db.exec("rollback");
+        }
+      }
+    }
+  });
+
+  it("service_role can use the tables", async () => {
+    await db.exec("begin");
+    try {
+      await db.exec("set local role service_role");
+      const r = await db.query<{ n: number }>("select count(*)::int as n from public.physical_tournaments");
+      expect(r.rows[0].n).toBeGreaterThan(0);
+    } finally {
+      await db.exec("rollback");
+    }
+  });
+
+  it("cleanup removes only 30-day-inactive tournaments and cascades reports", async () => {
+    const OLD = "eeeeeeee-2222-4333-8444-555555555555";
+    await db.query(
+      "insert into public.physical_tournaments (id, host_code, title, event_log, log_hash, updated_at) values ($1,'BBBB-22','old','[]','h', now() - interval '31 days')",
+      [OLD],
+    );
+    await report(OLD, "req-old");
+    await db.query("update public.physical_result_reports set created_at = now() - interval '31 days' where request_id = 'req-old'");
+    const r = await db.query<{ n: number }>("select public.cleanup_physical_tournaments() as n");
+    expect(r.rows[0].n).toBe(1);
+    const left = await db.query<{ id: string }>("select id from public.physical_tournaments");
+    expect(left.rows.map((x) => x.id)).toEqual([P]);
+    const reps = await db.query<{ n: number }>("select count(*)::int as n from public.physical_result_reports where request_id='req-old'");
+    expect(reps.rows[0].n).toBe(0);
+  });
+
+  it("does not disturb 0013's revoke on cleanup_old_tournaments", async () => {
+    await db.exec("begin");
+    try {
+      await db.exec("set local role anon");
+      await expect(db.query("select public.cleanup_old_tournaments()")).rejects.toThrow(/permission denied/i);
+    } finally {
+      await db.exec("rollback");
     }
   });
 });
