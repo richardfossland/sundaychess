@@ -16,6 +16,7 @@ import { useReducedMotion } from "@/lib/client/useReducedMotion";
 import { SoundToggle } from "@/lib/client/SoundToggle";
 import { sound } from "@/lib/client/sound";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
 
 const Chessboard = dynamic(
   () => import("react-chessboard").then((m) => m.Chessboard),
@@ -195,7 +196,7 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
             onClick={undo}
             disabled={historyLen === 0}
           >
-            ↶ {no.solo.undo}
+            <Icon name="undo" size={16} /> {no.solo.undo}
           </button>
           <button
             className="btn"

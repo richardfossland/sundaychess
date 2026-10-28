@@ -46,7 +46,7 @@ export function CapturedPieces({
         maxWidth: "100%",
         padding: "2px 7px",
         borderRadius: 8,
-        background: hasContent ? "rgba(255,255,255,0.06)" : "transparent",
+        background: hasContent ? "var(--s-05)" : "transparent",
         border: `1px solid ${hasContent ? "var(--ink-line)" : "transparent"}`,
       }}
     >

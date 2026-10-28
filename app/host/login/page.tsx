@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { no } from "@/lib/locale/no";
 import { createAuthBrowserClient } from "@/lib/supabase/auth-browser";
+import { Icon } from "@/lib/client/Icon";
 
 // Sunday Account host login. Magic-link + OAuth ("Logg inn med Sunday-konto" /
 // Google) go through the AUTH (issuer) project; on success the shared `sb-*`
@@ -93,7 +94,7 @@ export default function HostLoginPage() {
         </button>
 
         <Link href="/arranger" className="btn btn-ghost btn-block">
-          ← {no.common.back}
+          <Icon name="back" size={16} /> {no.common.back}
         </Link>
       </div>
     </main>

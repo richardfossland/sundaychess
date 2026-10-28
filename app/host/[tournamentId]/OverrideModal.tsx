@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { Modal } from "@/lib/client/Modal";
 import { no } from "@/lib/locale/no";
 import type { GameStatus } from "@/lib/types";
+import { Icon } from "@/lib/client/Icon";
 
 interface Side {
   id: string;
@@ -118,7 +119,7 @@ export function OverrideModal({
             disabled={busy}
             onClick={() => askResult("white_win", no.host.overrideResultConfirm(white.name))}
           >
-            {white.name} ✓
+            {white.name} <Icon name="check" size={14} />
           </button>
           {black && (
             <button
@@ -126,7 +127,7 @@ export function OverrideModal({
               disabled={busy}
               onClick={() => askResult("black_win", no.host.overrideResultConfirm(black.name))}
             >
-              {black.name} ✓
+              {black.name} <Icon name="check" size={14} />
             </button>
           )}
           <button

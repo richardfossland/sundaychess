@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { sound } from "@/lib/client/sound";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
 
 /** Small fixed-corner speaker toggle. Reads/writes the persisted mute flag. */
 export function SoundToggle() {
@@ -26,7 +27,7 @@ export function SoundToggle() {
         if (!next) sound.play("move"); // quick audible confirmation
       }}
     >
-      {muted ? "🔇" : "🔊"}
+      <Icon name={muted ? "soundOff" : "soundOn"} size={20} />
     </button>
   );
 }

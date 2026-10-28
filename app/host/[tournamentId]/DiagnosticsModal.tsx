@@ -5,6 +5,7 @@ import type { BoardState, DiagnosticsResult } from "@/lib/dto";
 import { api } from "@/lib/client/api";
 import { no } from "@/lib/locale/no";
 import { Modal } from "@/lib/client/Modal";
+import { Icon } from "@/lib/client/Icon";
 
 /** Teacher-only readout of the client beacon (T5). Answers the question the app
  * could not answer before: WHY was that student thrown out, and WHY did that
@@ -60,7 +61,7 @@ export function DiagnosticsModal({
       cardClassName="card stack scale-in"
       cardStyle={{ width: "100%", maxWidth: 720, maxHeight: "84vh", overflow: "auto" }}
     >
-      <h3 id={titleId} style={{ fontSize: 20 }}>🩺 {no.diag.title}</h3>
+      <h3 id={titleId} style={{ fontSize: 20 }}><Icon name="diag" size={20} /> {no.diag.title}</h3>
       <p className="muted" style={{ fontSize: 13 }}>{no.diag.hint}</p>
       <hr className="thread" />
 

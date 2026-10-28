@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
 
 /** Small fixed-corner button to enter/exit fullscreen — for a distraction-free
  * projector or play view. Uses the Fullscreen API on the document root; the
@@ -48,7 +49,7 @@ export function FullscreenToggle() {
       aria-pressed={isFull}
       onClick={toggle}
     >
-      {isFull ? "🡼" : "⛶"}
+      <Icon name={isFull ? "exitFullscreen" : "fullscreen"} size={20} />
     </button>
   );
 }

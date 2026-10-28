@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { BoardState, PublicGame, PublicPlayer } from "@/lib/dto";
 import { sortBySlot } from "@/lib/tournament/bracket";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
 
 function winnerId(g: PublicGame): string | null {
   if (g.status === "white_win") return g.whitePlayerId;
@@ -55,7 +56,7 @@ export function BracketBoard({
           {p?.seed != null && <span className="seed">{p.seed}</span>}{" "}
           {p?.displayName ?? "—"}
         </span>
-        {won && <span>✓</span>}
+        {won && <span><Icon name="check" size={14} /></span>}
       </div>
     );
   };
@@ -85,7 +86,7 @@ export function BracketBoard({
                 >
                   {isTiebreak && (
                     <span className="badge" style={{ fontSize: 10 }}>
-                      ⚔︎ {no.host.replay}
+                      <Icon name="versus" size={14} /> {no.host.replay}
                     </span>
                   )}
                   {slot(g, "white")}

@@ -8,6 +8,7 @@ import { isValidPin } from "@/lib/codes";
 import { LocalVersus } from "@/lib/client/LocalVersus";
 import { GameView } from "@/app/play/GameView";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
 
 type Screen = "choose" | "local" | "online" | "create" | "waiting" | "join" | "playing" | "done";
 
@@ -247,7 +248,7 @@ export default function Versus() {
               style={{ padding: 20, alignItems: "center", gap: 6, cursor: "pointer" }}
               onClick={() => setScreen("local")}
             >
-              <span className="entrance-glyph">⚔︎</span>
+              <span className="entrance-glyph"><Icon name="versus" size={56} /></span>
               <b style={{ fontSize: 17 }}>{no.versus.sameScreen}</b>
               <span className="faint" style={{ fontSize: 13 }}>{no.versus.sameScreenSub}</span>
             </button>
@@ -303,7 +304,7 @@ export default function Versus() {
         {screen === "waiting" && (
           <>
             <div className="text-center stack" style={{ gap: 4 }}>
-              <div style={{ fontSize: 32 }}>🔑</div>
+              <div><Icon name="key" size={32} /></div>
               <p className="eyebrow">{no.versus.shareCode}</p>
             </div>
             {shownPin && (
@@ -369,7 +370,7 @@ export default function Versus() {
         {screen === "done" && (
           <>
             <div className="text-center stack" style={{ gap: 6 }}>
-              <div style={{ fontSize: 36 }}>🏁</div>
+              <div><Icon name="flag" size={36} /></div>
               <p className="eyebrow">{no.versus.done}</p>
             </div>
             <button

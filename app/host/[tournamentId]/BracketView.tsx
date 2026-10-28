@@ -15,6 +15,7 @@ import { roundTimerEndMs } from "@/lib/tournament/roundTimer";
 import { BracketBoard } from "@/lib/client/BracketBoard";
 import { OverrideModal } from "./OverrideModal";
 import { CodesModal } from "./CodesModal";
+import { Icon } from "@/lib/client/Icon";
 
 export function BracketView({
   state,
@@ -178,11 +179,11 @@ export function BracketView({
             gap: 12,
             background: "color-mix(in srgb, var(--warn) 18%, var(--ink-2))",
             border: "1px solid color-mix(in srgb, var(--warn) 50%, transparent)",
-            color: "#f3d9c4",
+            color: "var(--warn-ink)",
             maxWidth: 480,
           }}
         >
-          <span>⏰ {no.host.timeUpSuggestion}</span>
+          <span><Icon name="alarm" size={16} /> {no.host.timeUpSuggestion}</span>
           <button
             className="btn btn-danger"
             disabled={busy}
@@ -198,14 +199,14 @@ export function BracketView({
         {hasUndecidedDraw ? (
           <>
             <button className="btn grow" disabled={busy} onClick={() => advance("rematch")}>
-              {busy ? <span className="spin" /> : `⚔︎ ${no.host.playRematch}`}
+              {busy ? <span className="spin" /> : <><Icon name="versus" size={16} /> {no.host.playRematch}</>}
             </button>
             <button
               className="btn btn-primary grow"
               disabled={busy}
               onClick={() => advance("ranking")}
             >
-              {busy ? <span className="spin" /> : `🏆 ${no.host.advanceBySeed}`}
+              {busy ? <span className="spin" /> : <><Icon name="cup" size={16} /> {no.host.advanceBySeed}</>}
             </button>
           </>
         ) : (

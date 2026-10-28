@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
 
 // helper: stagger index as a CSS custom property
 const r = (i: number, extra: CSSProperties = {}): CSSProperties =>
@@ -55,7 +56,7 @@ export default function Landing() {
           style={r(6, { marginTop: 2, gap: 10, flexWrap: "wrap", justifyContent: "center" })}
         >
           <Link href="/versus" className="btn btn-ghost">
-            ⚔︎ {no.landing.versus}
+            <Icon name="versus" size={18} /> {no.landing.versus}
           </Link>
           <Link href="/solo" className="btn btn-ghost">
             ♟ {no.solo.cta}

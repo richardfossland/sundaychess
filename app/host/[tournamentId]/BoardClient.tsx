@@ -11,6 +11,7 @@ import { LeagueView } from "./LeagueView";
 import { BracketView } from "./BracketView";
 import { FinishedView } from "./FinishedView";
 import { LiveGamesView } from "./LiveGamesView";
+import { Icon } from "@/lib/client/Icon";
 
 export function BoardClient({ tournamentId }: { tournamentId: string }) {
   // Host projector renders the live-games grid → ask for per-game clocks.
@@ -108,7 +109,7 @@ export function BoardClient({ tournamentId }: { tournamentId: string }) {
                 aria-pressed={mode === "live"}
                 onClick={() => setMode("live")}
               >
-                ● {no.host.liveToggle}
+                <Icon name="live" size={12} /> {no.host.liveToggle}
               </button>
             </>
           )}
@@ -118,7 +119,7 @@ export function BoardClient({ tournamentId }: { tournamentId: string }) {
               style={{ padding: "8px 14px" }}
               onClick={() => setShowDiag(true)}
             >
-              🩺 {no.diag.open}
+              <Icon name="diag" size={16} /> {no.diag.open}
             </button>
           )}
         </div>

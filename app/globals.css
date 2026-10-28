@@ -54,6 +54,95 @@
   --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.3);
   --shadow-2: 0 24px 60px -28px rgba(0, 0, 0, 0.7);
   --shadow-gold: 0 10px 40px -12px rgba(235, 184, 75, 0.45);
+
+  /* ---- semantic flip tokens (D0 port from SundayTurnering) ----
+     :root is the DARK theme. The no-flash script in layout.tsx sets
+     data-theme="dark|light" on <html> before paint; the light overrides below
+     redefine only what differs. Raised surfaces = --s-*, sunken = --k-*. */
+  --on-gold: #1a1305; /* dark text on gold — fixed in both themes */
+  --gold-ink: var(--gold); /* gold used as TEXT — readable per theme */
+  --gold-light-ink: var(--gold-light);
+  --ground-a: #232a38; /* page ground radial stops */
+  --ground-b: #161b24;
+  --card-end: #14171f; /* card / panel gradient bottom */
+  --btn-end: #20262f; /* button / chip gradient bottom */
+  --grad-end: #1a1f29; /* podium / chip-ish gradient bottom */
+  --clock-bg: #12151b;
+  --ctl-border: #8a93a3; /* form-control outline (>= 3:1) */
+  --live-ink: var(--turn);
+  --warn-ink: #f3d9c4; /* text on a warn-tinted surface */
+  --danger-ink: #f3c9c5;
+  --ok-ink: #d4f3da;
+  --scrim: rgba(8, 10, 14, 0.72);
+  --scrim-soft: rgba(0, 0, 0, 0.6);
+  --grid-line: rgba(255, 255, 255, 0.018);
+  --s-025: rgba(255, 255, 255, 0.025);
+  --s-03: rgba(255, 255, 255, 0.03);
+  --s-04: rgba(255, 255, 255, 0.04);
+  --s-05: rgba(255, 255, 255, 0.05);
+  --s-08: rgba(255, 255, 255, 0.08);
+  --s-hover: rgba(255, 255, 255, 0.1);
+  --k-22: rgba(0, 0, 0, 0.25);
+  --k-28: rgba(0, 0, 0, 0.28);
+  --k-30: rgba(0, 0, 0, 0.35);
+  --k-40: rgba(0, 0, 0, 0.4);
+  --tap: 44px;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-6: 24px;
+}
+
+:root[data-theme="light"] {
+  --gold-ink: #7a5c0a; /* deep gold — readable on light surfaces (>= 5:1) */
+  --gold-light-ink: #7a5c0a;
+
+  --ink: #ece6d9;
+  --ink-2: #ffffff;
+  --ink-3: #fbf8f1;
+  --ink-soft: #e7e1d4;
+  --ink-line: rgba(20, 24, 33, 0.12);
+  --ink-line-strong: rgba(20, 24, 33, 0.22);
+
+  --txt: #161b27;
+  --txt-dim: #4f586a;
+  --txt-faint: #566074;
+  --ctl-border: #687083;
+
+  --turn: #2a7a4b;
+  --turn-deep: #1f6139;
+  --warn: #b85f26;
+  --danger: #b8372f;
+  --live-ink: #2a7a4b;
+  --warn-ink: #7a3d12;
+  --danger-ink: #8f2a23;
+  --ok-ink: #1b5a35;
+
+  --ground-a: #ffffff;
+  --ground-b: #f6f1e8;
+  --card-end: #fbf8f1;
+  --btn-end: #ddd6c6;
+  --grad-end: #e3dccd;
+  --clock-bg: #f3eee3;
+  --grid-line: rgba(20, 24, 33, 0.045);
+  --scrim: rgba(20, 24, 33, 0.5);
+  --scrim-soft: rgba(20, 24, 33, 0.42);
+
+  --s-025: rgba(20, 24, 33, 0.025);
+  --s-03: rgba(20, 24, 33, 0.035);
+  --s-04: rgba(20, 24, 33, 0.05);
+  --s-05: rgba(20, 24, 33, 0.06);
+  --s-08: rgba(20, 24, 33, 0.085);
+  --s-hover: rgba(20, 24, 33, 0.07);
+  --k-22: rgba(20, 24, 33, 0.05);
+  --k-28: #ffffff;
+  --k-30: rgba(20, 24, 33, 0.06);
+  --k-40: #ffffff;
+
+  --shadow-1: 0 2px 10px rgba(20, 24, 33, 0.1);
+  --shadow-2: 0 24px 60px -30px rgba(20, 24, 33, 0.26);
+  --shadow-gold: 0 14px 40px -16px rgba(235, 184, 75, 0.55);
 }
 
 * {
@@ -72,7 +161,7 @@ body {
   min-height: 100dvh;
   position: relative;
   background:
-    radial-gradient(140% 100% at 50% -20%, #232a38 0%, #161b24 42%, var(--ink) 78%);
+    radial-gradient(140% 100% at 50% -20%, var(--ground-a) 0%, var(--ground-b) 42%, var(--ink) 78%);
   overflow-x: clip;
 }
 /* faint chessboard texture */
@@ -83,8 +172,8 @@ body::before {
   z-index: -2;
   pointer-events: none;
   background-image:
-    linear-gradient(45deg, rgba(255, 255, 255, 0.018) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.018) 75%),
-    linear-gradient(45deg, rgba(255, 255, 255, 0.018) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.018) 75%);
+    linear-gradient(45deg, var(--grid-line) 25%, transparent 25%, transparent 75%, var(--grid-line) 75%),
+    linear-gradient(45deg, var(--grid-line) 25%, transparent 25%, transparent 75%, var(--grid-line) 75%);
   background-size: 150px 150px;
   background-position: 0 0, 75px 75px;
   -webkit-mask-image: radial-gradient(120% 90% at 50% 0%, #000 25%, transparent 80%);
@@ -103,7 +192,7 @@ body::after {
 }
 ::selection {
   background: var(--gold);
-  color: var(--ink);
+  color: var(--on-gold);
 }
 a {
   color: inherit;
@@ -201,11 +290,11 @@ button {
   gap: 9px;
 }
 .brandmark b {
-  color: var(--gold);
+  color: var(--gold-ink);
   font-weight: 800;
 }
 .brandmark .knight {
-  color: var(--gold);
+  color: var(--gold-ink);
   font-size: 1.05em;
   filter: drop-shadow(0 2px 6px rgba(235, 184, 75, 0.4));
 }
@@ -214,7 +303,7 @@ button {
   letter-spacing: 0.2em;
   font-size: 12px;
   font-weight: 700;
-  color: var(--gold);
+  color: var(--gold-ink);
 }
 /* a thin gold hairline accent */
 .thread {
@@ -230,8 +319,8 @@ button {
   min-width: 0;
   max-width: 100%;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 40%),
-    linear-gradient(180deg, var(--ink-2), #14171f);
+    linear-gradient(180deg, var(--s-03), transparent 40%),
+    linear-gradient(180deg, var(--ink-2), var(--card-end));
   border: 1px solid var(--ink-line);
   border-radius: var(--radius);
   box-shadow: var(--shadow-2);
@@ -281,7 +370,7 @@ button {
   font: inherit;
   font-weight: 600;
   border: 1px solid var(--ink-line-strong);
-  background: linear-gradient(180deg, var(--ink-soft), #20262f);
+  background: linear-gradient(180deg, var(--ink-soft), var(--btn-end));
   color: var(--txt);
   border-radius: var(--radius-sm);
   padding: 12px 18px;
@@ -335,7 +424,7 @@ a:focus-visible,
 }
 .btn-primary {
   background: var(--gold-grad);
-  color: #1a1305;
+  color: var(--on-gold);
   border-color: transparent;
   font-weight: 700;
   box-shadow: var(--shadow-gold);
@@ -347,7 +436,7 @@ a:focus-visible,
   background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.7) 48%, transparent 72%);
 }
 .btn-ghost {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--s-025);
   border-color: var(--ink-line);
 }
 .btn-danger {
@@ -391,8 +480,8 @@ a:focus-visible,
   font-size: 16px; /* ≥16px stops iOS Safari from auto-zooming on focus */
   width: 100%;
   min-width: 0; /* let inputs shrink below their intrinsic size on narrow screens */
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid var(--ink-line);
+  background: var(--k-28);
+  border: 1px solid var(--ctl-border);
   color: var(--txt);
   border-radius: var(--radius-sm);
   padding: 13px 15px;
@@ -404,7 +493,7 @@ a:focus-visible,
 .input:focus {
   outline: none;
   border-color: var(--gold);
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--k-40);
   box-shadow: 0 0 0 4px rgba(235, 184, 75, 0.14);
 }
 .input-pin {
@@ -425,7 +514,7 @@ a:focus-visible,
   font-weight: 700;
   padding: 5px 11px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--s-05);
   border: 1px solid var(--ink-line);
   letter-spacing: 0.02em;
 }
@@ -470,7 +559,7 @@ a:focus-visible,
   background:
     linear-gradient(120deg, color-mix(in srgb, var(--turn) 22%, var(--ink-2)), color-mix(in srgb, var(--turn) 8%, var(--ink-2)));
   border: 1px solid color-mix(in srgb, var(--turn) 45%, transparent);
-  color: #d4f3da;
+  color: var(--ok-ink);
   position: relative;
   overflow: hidden;
 }
@@ -483,7 +572,7 @@ a:focus-visible,
   animation: sweep 2.6s var(--ease-out) infinite;
 }
 .banner-wait {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--s-03);
   border: 1px solid var(--ink-line);
   color: var(--txt-dim);
 }
@@ -493,17 +582,17 @@ a:focus-visible,
 .banner-ok {
   background: color-mix(in srgb, var(--turn) 18%, var(--ink-2));
   border: 1px solid color-mix(in srgb, var(--turn) 45%, transparent);
-  color: #d4f3da;
+  color: var(--ok-ink);
 }
 .banner-error {
   background: color-mix(in srgb, var(--danger) 18%, var(--ink-2));
   border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
-  color: #f3c9c5;
+  color: var(--danger-ink);
 }
 .banner-warn {
   background: color-mix(in srgb, var(--warn) 18%, var(--ink-2));
   border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
-  color: #f3d9c4;
+  color: var(--warn-ink);
 }
 /* L2: the turn/pre-move banner is always mounted (visibility:hidden, never
    unmounted, once the game ends) so nothing above .board-shell can change
@@ -600,7 +689,7 @@ a:focus-visible,
   transition: background 0.18s;
 }
 .table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--s-025);
 }
 .table tr.me td {
   background: color-mix(in srgb, var(--gold) 12%, transparent);
@@ -613,20 +702,20 @@ a:focus-visible,
   border-radius: 8px;
   font-weight: 800;
   font-size: 13px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--s-05);
   color: var(--txt-dim);
 }
 .rankpill.r1 {
   background: var(--gold-grad);
-  color: #1a1305;
+  color: var(--on-gold);
 }
 .rankpill.r2 {
   background: linear-gradient(135deg, #e8e8ee, #b9bcc6);
-  color: #1a1305;
+  color: var(--on-gold);
 }
 .rankpill.r3 {
   background: linear-gradient(135deg, #e0a978, #b87333);
-  color: #1a1305;
+  color: var(--on-gold);
 }
 
 /* ============ player chips ============ */
@@ -639,7 +728,7 @@ a:focus-visible,
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  background: linear-gradient(180deg, var(--ink-soft), #1c212b);
+  background: linear-gradient(180deg, var(--ink-soft), var(--btn-end));
   border: 1px solid var(--ink-line);
   border-radius: 999px;
   padding: 8px 15px 8px 9px;
@@ -654,7 +743,7 @@ a:focus-visible,
   place-items: center;
   font-size: 12px;
   font-weight: 800;
-  color: #1a1305;
+  color: var(--on-gold);
   background: var(--gold-grad);
 }
 .chip-kick {
@@ -706,7 +795,7 @@ a:focus-visible,
   display: grid;
   place-items: center;
   font-weight: 800;
-  color: #1a1305;
+  color: var(--on-gold);
   background: var(--gold-grad);
   box-shadow: var(--shadow-1);
 }
@@ -774,7 +863,7 @@ a:focus-visible,
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 .color-chip-black {
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--k-30);
   color: var(--txt);
   border: 1px solid var(--ink-line-strong);
 }
@@ -966,7 +1055,7 @@ a:focus-visible,
 }
 .bracket-match {
   position: relative;
-  background: linear-gradient(180deg, var(--ink-2), #15191f);
+  background: linear-gradient(180deg, var(--ink-2), var(--card-end));
   border: 1px solid var(--ink-line);
   border-radius: 12px;
   overflow: hidden;
@@ -1003,7 +1092,7 @@ a:focus-visible,
 }
 .bracket-slot.win {
   background: color-mix(in srgb, var(--gold) 16%, transparent);
-  color: var(--gold-light);
+  color: var(--gold-light-ink);
 }
 .bracket-slot.tbd {
   color: var(--txt-faint);
@@ -1046,7 +1135,7 @@ a:focus-visible,
 .podium-bar {
   width: 100%;
   border-radius: 12px 12px 0 0;
-  background: linear-gradient(180deg, var(--ink-soft), #1a1f29);
+  background: linear-gradient(180deg, var(--ink-soft), var(--grad-end));
   border: 1px solid var(--ink-line);
   border-bottom: none;
   display: grid;
@@ -1059,9 +1148,9 @@ a:focus-visible,
   animation: riseBar 0.7s var(--ease-out) both;
 }
 .podium-bar.p1 {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 35%, var(--ink-soft)), #1a1f29);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 35%, var(--ink-soft)), var(--grad-end));
   border-color: color-mix(in srgb, var(--gold) 40%, transparent);
-  color: var(--gold-light);
+  color: var(--gold-light-ink);
 }
 
 /* ============ result overlay (student) ============ */
@@ -1072,7 +1161,7 @@ a:focus-visible,
   place-items: center;
   padding: 24px;
   z-index: 60;
-  background: rgba(8, 10, 14, 0.72);
+  background: var(--scrim);
   backdrop-filter: blur(8px);
   animation: fadeIn 0.3s ease both;
 }
@@ -1094,7 +1183,7 @@ a:focus-visible,
   place-items: center;
   padding: 24px;
   z-index: 80; /* above the result overlay (60) */
-  background: rgba(8, 10, 14, 0.72);
+  background: var(--scrim);
   backdrop-filter: blur(8px);
   animation: fadeIn 0.2s ease both;
 }
@@ -1209,7 +1298,7 @@ a:focus-visible,
   color: var(--txt-dim);
 }
 .movelist-current {
-  color: var(--gold);
+  color: var(--gold-ink);
   font-weight: 700;
 }
 
@@ -1533,7 +1622,7 @@ a:focus-visible,
 .hype-bad {
   background: rgba(96, 36, 36, 0.82);
   border: 2px solid #e26d5a;
-  color: #ffd9cf;
+  color: var(--danger-ink);
   box-shadow: 0 12px 50px -10px rgba(226, 109, 90, 0.7);
 }
 .hype-swing {
@@ -1545,7 +1634,7 @@ a:focus-visible,
 .hype-mate {
   background: rgba(20, 22, 30, 0.9);
   border: 2px solid var(--gold);
-  color: var(--gold);
+  color: var(--gold-ink);
   box-shadow: 0 16px 60px -8px rgba(235, 184, 75, 0.85);
 }
 @keyframes hype-pop {
@@ -1599,7 +1688,7 @@ a:focus-visible,
   font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1;
-  background: #12151b;
+  background: var(--clock-bg);
   border: 1px solid var(--ink-line);
   color: var(--txt-dim);
   font-variant-numeric: tabular-nums;
@@ -1610,7 +1699,7 @@ a:focus-visible,
   box-shadow: 0 0 12px -4px rgba(235, 184, 75, 0.6);
 }
 .chess-clock.clock-low {
-  color: #ffd9cf;
+  color: var(--danger-ink);
   border-color: color-mix(in srgb, var(--danger) 70%, transparent);
 }
 .chess-clock.clock-running.clock-low {
@@ -1632,7 +1721,7 @@ a:focus-visible,
   font-weight: 700;
   line-height: 1.4;
   border: 1px solid var(--ink-line-strong);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--k-22);
 }
 .team-dot {
   width: 9px;
@@ -1732,7 +1821,7 @@ a:focus-visible,
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--scrim-soft);
   backdrop-filter: blur(4px);
   display: grid;
   place-items: center;
@@ -1780,6 +1869,204 @@ a:focus-visible,
   font-size: 14px;
   background: color-mix(in srgb, var(--warn) 30%, var(--ink-2));
   border-bottom: 1px solid color-mix(in srgb, var(--warn) 55%, transparent);
-  color: #f3d9c4;
+  color: var(--warn-ink);
   pointer-events: none;
+}
+
+/* ============ F0c: icons, NumberField, theme toggle, light-theme specifics ============ */
+:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 2px;
+}
+/* Lucide glyph (lib/client/Icon.tsx): inline with text, never shrinks. The
+   global `svg { display: block }` would otherwise break it out of the line. */
+.icon {
+  display: inline-block;
+  flex: none;
+  vertical-align: -0.2em;
+}
+.icon-title {
+  display: inline-block;
+  margin-right: var(--sp-2);
+  vertical-align: -0.1em;
+  color: var(--gold-ink);
+}
+.sound-toggle,
+.fullscreen-toggle,
+.notify-toggle {
+  color: var(--txt);
+}
+.sound-toggle .icon,
+.fullscreen-toggle .icon,
+.notify-toggle .icon {
+  vertical-align: middle;
+}
+
+/* ---- NumberField (lib/client/NumberField.tsx) ---- */
+.numfield {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  max-width: 100%;
+}
+.numfield-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.numfield-input {
+  width: 5.5rem;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding-inline: var(--sp-2);
+  min-height: var(--tap);
+}
+.numfield-input.numfield-hero {
+  width: 6.5rem;
+  font-family: var(--display);
+  font-size: 44px;
+  line-height: 1.1;
+}
+.numfield-step {
+  appearance: none;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: 12px;
+  border: 1px solid var(--ink-line-strong);
+  background: var(--s-05);
+  color: var(--txt);
+  cursor: pointer;
+  transition:
+    background 0.15s var(--ease),
+    transform 0.1s var(--ease);
+}
+.numfield-step:hover:not(:disabled) {
+  background: var(--s-hover);
+}
+.numfield-step:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.numfield-step:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.numfield-suffix {
+  color: var(--txt-dim);
+  font-size: 14px;
+  font-weight: 600;
+}
+.numfield-hint {
+  font-size: 14px;
+  color: var(--warn-ink);
+  font-weight: 600;
+}
+.numfield-hint:empty {
+  display: none;
+}
+.numfield[data-invalid="true"] .numfield-input {
+  border-color: var(--warn);
+}
+
+/* ---- theme toggle ---- */
+.theme-toggle {
+  position: fixed;
+  bottom: 14px;
+  left: 14px;
+  z-index: 60;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  border: 1px solid var(--ink-line-strong);
+  background: color-mix(in srgb, var(--ink-soft) 80%, transparent);
+  color: var(--txt);
+  box-shadow: var(--shadow-1);
+  transition: transform 0.15s ease;
+}
+.theme-toggle:hover {
+  transform: scale(1.06);
+}
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+@media (max-width: 900px) {
+  /* A floating button would cover the board while playing: on phones the
+     switch sits at the end of the page instead. */
+  .theme-toggle {
+    position: static;
+    margin: var(--sp-6) auto var(--sp-4);
+  }
+}
+@media print {
+  .theme-toggle {
+    display: none;
+  }
+}
+
+/* ---- light theme: surfaces that were hard-wired for a dark ground ---- */
+:root[data-theme="light"] .board-frame {
+  background: linear-gradient(160deg, #d9d0bb, #bdb298);
+  box-shadow:
+    var(--shadow-2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+:root[data-theme="light"] .board-frame::before {
+  border-color: rgba(122, 92, 10, 0.35);
+}
+:root[data-theme="light"] .player-card-white {
+  background: linear-gradient(180deg, #ffffff, #f1ebdd);
+}
+:root[data-theme="light"] .player-card-black {
+  background: linear-gradient(180deg, #e6e1d6, #d3ccbc);
+}
+:root[data-theme="light"] .player-card-white::before {
+  background: linear-gradient(180deg, #ffffff, #cfc6ad);
+  box-shadow: inset -1px 0 0 rgba(20, 24, 33, 0.15);
+}
+:root[data-theme="light"] .color-chip-white {
+  background: #ffffff;
+  color: var(--txt);
+  border-color: var(--ink-line-strong);
+}
+:root[data-theme="light"] .color-chip-black .color-chip-glyph {
+  border-color: var(--ink-line-strong);
+}
+:root[data-theme="light"] .hype-good {
+  background: rgba(228, 246, 234, 0.95);
+  color: #14532d;
+}
+:root[data-theme="light"] .hype-bad {
+  background: rgba(253, 230, 225, 0.95);
+  color: #7f1d1d;
+}
+:root[data-theme="light"] .hype-swing {
+  background: rgba(253, 243, 214, 0.96);
+  color: #5c4308;
+}
+:root[data-theme="light"] .hype-mate {
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--gold-ink);
+  border-color: var(--gold-deep);
+}
+:root[data-theme="light"] .rankpill.r1,
+:root[data-theme="light"] .rankpill.r2,
+:root[data-theme="light"] .rankpill.r3 {
+  color: #1a1305;
+}
+:root[data-theme="light"] .eyebrow,
+:root[data-theme="light"] .icon-title {
+  color: var(--gold-ink);
+}
+/* the gradient-text glyph trick doesn't paint an SVG: colour the stroke instead */
+.entrance-glyph svg.icon {
+  color: var(--gold-ink);
+  display: block;
 }

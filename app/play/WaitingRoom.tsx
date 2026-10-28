@@ -19,6 +19,7 @@ import { RoundTimer } from "@/lib/client/RoundTimer";
 import { resumeTroubleFromStatus } from "@/lib/client/resumeCopy";
 import { no } from "@/lib/locale/no";
 import { GameView } from "./GameView";
+import { Icon } from "@/lib/client/Icon";
 
 /** The player's own end-of-tournament card: placement, top 3, winning team. */
 function FinalResults({ state, playerId }: { state: BoardState; playerId: string }) {
@@ -30,7 +31,7 @@ function FinalResults({ state, playerId }: { state: BoardState; playerId: string
 
   return (
     <div className="card stack" style={{ padding: 18, width: "100%", maxWidth: 420, gap: 10 }}>
-      <p className="eyebrow" style={{ fontSize: 11 }}>🏁 {no.player.finalTitle}</p>
+      <p className="eyebrow" style={{ fontSize: 11 }}><Icon name="flag" size={14} /> {no.player.finalTitle}</p>
       {mine && (
         <p style={{ fontSize: 17 }}>
           {no.player.youPlaced} <b style={{ color: "var(--gold)", fontSize: 22 }}>{mine.rank}</b>{" "}
@@ -56,7 +57,7 @@ function FinalResults({ state, playerId }: { state: BoardState; playerId: string
           <span className="muted" style={{ fontSize: 13 }}>{no.teams.winner}</span>
           <span className="team-chip">
             <span className="team-dot" style={{ background: teamColor(teamRows[0].team) }} />
-            🏆 {teamRows[0].team} · <b>{teamRows[0].score}</b>
+            <Icon name="cup" size={16} /> {teamRows[0].team} · <b>{teamRows[0].score}</b>
           </span>
         </div>
       )}
@@ -208,7 +209,7 @@ export function WaitingRoom({
           <div className="brandmark" style={{ justifyContent: "center" }}>
             <span className="knight">♞</span> Sunday<b>Chess</b>
           </div>
-          <div style={{ fontSize: 40 }}>🏁</div>
+          <div><Icon name="flag" size={40} /></div>
           <h2 style={{ fontSize: 22 }}>{no.player.tournamentGone}</h2>
           <p className="muted">{no.player.tournamentGoneBody}</p>
           <button

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { no } from "@/lib/locale/no";
 import { notifyOptedIn, setNotifyOptIn } from "@/lib/client/turnCue";
+import { Icon } from "@/lib/client/Icon";
 
 /** Small fixed-corner opt-in button, stacked with SoundToggle/FullscreenToggle
  * (see .notify-toggle in globals.css) — never changes layout above the board.
@@ -47,7 +48,7 @@ export function NotifyToggle() {
       title={no.player.notifyOptIn}
       onClick={() => void requestOptIn()}
     >
-      🔔
+      <Icon name="bell" size={20} />
     </button>
   );
 }

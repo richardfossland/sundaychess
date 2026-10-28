@@ -51,6 +51,7 @@ import { sameDetail } from "@/lib/client/equal";
 import { MoveList, sansFromPgn } from "@/lib/client/MoveList";
 import { ReviewView } from "./ReviewView";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
 
 /** Hard ceiling on how long the optimistic-move `pending` lock may stay set.
  * Must exceed the API timeout (8 s) so the normal timeout/catch always wins
@@ -157,7 +158,7 @@ function NoticeSlot({
     <div className="notice-slot" style={ended ? { visibility: "hidden" } : undefined}>
       {meFlagged ? (
         <div className="banner banner-error" style={{ width: "100%" }} role="status" aria-live="polite">
-          <span className="banner-line">⏱ {no.player.myTimeOut}</span>
+          <span className="banner-line"><Icon name="timer" size={16} /> {no.player.myTimeOut}</span>
         </div>
       ) : oppFlagged ? (
         <div
@@ -171,7 +172,7 @@ function NoticeSlot({
             disabled={acting}
             onClick={onClaim}
           >
-            ⏱ {no.player.claimWin}
+            <Icon name="timer" size={16} /> {no.player.claimWin}
           </button>
         </div>
       ) : drawSent ? (
@@ -237,7 +238,7 @@ function SidePanel({
             isMe
               ? undefined
               : {
-                  background: "linear-gradient(180deg, var(--ink-soft), #1c212b)",
+                  background: "linear-gradient(180deg, var(--ink-soft), var(--btn-end))",
                   color: "var(--txt)",
                   border: "1px solid var(--ink-line-strong)",
                 }
@@ -1118,7 +1119,7 @@ export const GameView = memo(function GameView({
                 {isMyTurn
                   ? `♟ ${no.player.yourTurn}`
                   : preMove
-                    ? `⏩ ${no.player.premoveSet}`
+                    ? <><Icon name="fastForward" size={16} /> {no.player.premoveSet}</>
                     : no.player.opponentTurn}
               </span>
             </div>

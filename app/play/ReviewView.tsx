@@ -5,6 +5,7 @@ import type { ReviewResult } from "@/lib/dto";
 import { api } from "@/lib/client/api";
 import type { StoredPlayer } from "@/lib/client/identity";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
 
 // Per-player coached review screen. Fetches the engine-derived review for one
 // finished game (POST /api/review) and shows the coaching paragraph (AI-narrated
@@ -100,7 +101,7 @@ export function ReviewView({
       )}
 
       <button className="btn btn-ghost btn-block" onClick={onClose}>
-        ← {no.review.close}
+        <Icon name="back" size={16} /> {no.review.close}
       </button>
     </div>
   );

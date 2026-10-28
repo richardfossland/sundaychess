@@ -14,6 +14,7 @@ import { OverrideModal } from "./OverrideModal";
 import { CodesModal } from "./CodesModal";
 import { NotesModal } from "./NotesModal";
 import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
+import { Icon } from "@/lib/client/Icon";
 
 function resultLabel(g: PublicGame, name: (id: string | null) => string): string {
   switch (g.status) {
@@ -217,7 +218,7 @@ export function LeagueView({
             aria-label={no.host.editNotes}
             onClick={() => setShowNotes(true)}
           >
-            ✎
+            <Icon name="edit" size={16} />
           </button>
         </div>
         <span className="badge badge-live">
@@ -318,7 +319,7 @@ export function LeagueView({
           {/* tipping leaderboard — appears once anyone has earned a point */}
           {(tipping?.length ?? 0) > 0 && (
             <div className="stack" style={{ gap: 8, marginTop: 20 }}>
-              <p className="eyebrow">🎯 {no.predict.leaderboard}</p>
+              <p className="eyebrow"><Icon name="target" size={14} /> {no.predict.leaderboard}</p>
               <div className="stack" style={{ gap: 4 }}>
                 {(tipping ?? []).slice(0, 5).map((t, i) => (
                   <div className="spread" key={t.playerId} style={{ fontSize: 14 }}>
@@ -427,10 +428,10 @@ export function LeagueView({
                 gap: 12,
                 background: "color-mix(in srgb, var(--warn) 18%, var(--ink-2))",
                 border: "1px solid color-mix(in srgb, var(--warn) 50%, transparent)",
-                color: "#f3d9c4",
+                color: "var(--warn-ink)",
               }}
             >
-              <span>⏰ {no.host.timeUpSuggestion}</span>
+              <span><Icon name="alarm" size={16} /> {no.host.timeUpSuggestion}</span>
               <button className="btn btn-danger" disabled={busy} onClick={requestForce} style={{ flexShrink: 0 }}>
                 {busy ? <span className="spin" /> : no.host.endRound}
               </button>

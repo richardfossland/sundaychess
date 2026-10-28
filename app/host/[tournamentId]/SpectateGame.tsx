@@ -23,6 +23,7 @@ import { useChannel } from "@/lib/client/useChannel";
 import { createReactionGate } from "@/lib/realtimeTrust";
 import type { GameStatus, Turn } from "@/lib/types";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
 
 // L8: the board is read-only here — PlayBoard's onDrop/onSquareClick identity
 // is ignored by its own memo (lib/client/PlayBoard.tsx), so these could be
@@ -61,7 +62,7 @@ function SpectatePlayer({
           style={
             side === "black"
               ? {
-                  background: "linear-gradient(180deg,var(--ink-soft),#1c212b)",
+                  background: "linear-gradient(180deg,var(--ink-soft),var(--btn-end))",
                   color: "var(--txt)",
                   border: "1px solid var(--ink-line-strong)",
                 }
@@ -207,7 +208,7 @@ export function SpectateGame({
       {(result === "white_win" || result === "black_win") && <Confetti count={140} />}
       <div className="stack" style={{ alignItems: "center", gap: 14 }}>
         <button className="btn btn-ghost" style={{ alignSelf: "flex-start" }} onClick={onClose}>
-          ← {no.host.backToGames}
+          <Icon name="back" size={16} /> {no.host.backToGames}
         </button>
 
         <SpectatePlayer name={black} side="black" fen={fen} baselineFen={baselineFen} clock={clock} />

@@ -5,6 +5,7 @@ import { annotateGame } from "@/lib/chess/analysis";
 import { reviewFacts, templatedSummaryNo } from "@/lib/chess/reviewSummary";
 import type { ReviewFacts } from "@/lib/chess/reviewSummary";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
 
 // Coached post-game review for a SOLO game. The game is client-only, so all
 // engine truth is derived here in the browser (annotateGame replays the PGN);
@@ -130,7 +131,7 @@ export function SoloReview({
       )}
 
       <button className="btn btn-ghost btn-block" onClick={onClose}>
-        ← {no.review.close}
+        <Icon name="back" size={16} /> {no.review.close}
       </button>
     </div>
   );
