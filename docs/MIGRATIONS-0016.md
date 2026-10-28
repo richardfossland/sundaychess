@@ -27,16 +27,22 @@ policyer endres.
 
 Lim inn hele `supabase/migrations/0016_physical_cloud.sql` og trykk Run. Den lager:
 
-- `public.physical_tournaments` (`id uuid pk` = lokal turnerings-id, `host_code`,
-  `title`, `event_log jsonb`, `log_version`, `log_hash`, `updated_at`, `created_at`)
+- `public.physical_tournaments` (`id uuid pk` = skyens id, normalt lik lokal
+  turnerings-id, `host_code`, `title`, `event_log jsonb`, `log_version`, `log_hash`,
+  **`public_snapshot jsonb`** (avledet offentlig visning, beregnet ved publisering/PUT; offentlig GET og
+  rapport-POST leser den og spiller aldri av loggen), **`public_names ∈ full|initials`**
+  (standard `initials`), **`local_id uuid`** (turnerings-id inne i loggen når den avviker fra `id`, se
+  «id-kollisjon»), `updated_at`, `created_at`)
 - `public.physical_result_reports` (`tournament_id` → `on delete cascade`, `round`,
   `board`, `result ∈ 1-0|0-1|½-½`, `reporter ∈ white|black|unknown`, `request_id`
-  UNIQUE, `status ∈ pending|approved|rejected`, `created_at`, `decided_at`)
+  UNIQUE, **`device_id`** (tilfeldig id fra melderens telefon), **`pairing_fp`**
+  (`<hvit-id>|<svart-id>` fra `public_snapshot` da meldingen kom),
+  `status ∈ pending|approved|rejected|superseded`, `created_at`, `decided_at`)
 - RLS PÅ, **ingen policyer**, `revoke all from anon, authenticated`, grant kun til
   `service_role` (som alle andre chess-tabeller).
 - `public.cleanup_physical_tournaments()` (security definer, kun `service_role`):
-  sletter turneringer uten aktivitet på 30 dager (rapportene følger med via
-  cascade). Planlagt daglig 05:00 som cron-jobben `cleanup-physical-tournaments`
+  sletter turneringer uten **arrangøraktivitet** på 30 dager (`updated_at`; spillermeldinger
+  forlenger IKKE oppbevaringen; rapportene følger med via cascade). Planlagt daglig 05:00 som cron-jobben `cleanup-physical-tournaments`
   (`cleanup-old-tournaments` går 04:00 og er urørt).
 
 ### Verifiseringssjekkliste (etter SQL, før deploy)
@@ -62,6 +68,32 @@ select public.cleanup_physical_tournaments();                                   
 4. På arrangørens enhet dukker meldingen opp (≤ 10 s) → Godkjenn → resultatet står i tabellen og på den offentlige siden.
 5. Sky → Avpubliser: den offentlige siden gir «Fant ikke turneringen».
 
+### Endringer etter Opus-gjennomgangen (fase 2)
+
+Migrasjonen er redigert på plass (0016 var ikke kjørt i prod), fortsatt idempotent
+(`add column if not exists`, `create or replace`). Er en tidligere versjon av 0016 allerede kjørt et sted
+(f.eks. lokal Supabase), kjør hele fila på nytt: kolonnene legges til, men `check`-begrensningen på
+`status` (`superseded`) må da byttes manuelt:
+
+```sql
+alter table public.physical_result_reports drop constraint if exists physical_result_reports_status_check;
+alter table public.physical_result_reports add constraint physical_result_reports_status_check
+  check (status in ('pending', 'approved', 'rejected', 'superseded'));
+```
+
+**Ingen ny tabell for publiseringsgrensen.** Maks 10 publiseringer per IP per døgn telles i den
+eksisterende `code_attempts` (0015) med scope `publish` via `register_code_failure(p_window_s => 86400)`.
+Hvert publiseringsforsøk teller (også ugyldige), og telleren feiler åpent som resten av 0015.
+
+Ekstra sjekk etter SQL:
+
+```sql
+select column_name from information_schema.columns
+ where table_name = 'physical_tournaments' and column_name in ('public_snapshot','public_names','local_id'); -- 3 rader
+select column_name from information_schema.columns
+ where table_name = 'physical_result_reports' and column_name in ('device_id','pairing_fp');                 -- 2 rader
+```
+
 ## Rollback
 
 Koden fungerer uten tabellene bare ved at «Publiser» feiler (turneringen er lokal og urørt). Rull tilbake i denne rekkefølgen:
@@ -83,6 +115,11 @@ nettleserne er uberørt, og kan publiseres på nytt).
 
 `event_log` er nøyaktig den samme kanoniske hendelsesloggen som i
 `.sundaychess.json` (jf. `docs/FYSISK-MODUS.md`), validert ved opplasting ved å
-spille den av gjennom reduceren (`lib/physical/reducer.ts`). Maks 20 000 hendelser /
-4 MB. Spillernavn og resultater er personopplysninger om barn: raden slettes ved
-«Avpubliser», og automatisk etter 30 dagers inaktivitet.
+spille den av gjennom reduceren (`lib/physical/reducer.ts`, O(n)). **Grenser: maks 500 spillere,
+5 000 hendelser, 512 KB**; sjekket i klienten (vennlig feil) og på serveren FØR avspilling
+(rå kroppsstørrelse → 413 `payload_too_large`; antall → 422 `too_many_events`/`too_many_players`).
+
+**Personvern.** Spillernavn og resultater er personopplysninger om barn. Den offentlige siden viser som
+standard bare «Ola N.» (fornavn + initial) og ingen klubb/klasse (`public_names = 'initials'`); arrangøren
+kan velge fulle navn ved publisering. Selve `event_log` (fulle navn) leses bare av arrangøren (`GET …/log`).
+Raden slettes ved «Avpubliser», og automatisk etter 30 dagers arrangør-inaktivitet.

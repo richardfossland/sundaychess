@@ -4,7 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { no } from "@/lib/locale/no";
 import type { ReportResult, Reporter } from "@/lib/physical/cloudTypes";
 import { newId } from "@/lib/physical/events";
-import { sendReport } from "@/lib/physical/reportClient";
+import { getDeviceId, sendReport } from "@/lib/physical/reportClient";
 import type { PublicSnapshot } from "@/lib/physical/snapshot";
 
 const L = no.physicalCloud;
@@ -46,6 +46,7 @@ const ERR: Record<string, string> = {
   not_found: L.repNotFound,
   reports_unavailable: L.repUnavailable,
   rate_limited: L.repRateLimited,
+  pairing_changed: L.repPairingChanged,
 };
 
 /** Mobilside for QR på bordkortet: tre store knapper, bekreftelse, tåler dårlig nett. */
@@ -88,7 +89,18 @@ export function ReportView({ id, round, board }: { id: string; round: number; bo
     setError(null);
     const requestId = requestIdFor(`sc-report-req:${id}:${round}:${board}:${picked}:${reporter}`);
     const out = await sendReport(
-      { id, round, board, result: picked, reporter, requestId, k },
+      {
+        id,
+        round,
+        board,
+        result: picked,
+        reporter,
+        requestId,
+        deviceId: getDeviceId(),
+        // Parringen slik denne siden viste den: serveren avviser hvis arrangøren har byttet den siden.
+        ...(pairing?.black ? { fp: `${pairing.white}|${pairing.black}` } : {}),
+        k,
+      },
       { onRetry: () => setRetrying(true) },
     );
     setRetrying(false);

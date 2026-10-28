@@ -13,7 +13,7 @@
 // Bare FULLFØRTE runder eksporteres (en halvferdig runde har ingen gyldige resultater).
 
 import { no } from "@/lib/locale/no";
-import type { PhysicalPairing, PhysicalTournament, ResultCode } from "@/lib/physical/schema";
+import type { PhysicalPairing, PhysicalPlayer, PhysicalTournament, ResultCode } from "@/lib/physical/schema";
 import { totalRounds } from "@/lib/physical/reducer";
 import { standings } from "@/lib/physical/selectors";
 
@@ -67,15 +67,23 @@ interface Cell {
   colour: "w" | "b" | "-";
   code: string;
 }
-const ABSENT: Cell = { opp: 0, colour: "-", code: "Z" };
+/**
+ * Spilleren er ikke satt opp i runden (trukket, utslått eller senpåmeldt). Senpåmeldte som fikk ½ poeng
+ * for tapte runder (`missedRoundPoints`) får «H» før påmeldingsrunden, ellers «Z»: kodene må summere
+ * til poengkolonnen. Motstander «0000» og farge «-» som for frirunder (C.04 Annex 2).
+ */
+function absentCell(p: PhysicalPlayer, round: number): Cell {
+  const half = p.missedRoundPoints === 0.5 && p.lateEntryRound !== undefined && round < p.lateEntryRound;
+  return { opp: 0, colour: "-", code: half ? "H" : "Z" };
+}
 
-function cellFor(pl: string, p: PhysicalPairing | undefined, startNo: Map<string, number>): Cell {
-  if (!p) return ABSENT;
+function cellFor(pl: PhysicalPlayer, round: number, p: PhysicalPairing | undefined, startNo: Map<string, number>): Cell {
+  if (!p) return absentCell(pl, round);
   if (p.black === null) {
     const code = p.byeType === "half" ? "H" : p.byeType === "zero" ? "Z" : "U";
     return { opp: 0, colour: "-", code };
   }
-  const white = p.white === pl;
+  const white = p.white === pl.id;
   const opp = startNo.get(white ? p.black : p.white) ?? 0;
   const r = p.result as ResultCode;
   const colour = white ? "w" : "b";
@@ -121,9 +129,9 @@ export function trf16Text(t: PhysicalTournament, opts: Trf16Options = {}): strin
     put(buf, 81, (row?.score ?? 0).toFixed(1), 4, "r");
     put(buf, 86, String(row?.rank ?? 0), 4, "r");
     done.forEach((r, i) => {
-      const c = cellFor(p.id, r.pairings.find((x) => x.white === p.id || x.black === p.id), startNo);
+      const c = cellFor(p, r.number, r.pairings.find((x) => x.white === p.id || x.black === p.id), startNo);
       const base = 90 + 10 * i;
-      put(buf, base + 2, String(c.opp), 4, "r");
+      put(buf, base + 2, c.opp === 0 ? "0000" : String(c.opp), 4, "r");
       put(buf, base + 7, c.colour, 1);
       put(buf, base + 9, c.code, 1);
     });

@@ -257,7 +257,8 @@ function BoardRow({ g, names, knockout, resultsEnabled, showResults, editing, pi
       aria-pressed={g.result === code}
       aria-label={p.setResultLabel(g.board, p.results[code])}
       disabled={!resultsEnabled || (knockout && code === "½-½")}
-      onClick={() => onResult(g.result === code ? "clear" : code)}
+      // Å trykke på det valgte resultatet skal aldri nullstille det (feiltrykk): fjerning skjer via «mer»-menyen.
+      onClick={() => g.result !== code && onResult(code)}
       style={knockout && code === "½-½" ? { visibility: "hidden" } : undefined}
     >
       {p.results[code]}

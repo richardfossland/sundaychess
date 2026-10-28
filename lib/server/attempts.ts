@@ -22,6 +22,8 @@ export type AttemptOpts = {
    * on another isolate would otherwise return 200 for the right code while wrong
    * ones get 429 — an oracle for a guesser who has already hit the block. */
   fresh?: boolean;
+  /** Window length in seconds (default CODE_WINDOW_S). */
+  windowS?: number;
 };
 
 const CACHE_MAX = 2000;
@@ -47,7 +49,7 @@ export async function isCodeBlocked(scope: string, req: Request, opts: AttemptOp
     const { data, error } = await createServiceClient().rpc("code_blocked", {
       p_scope: scope,
       p_ip: ipKey(req),
-      p_window_s: CODE_WINDOW_S,
+      p_window_s: opts.windowS ?? CODE_WINDOW_S,
       p_max: opts.max ?? CODE_MAX_FAILURES,
     });
     if (error) throw error;
@@ -66,11 +68,11 @@ export async function registerCodeFailure(scope: string, req: Request, opts: Att
     const { data, error } = await createServiceClient().rpc("register_code_failure", {
       p_scope: scope,
       p_ip: ipKey(req),
-      p_window_s: CODE_WINDOW_S,
+      p_window_s: opts.windowS ?? CODE_WINDOW_S,
       p_max: opts.max ?? CODE_MAX_FAILURES,
     });
     if (error) throw error;
-    if (data === true) remember(`${scope}|${ipKey(req)}`, true, CODE_WINDOW_S * 1000);
+    if (data === true) remember(`${scope}|${ipKey(req)}`, true, (opts.windowS ?? CODE_WINDOW_S) * 1000);
     return data === true;
   } catch (e) {
     console.error("[register_code_failure] fail-open", e);

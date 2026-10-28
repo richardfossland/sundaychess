@@ -1,22 +1,21 @@
 import { isUuid } from "@/lib/codes";
-import { publicSnapshot } from "@/lib/physical/snapshot";
 import { clientIp, fail, ok, rateLimit, withApi } from "@/lib/server/http";
-import { authPhysicalHost, deletePhysical, getPhysical, hostCodeOf, validateLog } from "@/lib/server/physical";
+import { authPhysicalHost, deletePhysical, getPublicSnapshot, hostCodeOf } from "@/lib/server/physical";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 // GET /api/physical/[id] — PUBLIC. Derived snapshot only (title, rounds,
-// pairings, results, standings). Never the host code, never the raw log.
+// pairings, results, standings; names per the publish option). Never the host
+// code, never the raw log.
 export const GET = withApi(async (req: Request, { params }: Ctx) => {
   const { id } = await params;
   if (!isUuid(id)) return fail(404, "not_found");
   if (!rateLimit(`phys-get:${clientIp(req)}`, 600, 60_000)) return fail(429, "rate_limited");
-  const row = await getPhysical(id);
-  if (!row) return fail(404, "not_found");
-  const t = validateLog(id, row.event_log);
-  if (!t) return fail(503, "server_error");
+  // Reads the stored derived snapshot: never replays the log on a public request.
+  const got = await getPublicSnapshot(id);
+  if (!got) return fail(404, "not_found");
   return ok(
-    { ...publicSnapshot(t, row.updated_at), version: row.log_version },
+    { ...got.snapshot, version: got.version },
     { headers: { "cache-control": "public, max-age=3" } },
   );
 });

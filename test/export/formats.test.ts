@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { gamesCsv, standingsCsv } from "@/lib/export/csv";
 import { downloadBlob, safeFileName, type DownloadEnv } from "@/lib/export/download";
 import { lastFirst, toAscii, trf16Text } from "@/lib/export/trf16";
-import { newTournament, playRound } from "../physical/helpers";
+import { dispatch } from "@/lib/physical/reducer";
+import { meta, newTournament, playRound } from "../physical/helpers";
 import { randomTournament } from "./gen";
 import { goldenTournament } from "./fixture";
 
@@ -21,8 +22,8 @@ const TRF_GOLDEN = [
   "001    1      Nordmann, Ola                     1800                             2.0    2     2 w 1     3 b 1",
   "001    2      Oestby, Aase                      1650                             0.0    5     1 b 0     5 w -",
   "001    3      Hansen-Berg, Kari                                                  0.5    4     4 w =     1 w 0",
-  "001    4      Aesoey, Bjoern                    1200                             1.0    3     3 b =     0 - H",
-  "001    5      Li                                                                 2.0    1     0 - U     2 b +",
+  "001    4      Aesoey, Bjoern                    1200                             1.0    3     3 b =  0000 - H",
+  "001    5      Li                                                                 2.0    1  0000 - U     2 b +",
 ].join("\r\n") + "\r\n";
 
 describe("TRF16", () => {
@@ -46,8 +47,8 @@ describe("TRF16", () => {
     expect([col(l, 102, 105), col(l, 107, 107), col(l, 109, 109)]).toEqual(["   3", "b", "1"]);
     // frirunde: 0000/blank, «-», U/H
     const li = lines[4];
-    expect([col(li, 92, 95), col(li, 97, 97), col(li, 99, 99)]).toEqual(["   0", "-", "U"]);
-    expect(lines[3].slice(101, 109)).toBe("   0 - H");
+    expect([col(li, 92, 95), col(li, 97, 97), col(li, 99, 99)]).toEqual(["0000", "-", "U"]);
+    expect(lines[3].slice(101, 109)).toBe("0000 - H");
     for (const x of lines) expect(x).toMatch(/^[\x20-\x7e]+$/);
   });
 
@@ -61,6 +62,43 @@ describe("TRF16", () => {
       expect(pl).toHaveLength(t.players.length);
       for (const l of pl) expect(l.length).toBe(89 + 10 * done);
     }
+  });
+
+  it("senpåmeldte: H før påmeldingsrunden ved ½ poeng, ellers Z; alltid 0000/«-»", () => {
+    let t = playRound(newTournament({}, 4));
+    t = dispatch(t, { type: "addPlayer", playerId: "lateHalf", name: "Sen Halv", missedRoundPoints: 0.5 }, meta());
+    t = dispatch(t, { type: "addPlayer", playerId: "lateZero", name: "Sen Null" }, meta());
+    t = playRound(t);
+    const lines = trf16Text(t).split("\r\n").filter((l) => l.startsWith("001"));
+    const cell = (l: string, round: number) => l.slice(89 + 10 * (round - 1), 99 + 10 * (round - 1));
+    const half = lines.find((l) => l.includes("Halv"))!;
+    const zero = lines.find((l) => l.includes("Null"))!;
+    expect(cell(half, 1)).toBe("  0000 - H");
+    expect(cell(zero, 1)).toBe("  0000 - Z");
+  });
+
+  it("invariant: poengkolonnen = summen av resultatkodene for hver spiller (tilfeldige turneringer m/ senpåmeldte)", () => {
+    const value: Record<string, number> = { "1": 1, "+": 1, U: 1, "=": 0.5, H: 0.5, "0": 0, "-": 0, Z: 0 };
+    let checked = 0;
+    for (let seed = 1; seed <= 150; seed++) {
+      const t = randomTournament(seed);
+      const lines = trf16Text(t).split("\r\n").filter((l) => l.startsWith("001"));
+      const done = t.rounds.filter((r) => r.status === "completed").length;
+      for (const l of lines) {
+        let sum = 0;
+        for (let i = 0; i < done; i++) {
+          const c = l.slice(89 + 10 * i, 99 + 10 * i);
+          // Fast bredde: «  oooo c k» – motstander alltid 4 sifre når det ikke er et ekte nummer.
+          const code = c[9];
+          expect(value[code], `kode «${code}» i ${l}`).not.toBeUndefined();
+          if (c.slice(2, 6) === "0000") expect(c[7]).toBe("-");
+          sum += value[code];
+        }
+        expect(Number(l.slice(80, 84))).toBe(sum);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(300);
   });
 
   it("navn og tegnsett", () => {

@@ -79,11 +79,11 @@ Alt skjer i nettleseren (Blob), uten nett. UI: `FileMenu.tsx` («Fil»-menyen i 
 
 **Import-regler.** Hash-avvik eller avvikende snapshot → advarsel «filen er endret utenfor appen», og importen er sperret til brukeren huker av «importer likevel». Hash sjekkes mot loggen slik den står i fila, FØR en eventuell migrering. Finnes samme turnerings-id lokalt: «Erstatt», «Behold begge (ny kopi)» eller avbryt; har den lokale kopien flere hendelser som utvider filens logg, står det at lokal kopi er nyere.
 
-**TRF16.** Kolonner (1-basert): `001` 1–3, startnr 5–8, kjønn 10, tittel 11–13, navn 15–47 (`Etternavn, Fornavn`, best effort: siste ord = etternavn), rating 49–52, forbund 54–56, FIDE-nr 58–68, fødselsdato 70–79, poeng 81–84 (`11.5`), plassering 86–89, deretter 10-tegns blokk per runde fra kol. 90: motstander 92–95, farge 97 (`w`/`b`/`-`), resultat 99. Resultatkoder: `1`/`0`/`=` spilt; `+`/`-` walkover; `=` (begge uteble) → `-` for begge; frirunde → motstander `0000`, farge `-`, kode `U` (full, tildelt av parringen), `H` (halv), `Z` (null/fravær). Spillere som ikke er satt opp i en runde (trukket, utslått, senpåmeldt) får `0000 - Z`. Bare fullførte runder tas med. Headerlinjer 012/022/032/042/052/062/072/092/102/122 (by, arbitrer og betenkningstid er tomme med mindre de gis som `Trf16Options`; forbund = `NOR`). Linjer slutter med CRLF (Remark 1: CR).
+**TRF16.** Kolonner (1-basert): `001` 1–3, startnr 5–8, kjønn 10, tittel 11–13, navn 15–47 (`Etternavn, Fornavn`, best effort: siste ord = etternavn), rating 49–52, forbund 54–56, FIDE-nr 58–68, fødselsdato 70–79, poeng 81–84 (`11.5`), plassering 86–89, deretter 10-tegns blokk per runde fra kol. 90: motstander 92–95, farge 97 (`w`/`b`/`-`), resultat 99. Resultatkoder: `1`/`0`/`=` spilt; `+`/`-` walkover; `=` (begge uteble) → `-` for begge; frirunde → motstander `0000`, farge `-`, kode `U` (full, tildelt av parringen), `H` (halv), `Z` (null/fravær). Spillere som ikke er satt opp i en runde (trukket, utslått, senpåmeldt) får `0000 - Z`; senpåmeldte som fikk ½ poeng for tapte runder (`missedRoundPoints`) får `0000 - H` før påmeldingsrunden, slik at kodene alltid summerer til poengkolonnen (invariant-test over tilfeldige turneringer). Motstanderfeltet er alltid `0000` for frirunder/fravær. Bare fullførte runder tas med. Headerlinjer 012/022/032/042/052/062/072/092/102/122 (by, arbitrer og betenkningstid er tomme med mindre de gis som `Trf16Options`; forbund = `NOR`). Linjer slutter med CRLF (Remark 1: CR).
 *Tegnsett:* spesifikasjonen sier ikke noe om koding, og bbpPairings/JaVaFo teller kolonner i byte. Æ/Ø/Å ville forskjøvet alle kolonner i UTF-8, så navnene translittereres til ren ASCII (æ→ae, ø→oe, å→aa, é→e …).
 *Validering (eier):* bbpPairings er ikke tilgjengelig via npm/pip, så den er ikke i CI. Last ned bbpPairings og kjør `bbpPairings.exe --dutch fil.trf -c` (bruk `trf16Text(t, { xxr: true })` hvis programmet krever `XXR`-linjen med antall runder), eller åpne fila i Swiss-Manager/Vega. Enhetstesten sjekker kolonnene mot en håndkontrollert golden-fil.
 
-**CSV.** UTF-8 med BOM, `;` som skilletegn, CRLF, desimalkomma (norsk Excel). Tabell: `#;Nr;Navn;Klubb/klasse;Rating;Poeng;<tiebreaks>`. Partier: `Runde;Brett;Hvit;Svart;Resultat`. Tekstceller som begynner med `= + - @` får `'` foran (formelinjeksjon).
+**CSV.** UTF-8 med BOM, `;` som skilletegn, CRLF, desimalkomma (norsk Excel). Tabell: `#;Nr;Navn;Klubb/klasse;Rating;Poeng;<tiebreaks>`. Partier: `Runde;Brett;Hvit;Svart;Resultat`. ALLE tekstceller (også overskrifter og gruppe-etikett) går gjennom samme vern: begynner de med `= + - @` (eller tab/CR) får de `'` foran (formelinjeksjon).
 
 **Tester.** `test/export/*` (rundtur-egenskapstest på 60 tilfeldige turneringer, tukling, versjon/migrering, konflikter, TRF- og CSV-golden, nedlasting) og `e2e/physical-file.spec.ts` (eksport → slett → importer → neste runde, offline).
 
@@ -99,7 +99,9 @@ Lokal-først er uendret: den lokale hendelsesloggen er sannhetskilden og turneri
 | `app/api/physical/**` | Rutene under. Alle `withApi`. |
 | `lib/physical/cloud.ts` | Synk-motoren `CloudSync` (ren, testbar med falsk transport/timere). |
 | `lib/physical/cloudMeta.ts` | Lokal sky-tilstand i localStorage (`sundaychess:physical-cloud:<id>`): arrangørkode, pair-token, siste synkroniserte versjon, bordnøkler. **Ikke** del av turneringsfila. |
-| `lib/physical/snapshot.ts` | Offentlig, avledet visning (aldri kode, aldri rålogg, utkastrunder skjult). |
+| `lib/physical/snapshot.ts` | Offentlig, avledet visning (aldri kode, aldri rålogg, utkastrunder skjult). Navnepolicy `names: 'initials'` (standard: «Ola N.», ingen klubb/klasse) eller `'full'` (arrangørens valg ved publisering). Lagres som `public_snapshot` ved hver vertsskriving. |
+| `lib/physical/writerLock.ts` | Én skriver per turnering: `navigator.locks` (steal = «Ta over»), BroadcastChannel-hjerteslag som reserve. |
+| `lib/physical/exportReminder.ts` | `navigator.storage.persist()` ved opprettelse; avvisbar eksportpåminnelse etter fullførte runder (sterkere på iOS uten vedvarende lagring). |
 | `lib/physical/reportClient.ts` | Sending av melding med samme `requestId` ved hvert forsøk. |
 | `app/arranger/fysisk/cloud/` | `CloudMenu`, `ReportsPanel`, `OpenPublished`, `useBoardKeys`, `cloudRegistry`. |
 | `app/f/[id]` | Offentlig side (poller hvert 15. s). `app/f/[id]/r/[runde]/[brett]?k=…` = rapportside. |
@@ -108,13 +110,13 @@ Lokal-først er uendret: den lokale hendelsesloggen er sannhetskilden og turneri
 
 | Rute | Auth | Innhold |
 |---|---|---|
-| `POST /api/physical/publish` `{events}` | åpen (rate limit 20/10 min/IP) | Oppretter raden (id = lokal id), genererer arrangørkode, svarer `{hostCode, pairToken, version}`. Logg valideres (422 `invalid_log`). Finnes id fra før: 409 `already_published` (med kode/token = overskriving). |
-| `PUT /api/physical/[id]/log` `{events, baseVersion}` | vert | Optimistisk samtidighet på `log_version`: 409 `version_conflict` (+ `version`). Samme innhold to ganger = 200 (idempotent). Logg spilles av før lagring (422). |
+| `POST /api/physical/publish` `{events, cloudId?, publicNames?}` | åpen. Rekkefølge: rå kroppsstørrelse (413) → antall hendelser/spillere (422) → DB-basert budsjett 10/IP/døgn (`code_attempts`, scope `publish`, 429) → først DERETTER avspilling (422 `invalid_log`) | Oppretter raden (id = `cloudId`, ellers lokal id), genererer arrangørkode, svarer `{id, hostCode, pairToken, version}`. Finnes id fra før uten auth: 409 `already_published`; klienten velger da en ny sky-id og prøver igjen (lokal id ≠ sky-id; `local_id` på raden, `cloudId` i `cloudMeta`; URL-er og bordnøkler bruker sky-id). Med kode/token = overskriving. |
+| `PUT /api/physical/[id]/log` `{events, baseVersion}` | vert | Optimistisk samtidighet på `log_version`: 409 `version_conflict` (+ `version`). Samme innhold to ganger = 200 (idempotent). Samme grenser som publish (413/422) – autentisert FØR avspilling. Oppdaterer `public_snapshot` og setter ventende meldinger med annen parring til `superseded`. Bare vertsskriving forlenger oppbevaringen. |
 | `GET /api/physical/[id]/log` | vert | Hele loggen + `hostCode` + `pairToken` (åpne på ny enhet). |
-| `GET /api/physical/[id]` | **offentlig** | Avledet snapshot. Aldri `host_code`, aldri logg. |
+| `GET /api/physical/[id]` | **offentlig** | Lagret `public_snapshot` (aldri avspilling). Aldri `host_code`, aldri logg. |
 | `DELETE /api/physical/[id]` | vert | Avpubliser (cascade sletter rapporter). |
 | `GET /api/physical/[id]/keys?round=N&boards=M` | vert | Bordnøkler `k` til QR; caches lokalt slik at utskrift virker uten nett. |
-| `POST /api/physical/[id]/report` | `k` | `{round, board, result, reporter, requestId, k}`. `k` = HMAC(PAIR_SECRET, `board|<id>|<runde>|<brett>`): 403 `bad_key` ved feil. Idempotent på `requestId`; maks 1 ventende per (runde, brett, melder), nyere erstatter eldre; bare publisert, ikke-fullført runde uten resultat på brettet (409 `round_not_open`/`round_closed`/`already_has_result`). Rate limit 120/10 min/IP. |
+| `POST /api/physical/[id]/report` | `k` | `{round, board, result, reporter, requestId, deviceId, fp?, k}`. `k` = HMAC(PAIR_SECRET, `board|<id>|<runde>|<brett>`): 403 `bad_key` ved feil (QR-en endres ikke av bytter). Idempotent på `requestId`; maks 1 ventende per (runde, brett, **deviceId**) (aldri per påstått side), nyere erstatter eldre, maks 8 ventende per brett; serveren leser `public_snapshot` og lagrer parringens fingerprint (`hvit|svart`) i meldingen; sender telefonen `fp` og brettet har andre spillere nå: 409 `pairing_changed`; bare publisert, ikke-fullført runde uten resultat på brettet (409 `round_not_open`/`round_closed`/`already_has_result`). Rate limit 120/10 min/IP. |
 | `GET /api/physical/[id]/reports` | vert | Ventende meldinger. |
 | `POST /api/physical/[id]/reports/[reportId]` `{action}` | vert | `approve`/`reject`. Serveren skriver **aldri** resultater. |
 
@@ -126,7 +128,19 @@ Vertsauth: header `x-pair-token` (utstedt ved publisering/åpning) ELLER `x-host
 
 ### Godkjenning av spillerrapport
 
-`ReportsPanel` poller hvert 10. s (synlig fane, åpen publisert runde). Godkjenn = `setResult` med `source: 'player_report'` føres LOKALT (så `resultSource = 'player_report'`), deretter får skyen beskjed (best effort; et ført brett filtreres bort uansett) og loggen pushes av synk-motoren. «Godkjenn alle samstemte» = begge spillerne har meldt det samme. Resultater med walkover/«begge uteble» meldes ikke av spillere (bare 1–0, ½–½, 0–1).
+`ReportsPanel` poller hvert 10. s (synlig fane, åpen publisert runde). Godkjenn = `setResult` med `source: 'player_report'` føres LOKALT (så `resultSource = 'player_report'`), deretter får skyen beskjed (best effort; et ført brett filtreres bort uansett) og loggen pushes av synk-motoren. Bare meldinger som hører til GJELDENDE parring (fingerprint) vises; byttes/endres brettet etter publisering, er eldre meldinger foreldet (serveren setter dem til `superseded` ved neste push). **Samstemt** = minst én melding fra hvit og én fra svart fra to ULIKE `deviceId`, alle med samme resultat; én telefon kan aldri bekrefte seg selv. Uenighet vises tydelig (rødt merke + hver melding med telefon-nummer). Godkjenn: først lokal `setResult`; bare når den lyktes sies det fra til serveren (godkjent/avvist). «Godkjenn alle samstemte» = regelen over. Resultater med walkover/«begge uteble» meldes ikke av spillere (bare 1–0, ½–½, 0–1).
+
+### Navnepolicy (personvern)
+
+Offentlig side og rapportside viser som standard bare «Ola N.» og ingen klubb/klasse (`publicNames: 'initials'`). I Sky-menyen kan arrangøren velge «Fulle navn og klubb/klasse» før publisering (forklaring på norsk i menyen). Arrangørens egen visning, bordkort/utskrift og storskjerm på arrangørens enhet bruker alltid fulle navn. Oppbevaring: 30 dager etter siste arrangørskriving.
+
+### Grenser og DoS-vern
+
+Maks 500 spillere / 5 000 hendelser / 512 KB (`lib/physical/cloudTypes.ts`). Klienten sjekker før publisering/push (`logLimitError`, status «Synk stoppet» med forklaring; lokalt virker alt). Serveren avviser billig FØRST (kroppsstørrelse, antall), så budsjettet, og spiller først deretter av loggen. `replay` er O(n) (én arbeidskopi, id-sett; `test/physical/replayPerf.test.ts`: 5 000 hendelser < 300 ms).
+
+### Én skriver per turnering
+
+`usePhysicalTournament` tar en lås per turnering (`writerLock.ts`). Fane nr. to blir skrivebeskyttet (banner «Turneringen er åpen i en annen fane» + «Ta over»; skjemaene er `fieldset disabled`, Sky-menyen skjules så en utdatert fane aldri pusher). Take over laster turneringen på nytt fra lageret. Lagringskøen nekter dessuten å skrive hvis lageret ikke lenger er det fanen selv lastet/skrev (`createSaveQueue(..., onConflict)`). Storskjerm og utskrift leser bare og trenger ingen lås.
 
 ### Åpne på ny enhet
 

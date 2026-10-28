@@ -270,6 +270,34 @@ describe("0016 physical cloud", () => {
     expect(reps.rows[0].n).toBe(0);
   });
 
+  it("a fresh player report does NOT extend retention (only host writes bump updated_at)", async () => {
+    const STALE = "ffffffff-2222-4333-8444-555555555555";
+    await db.query(
+      "insert into public.physical_tournaments (id, host_code, title, event_log, log_hash, updated_at) values ($1,'CCCC-33','stale','[]','h', now() - interval '31 days')",
+      [STALE],
+    );
+    await report(STALE, "req-fresh"); // created_at = now()
+    const r = await db.query<{ n: number }>("select public.cleanup_physical_tournaments() as n");
+    expect(r.rows[0].n).toBe(1);
+    const left = await db.query<{ id: string }>("select id from public.physical_tournaments where id = $1", [STALE]);
+    expect(left.rows).toHaveLength(0);
+  });
+
+  it("has the snapshot/name/device/fingerprint columns, defaults and the superseded status", async () => {
+    const Q = "abababab-2222-4333-8444-555555555555";
+    await db.query("insert into public.physical_tournaments (id, host_code, title, event_log, log_hash) values ($1,'DDDD-44','q','[]','h')", [Q]);
+    const t = await db.query<{ public_names: string; public_snapshot: unknown; local_id: unknown }>("select public_names, public_snapshot, local_id from public.physical_tournaments where id = $1", [Q]);
+    expect(t.rows[0]).toEqual({ public_names: "initials", public_snapshot: null, local_id: null });
+    await expect(db.query("update public.physical_tournaments set public_names = 'everything' where id = $1", [Q])).rejects.toThrow(/check/i);
+    await db.query("insert into public.physical_result_reports (tournament_id, round, board, result, reporter, request_id, device_id, pairing_fp, status) values ($1,1,1,'1-0','unknown','req-sup','dev-1','a|b','superseded')", [Q]);
+    const r = await db.query<{ device_id: string; pairing_fp: string }>("select device_id, pairing_fp from public.physical_result_reports where request_id = 'req-sup'");
+    expect(r.rows[0]).toEqual({ device_id: "dev-1", pairing_fp: "a|b" });
+  });
+
+  it("is idempotent: the whole file can be run twice", async () => {
+    await db.exec(sqlOf("0016_physical_cloud.sql"));
+  });
+
   it("does not disturb 0013's revoke on cleanup_old_tournaments", async () => {
     await db.exec("begin");
     try {
