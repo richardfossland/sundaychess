@@ -70,11 +70,10 @@ test("publiser → spiller melder via QR-side → arrangør godkjenner → offen
 
   // Arrangøren ser meldingen (poller hvert 10. sekund) og godkjenner.
   await page.goto(url);
-  const panel = page.getByTestId("reports-panel");
-  await expect(panel).toBeVisible({ timeout: 30_000 });
-  await expect(panel.getByTestId("report-board-1")).toBeVisible();
-  await panel.getByTestId("report-board-1").getByRole("button", { name: L.approve }).click();
-  await expect(panel).toBeHidden({ timeout: 20_000 });
+  const card = page.getByTestId("report-board-1");
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  await card.getByRole("button", { name: L.approve }).click();
+  await expect(card).toBeHidden({ timeout: 20_000 });
   await expect(page.getByTestId("cloud-status")).toHaveText(L.status.synced, { timeout: 20_000 });
 
   // Resultatet står i den offentlige siden og i tabellen.

@@ -32,11 +32,10 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
 
   // Ved oppstart: push ev. endringer gjort offline før omlasting. Senere endringer pushes av
   // lagringskøen etter vellykket lokal lagring (cloudSaved i usePhysical).
-  const eventsRef = useRef(t.events);
-  eventsRef.current = t.events;
+  const [initialEvents] = useState(t.events);
   useEffect(() => {
-    cloud.notifyLocalChange(eventsRef.current);
-  }, [cloud]);
+    cloud.notifyLocalChange(initialEvents);
+  }, [cloud, initialEvents]);
 
   useEffect(() => {
     if (!open) return;

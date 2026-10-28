@@ -64,27 +64,28 @@ function repStore(id: string): RepStore {
 
 const NONE: ReportDto[] = [];
 
+function attach(st: RepStore, cb: () => void): () => void {
+  st.subs.add(cb);
+  if (st.subs.size === 1) {
+    void st.load();
+    st.timer = window.setInterval(() => void st.load(), 10_000);
+    document.addEventListener("visibilitychange", st.onVis);
+  }
+  return () => {
+    st.subs.delete(cb);
+    if (st.subs.size === 0) {
+      if (st.timer !== null) window.clearInterval(st.timer);
+      st.timer = null;
+      document.removeEventListener("visibilitychange", st.onVis);
+    }
+  };
+}
+
 /** Poller ventende spillermeldinger hvert 10. sekund mens fanen er synlig og `active`. */
 export function useReports(id: string, active: boolean): { reports: ReportDto[]; refresh: () => void } {
   const st = repStore(id);
   const reports = useSyncExternalStore(
-    (cb) => {
-      if (!active) return () => {};
-      st.subs.add(cb);
-      if (st.subs.size === 1) {
-        void st.load();
-        st.timer = window.setInterval(() => void st.load(), 10_000);
-        document.addEventListener("visibilitychange", st.onVis);
-      }
-      return () => {
-        st.subs.delete(cb);
-        if (st.subs.size === 0) {
-          if (st.timer !== null) window.clearInterval(st.timer);
-          st.timer = null;
-          document.removeEventListener("visibilitychange", st.onVis);
-        }
-      };
-    },
+    (cb) => (active ? attach(st, cb) : () => {}),
     () => st.reports,
     () => NONE,
   );
