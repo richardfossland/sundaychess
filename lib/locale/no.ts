@@ -52,6 +52,16 @@ export const no = {
       "Gratis · ingen elevkontoer · funker på Chromebook og mobil · ~20 min",
   },
 
+  pwa: {
+    description: "Sjakkturnering for skole og klubb – liga, sluttspill, lag og lynsjakk.",
+    offlineTitle: "Du er frakoblet",
+    offlineBody:
+      "Denne siden er ikke lagret på enheten ennå. Koble til nettet og prøv igjen. Fysisk turneringsmodus (under Arrangør) fungerer uten nett etter at du har åpnet den én gang med nett.",
+    offlineRetry: "Prøv igjen",
+    updateAvailable: "Ny versjon – last inn på nytt",
+    updateHint: "Ny versjon er klar. Last inn når ingen runde pågår.",
+  },
+
   versus: {
     title: "Spill mot hverandre",
     subtitle: "To spillere – uten en hel turnering",
