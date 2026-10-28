@@ -193,13 +193,19 @@ export function __setChannelDriver(d: ChannelDriver | null): void {
   if (!d) entries.clear();
 }
 
+/** Channel options. `private: true` makes Realtime authorize every join against
+ * RLS on realtime.messages (migration 0014): receive-only on server-hint topics,
+ * so clients can't forge hints. Combined config: broadcast self:false (we never
+ * want our own echoes) plus a presence key; the unused half is harmless. */
+export function channelConfig(trackKey: string) {
+  return {
+    config: { private: true, broadcast: { self: false }, presence: { key: trackKey } },
+  };
+}
+
 function createChannel(topic: string, trackKey: string): RealtimeChannel {
   if (driver) return driver.create(topic, trackKey);
-  // Combined config: broadcast self:false (we never want our own echoes) plus a
-  // presence key. The unused half is harmless on a single-purpose topic.
-  return createClient().channel(topic, {
-    config: { broadcast: { self: false }, presence: { key: trackKey } },
-  });
+  return createClient().channel(topic, channelConfig(trackKey));
 }
 
 function destroyChannel(channel: RealtimeChannel): void {

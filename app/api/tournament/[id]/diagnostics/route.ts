@@ -1,6 +1,6 @@
 import { authHost } from "@/lib/server/auth";
 import { listClientEvents } from "@/lib/server/store";
-import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
+import { fail, ok, readJson, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 import type { DiagnosticsResult } from "@/lib/dto";
 
@@ -25,15 +25,13 @@ async function handlePost(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
-  const limited = hostRateLimit(req);
-  if (limited) return limited;
   const { id } = await params;
   // Same malformed-id guard as every sibling route: a bad shape must answer
   // "no such tournament", not throw Postgres 22P02 into a false 503.
   if (!isUuid(id)) return fail(404, "not_found");
   const body = await readJson<{ hostCode?: string }>(req);
 
-  const t = await authHost(id, body?.hostCode);
+  const t = await authHost(id, body?.hostCode, req);
   if (!t) return fail(401, "unauthorized");
 
   const rows = await listClientEvents(id, LIMIT);

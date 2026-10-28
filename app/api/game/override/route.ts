@@ -2,7 +2,7 @@ import { authHost } from "@/lib/server/auth";
 import { getGame, resolveGameRpc } from "@/lib/server/store";
 import { afterGameResolved } from "@/lib/server/gameEvents";
 import { defer } from "@/lib/server/defer";
-import { fail, ok, readJson, hostRateLimit, withApi } from "@/lib/server/http";
+import { fail, ok, readJson, withApi } from "@/lib/server/http";
 import { isUuid } from "@/lib/codes";
 import type { GameStatus } from "@/lib/types";
 
@@ -12,8 +12,6 @@ const ALLOWED: GameStatus[] = ["white_win", "black_win", "draw", "aborted"];
 export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
-  const limited = hostRateLimit(req);
-  if (limited) return limited;
   const body = await readJson<{
     gameId?: string;
     hostCode?: string;
@@ -28,7 +26,7 @@ async function handlePost(req: Request): Promise<Response> {
   const game = await getGame(body.gameId);
   if (!game) return fail(404, "no_game");
 
-  const t = await authHost(game.tournament_id, body.hostCode);
+  const t = await authHost(game.tournament_id, body.hostCode, req);
   if (!t) return fail(401, "unauthorized");
 
   // A bye isn't a played game — overriding it would mis-score the bye player

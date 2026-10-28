@@ -43,7 +43,7 @@ describe("POST /api/tournament/[id]/codes", () => {
     authHost.mockResolvedValue(null);
     const res = await POST(req(VALID_ID), params(VALID_ID));
     expect(res.status).toBe(401);
-    expect(authHost).toHaveBeenCalledWith(VALID_ID, "AAAA-AA");
+    expect(authHost).toHaveBeenCalledWith(VALID_ID, "AAAA-AA", expect.any(Request));
   });
 
   it("200s the resume codes for the authenticated host", async () => {

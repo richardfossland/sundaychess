@@ -155,6 +155,13 @@ export const identity = {
   hostCode(tournamentId: string): string | null {
     return safeGet(HOST_KEY(tournamentId));
   },
+  /** Pairing token for a host code (see lib/server/pair.ts). Best-effort. */
+  savePairToken(hostCode: string, token: string) {
+    safeSet(`sjakk:pair:${hostCode}`, token);
+  },
+  pairToken(hostCode: string): string | null {
+    return safeGet(`sjakk:pair:${hostCode}`);
+  },
 
   /** Store (or refresh) the session for `p.tournamentId` and make it the one the
    *  bare `/play` entry resumes. Sessions for OTHER tournaments are untouched —
