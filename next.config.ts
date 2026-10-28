@@ -15,7 +15,18 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // The service worker must never be served from a long-lived cache.
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+          { key: "Content-Type", value: "text/javascript; charset=utf-8" },
+        ],
+      },
+    ];
   },
   // Pin the workspace root: a stray parent lockfile (~/package-lock.json) would
   // otherwise be auto-selected and break output tracing / env resolution.

@@ -57,7 +57,13 @@ export async function authHost(
   }
   if (req && token && (await verifyPairToken(t.id, t.host_code, token))) return t;
   if (req && (await (blocked ?? isCodeBlocked(t.id, req)))) throw new RateLimitedError();
-  if (t.host_code === normalizeResumeCode(hostCode)) return t;
+  if (t.host_code === normalizeResumeCode(hostCode)) {
+    // CORRECT code, no valid pair token: never trust a (possibly stale, other
+    // isolate) "not blocked" cache entry — ask the DB, or a guesser who hit the
+    // block still gets 200 for the right code vs 429 for wrong ones (an oracle).
+    if (req && (await isCodeBlocked(t.id, req, { fresh: true }))) throw new RateLimitedError();
+    return t;
+  }
   if (req && (await registerCodeFailure(t.id, req))) throw new RateLimitedError();
   return null;
 }

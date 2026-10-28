@@ -109,6 +109,9 @@ export default defineConfig({
     : [["list"]],
 
   use: {
+    // The app registers /sw.js in production builds; every spec except the PWA
+    // one runs without it (pwa.spec.ts opts in with test.use).
+    serviceWorkers: "block",
     baseURL: "http://localhost:3000",
     trace: "retain-on-failure",
     video: "retain-on-failure",

@@ -68,6 +68,14 @@ describe("POST /api/tournament/open", () => {
     expect(openTournamentByHostCode).toHaveBeenCalledWith("HOST-01");
   });
 
+  it("a correct code is re-checked against the DB (fresh), so a stale negative cache cannot leak 200", async () => {
+    // Cached read says clean; the fresh read (other isolate blocked the IP) says blocked.
+    isCodeBlocked.mockImplementation(async (_s: string, _r: Request, o?: { fresh?: boolean }) => !!o?.fresh);
+    const res = await POST(req({ hostCode: "host 01" }));
+    expect(res.status).toBe(429);
+    isCodeBlocked.mockResolvedValue(false);
+  });
+
   it("400 missing_code on an empty body", async () => {
     const res = await POST(req({}));
     expect(res.status).toBe(400);

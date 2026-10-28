@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import { OfflineBanner } from "@/lib/client/OfflineBanner";
+import { ServiceWorker } from "@/lib/client/ServiceWorker";
 import { ThemeToggle } from "@/lib/client/ThemeToggle";
 
 // Resolve dark/light before paint (stored choice → system fallback) to avoid a
@@ -19,6 +20,8 @@ const body = Hanken_Grotesk({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
+
+export const viewport: Viewport = { themeColor: "#11141b" };
 
 export const metadata: Metadata = {
   title: "SundayChess — sjakkturnering for hele gruppa",
@@ -38,6 +41,7 @@ export default function RootLayout({
         <OfflineBanner />
         {children}
         <ThemeToggle />
+        <ServiceWorker />
       </body>
     </html>
   );
