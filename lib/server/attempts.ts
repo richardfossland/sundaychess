@@ -15,7 +15,14 @@ export const CODE_WINDOW_S = 600;
 export const CODE_MAX_FAILURES = 20;
 
 /** Optional per-call override of the failure threshold (default CODE_MAX_FAILURES). */
-export type AttemptOpts = { max?: number };
+export type AttemptOpts = {
+  max?: number;
+  /** Skip the per-isolate "not blocked" cache and ask the DB. REQUIRED whenever
+   * the answer is about to be revealed by a CORRECT code: a stale negative entry
+   * on another isolate would otherwise return 200 for the right code while wrong
+   * ones get 429 — an oracle for a guesser who has already hit the block. */
+  fresh?: boolean;
+};
 
 const CACHE_MAX = 2000;
 const NOT_BLOCKED_TTL_MS = 30_000;
@@ -35,7 +42,7 @@ export function __resetAttemptsCache(): void {
 export async function isCodeBlocked(scope: string, req: Request, opts: AttemptOpts = {}): Promise<boolean> {
   const key = `${scope}|${ipKey(req)}`;
   const hit = cache.get(key);
-  if (hit && hit.until > Date.now()) return hit.blocked;
+  if (hit && hit.until > Date.now() && (hit.blocked || !opts.fresh)) return hit.blocked;
   try {
     const { data, error } = await createServiceClient().rpc("code_blocked", {
       p_scope: scope,
