@@ -4,6 +4,8 @@ import { PhysicalBoard } from "./PhysicalBoard";
 import { PhysicalList } from "./PhysicalList";
 import { PhysicalWizard } from "./PhysicalWizard";
 import { useClientPath } from "./nav";
+import { PrintView } from "./print/PrintView";
+import { Storskjerm } from "./storskjerm/Storskjerm";
 
 const BASE = "/arranger/fysisk";
 
@@ -13,5 +15,9 @@ export function PhysicalApp() {
   const rest = path.startsWith(BASE) ? path.slice(BASE.length).replace(/^\/+|\/+$/g, "") : "";
   if (!rest) return <PhysicalList />;
   if (rest === "ny") return <PhysicalWizard />;
-  return <PhysicalBoard id={decodeURIComponent(rest.split("/")[0])} />;
+  const parts = rest.split("/");
+  const id = decodeURIComponent(parts[0]);
+  if (parts[1] === "storskjerm") return <Storskjerm id={id} />;
+  if (parts[1] === "skriv") return <PrintView id={id} kind={decodeURIComponent(parts[2] ?? "")} />;
+  return <PhysicalBoard id={id} />;
 }

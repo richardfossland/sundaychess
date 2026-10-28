@@ -9,6 +9,7 @@ import { canUndo, reduce, totalRounds } from "@/lib/physical/reducer";
 import { RESULT_CODES, type PhysicalPairing, type PhysicalTournament, type ResultCode } from "@/lib/physical/schema";
 import { nextRoundPairing, openRound, standings } from "@/lib/physical/selectors";
 import { usePhysicalTournament } from "./usePhysical";
+import { PrintMenu } from "./print/PrintMenu";
 
 const fmt = (n: number | null) => (n === null ? "–" : Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, ""));
 
@@ -51,6 +52,7 @@ export function PhysicalBoard({ id }: { id: string }) {
             {t.status === "finished" && <span className="badge badge-done">{p.finishedNote}</span>}
           </div>
           <div className="row" style={{ gap: 6 }}>
+            <PrintMenu id={t.id} />
             <button type="button" className="btn btn-sm btn-ghost" onClick={undo} disabled={!canUndo(t)}>
               <Icon name="undo" size={14} /> {p.undo}
             </button>
