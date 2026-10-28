@@ -1977,7 +1977,10 @@ a:focus-visible,
   position: fixed;
   bottom: 14px;
   left: 14px;
-  z-index: 60;
+  /* Below .modal-overlay (50) and the promo overlay: a dialog must cover it.
+     It is also not rendered at all on game / host-board / projector screens
+     (themeToggleHiddenOn in ThemeToggle.tsx). */
+  z-index: 40;
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -1997,9 +2000,9 @@ a:focus-visible,
   width: 20px;
   height: 20px;
 }
-@media (max-width: 900px) {
-  /* A floating button would cover the board while playing: on phones the
-     switch sits at the end of the page instead. */
+@media (max-width: 1000px), (max-height: 520px) {
+  /* A floating button would cover content: on phones — landscape included
+     (iPhone Pro Max is ~932 px wide) — the switch sits at the end of the page. */
   .theme-toggle {
     position: static;
     margin: var(--sp-6) auto var(--sp-4);

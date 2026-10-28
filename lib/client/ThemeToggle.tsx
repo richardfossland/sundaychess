@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { no } from "@/lib/locale/no";
 
 type Theme = "light" | "dark";
@@ -11,12 +12,22 @@ function current(): Theme {
   return document.documentElement.dataset.theme === "light" ? "light" : "dark";
 }
 
+/** Screens where the toggle must never appear: it would sit on top of the board
+ * (play, solo, versus, arranger) or the host board / projector view
+ * (/host/<tournamentId>). The host dashboard (/host) and login keep it. */
+export function themeToggleHiddenOn(pathname: string | null): boolean {
+  if (!pathname) return false;
+  if (/^\/(play|solo|versus|arranger)(\/|$)/.test(pathname)) return true;
+  return /^\/host\/(?!login(\/|$))[^/]+/.test(pathname);
+}
+
 /** Floating dark/light switch. The initial theme is set before paint by the
  * inline script in layout.tsx (reads localStorage, falls back to system); this
  * only flips + persists it. */
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- sync to the pre-paint theme
@@ -35,6 +46,7 @@ export function ThemeToggle() {
 
   // Avoid a hydration mismatch on the icon: render a neutral button until mounted.
   const isDark = theme === "dark";
+  if (themeToggleHiddenOn(pathname)) return null;
   return (
     <button
       className="theme-toggle"

@@ -154,9 +154,12 @@ jobs:
             if supabase start -x studio,inbucket,imgproxy,edge-runtime,analytics,vector,functions,storage; then
               exit 0
             fi
-            echo "::warning::supabase start failed via $SUPABASE_INTERNAL_IMAGE_REGISTRY (attempt $attempt), retrying"
             supabase stop --no-backup || true
-            sleep $((attempt * 15))
+            # No point sleeping after the final attempt: fall straight through to exit 1.
+            if [ "$attempt" -lt 6 ]; then
+              echo "::warning::supabase start failed via $SUPABASE_INTERNAL_IMAGE_REGISTRY (attempt $attempt), retrying"
+              sleep $((attempt * 15))
+            fi
           done
           exit 1
 
