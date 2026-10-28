@@ -101,6 +101,9 @@ describe("krysstabell", () => {
 });
 
 describe("diplomer", () => {
+  it("gir ingen diplomer før en runde er fullført", () => {
+    expect(certificatesFor(build(["A", "B", "C"], []), { participants: true })).toEqual([]);
+  });
   it("topp 3 uten uavgjort, deltakerdiplom valgfritt", () => {
     const t = build(["A", "B", "C", "D", "E", "F"], [["1-0", "1-0", "1-0"], ["1-0", "1-0", "1-0"], ["1-0", "1-0", "1-0"]]);
     const top = certificatesFor(t);

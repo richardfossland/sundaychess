@@ -189,6 +189,8 @@ export interface Certificate {
  * deltakerdiplom til alle øvrige.
  */
 export function certificatesFor(t: PhysicalTournament, opts: { participants?: boolean } = {}): Certificate[] {
+  // Ingen diplomer før minst én runde er fullført (ellers deler alle 1. plass med 0 poeng).
+  if (!t.rounds.some((r) => r.status === "completed")) return [];
   const st: StandingWithPlayer[] = standings(t);
   const sizeOf = new Map<number, number>();
   for (const r of st) sizeOf.set(r.rank, (sizeOf.get(r.rank) ?? 0) + 1);
