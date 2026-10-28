@@ -112,33 +112,72 @@ export function __bucketCount(): number {
   return buckets.size;
 }
 
+const IPV4_RE = /^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
+const IP_MAX_LEN = 64;
+/** Bucket key for anything that is not a well-formed IP. One shared bucket:
+ * raw header text is never stored or used as a key. */
+export const INVALID_IP = "invalid";
+
+/** Strict parse of a WHOLE header value. Returns the canonical text form
+ * (IPv4 dotted, IPv6 lowercase) or null. */
+function parseIp(raw: string): string | null {
+  const v = raw.trim();
+  if (!v || v.length > IP_MAX_LEN) return null;
+  if (IPV4_RE.test(v)) return v;
+  if (!v.includes(":")) return null;
+  let a = v.toLowerCase().split("%")[0];
+  if (!/^[0-9a-f:.]+$/.test(a)) return null;
+  const v4 = a.match(/^(.*:)(\d+\.\d+\.\d+\.\d+)$/); // ::ffff:1.2.3.4
+  if (v4) {
+    if (!IPV4_RE.test(v4[2])) return null;
+    const o = v4[2].split(".").map(Number);
+    a = v4[1] + ((o[0] << 8) | o[1]).toString(16) + ":" + ((o[2] << 8) | o[3]).toString(16);
+  }
+  const parts = a.split("::");
+  if (parts.length > 2) return null;
+  const h = parts[0] ? parts[0].split(":") : [];
+  const t = parts.length === 1 ? [] : parts[1] ? parts[1].split(":") : [];
+  const fill = parts.length === 1 ? 0 : 8 - h.length - t.length;
+  if (fill < 1 && parts.length === 2) return null; // "::" must stand for ≥1 group
+  if (parts.length === 1 && h.length !== 8) return null;
+  const groups = [...h, ...Array(Math.max(fill, 0)).fill("0"), ...t];
+  if (groups.length !== 8 || groups.some((g) => !/^[0-9a-f]{1,4}$/.test(g))) return null;
+  return groups.map((g) => g.replace(/^0+(?=.)/, "")).join(":");
+}
+
+/** The caller's IP, or a safe sentinel. Behind Cloudflare the edge sets
+ * CF-Connecting-IP and the caller cannot spoof it; X-Forwarded-For is
+ * client-supplied (its first hop is attacker-controlled), so it is trusted ONLY
+ * outside production (local dev / tests). The whole value must parse as an IP —
+ * anything else becomes INVALID_IP (a single shared bucket). */
 export function clientIp(req: Request): string {
-  const fwd = req.headers.get("x-forwarded-for");
-  return fwd?.split(",")[0]?.trim() || "local";
+  const cf = req.headers.get("cf-connecting-ip");
+  if (cf !== null) return parseIp(cf) ?? INVALID_IP;
+  if (process.env.NODE_ENV !== "production") {
+    const fwd = req.headers.get("x-forwarded-for");
+    if (fwd !== null) {
+      if (fwd.length > 512) return INVALID_IP;
+      return parseIp(fwd.split(",")[0]) ?? INVALID_IP;
+    }
+  }
+  return "local";
 }
 
 /** Limiter/attempt key for an IP. IPv4 → as is. IPv6 → the /64 prefix: a single
  * subscriber gets a whole /64 and can rotate through 2^64 addresses, so keying
- * on the full address would let one client mint a fresh bucket per request. */
+ * on the full address would let one client mint a fresh bucket per request.
+ * Anything that is not a valid IP → "invalid" (never raw text). */
 export function ipKeyOf(ip: string): string {
-  if (!ip.includes(":")) return ip;
-  let a = ip.toLowerCase().split("%")[0];
-  const v4 = a.match(/^(.*:)(\d+\.\d+\.\d+\.\d+)$/); // ::ffff:1.2.3.4
-  if (v4) {
-    const o = v4[2].split(".").map(Number);
-    if (o.some((n) => n > 255)) return ip;
-    if (/^(::ffff:|0*:0*:0*:0*:0*:ffff:)$/.test(v4[1])) return v4[2];
-    a = v4[1] + ((o[0] << 8) | o[1]).toString(16) + ":" + ((o[2] << 8) | o[3]).toString(16);
+  if (ip === "local") return ip;
+  const p = parseIp(ip);
+  if (!p) return INVALID_IP;
+  if (!p.includes(":")) return p;
+  const m = p.match(/^0:0:0:0:0:ffff:([0-9a-f]+):([0-9a-f]+)$/); // IPv4-mapped
+  if (m) {
+    const hi = parseInt(m[1], 16), lo = parseInt(m[2], 16);
+    return `${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`;
   }
-  const [head, tail, extra] = a.split("::");
-  if (extra !== undefined) return ip;
-  const h = head ? head.split(":") : [];
-  const t = tail === undefined ? [] : tail ? tail.split(":") : [];
-  const fill = tail === undefined ? 0 : 8 - h.length - t.length;
-  if (fill < 0 || (tail === undefined && h.length !== 8)) return ip;
-  const groups = [...h, ...Array(fill).fill("0"), ...t];
-  if (groups.length !== 8 || groups.some((g) => !/^[0-9a-f]{1,4}$/.test(g))) return ip;
-  return groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, "")).join(":") + "::/64";
+  return p.split(":").slice(0, 4).join(":") + "::/64";
 }
 
 /** THE key to use for wrong-code counting. */
