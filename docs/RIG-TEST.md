@@ -76,7 +76,7 @@ school cart behaves differently from a developer laptop — that's the point.
   this can't happen. Watch specifically for the toast (it's `position:
   fixed` now, so it must float over the layout, never push it) and the draw
   offer (it's a modal `ConfirmDialog`, not an inline banner).
-- [ ] **Teacher reloads the host page mid-lobby → nobody is removed.** With
+- [ ] **Organiser reloads the host page mid-lobby → nobody is removed.** With
   3+ students sitting in the lobby, hard-refresh the host tab. The lobby
   sweep is gated on the host being both `SUBSCRIBED` and visible (R4), so a
   reload must not mass-stamp everyone as "last seen now" and then sweep them
@@ -153,12 +153,11 @@ New manual scenarios from the second stability pass (`docs/STABILITY-PROGRAM-202
 
 ### Host / projector
 
-- [ ] **Vertskode skjult, "Vis vertskode" reveals it.** Open the lobby on the
-  projector: the host/vertskode must not be visible by default. Tap "Vis
-  vertskode" — a chip appears with the code and a "Kopier" button, and
+- [ ] **Arrangørkode skjult, "Vis arrangørkode" reveals it.** Open the lobby on the
+  projector: the host code (arrangørkode) must not be visible by default. Tap "Vis arrangørkode" — a chip appears with the code and a "Kopier" button, and
   auto-hides again after ~20 s. Confirm a passer-by glancing at the projector
   before that tap sees nothing usable.
-- [ ] **Maskerte elevkoder.** Open "Vis koder" (host codes list): every resume
+- [ ] **Maskerte elevkoder.** Open "Spillerkoder" (player codes list): every resume
   code should render masked (`••••-••`-style) by default; tapping a row
   reveals only that row's code, with its own "Kopier" button.
 - [ ] **Cup-runde tid ute → "Avslutt runden".** In a playoff/cup round, let
@@ -283,17 +282,17 @@ after killing a tab" paths are now covered by `e2e/smoke.spec.ts` and
 
 - [ ] A 5-round / 9-player league pairs correctly each round with one rotating
       bye, correct standings, and "Neste runde" is gated until all games resolve.
-- [ ] Teacher override + "tving fullføring" (force draws) work.
+- [ ] Organiser override + "Avslutt gjenstående partier" (force draws) work.
 - [ ] An 8-player bracket seeds by (score, Buchholz) and resolves to a single
-      winner; a drawn playoff game blocks advance until the teacher overrides it.
-- [ ] **Elev markert borte → læreren tar inn igjen → paret neste runde.** Mid-
+      winner; a drawn playoff game blocks advance until the organiser overrides it.
+- [ ] **Elev markert borte → arrangøren tar inn igjen → paret neste runde.** Mid-
       league, mark one student's game "borte" with scope "Ute av turneringen"
       (`OverrideModal`). Confirm their board shows `no.player.outOfTournament`
-      with the "si fra til læreren" hint. On the host board, the student now
+      with the "si fra til arrangøren" hint. On the host board, the student now
       appears collapsed under "Ute av turneringen (n)" in the standings card
       (`LeagueView.tsx`); expand it and press "Ta inn igjen", confirm the
       dialog ("Fra neste runde blir {navn} paret igjen."). The CURRENT round
-      is untouched (they stay out of it), but once the teacher advances to
+      is untouched (they stay out of it), but once the organiser advances to
       the next round the student is paired again like everyone else, and
       their board leaves the waiting/eliminated view on its own (no action
       needed from the student).
