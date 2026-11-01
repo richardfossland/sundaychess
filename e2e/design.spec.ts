@@ -224,6 +224,18 @@ test.describe("tastatur", () => {
   });
 });
 
+test.describe("skjermleser", () => {
+  test("Stepper på telefon: <nav> «Steg» har lesbart innhold i tilgjengelighetstreet", async ({ page }) => {
+    await open(page, "/arranger/fysisk/ny", MOBILE, "light");
+    const nav = page.getByRole("navigation", { name: no.wizard.step });
+    await expect(nav).toBeVisible();
+    // Lista er display:none under 640 px; kompaktteksten må da være det som leses.
+    await expect(nav.getByText(new RegExp(`^${no.wizard.step} 1 ${no.wizard.of} `))).toBeVisible();
+    await expect(nav.locator("[aria-hidden='true']:not(.stepper-num)")).toHaveCount(0);
+    expect(await nav.evaluate((el) => (el as HTMLElement).innerText.trim().length)).toBeGreaterThan(0);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Sider med database: én turnering gjenbrukes av alle testene under.
 // ---------------------------------------------------------------------------

@@ -47,7 +47,7 @@ export function Stepper({ steps, current, onStep, stepWord = "Steg", ofWord = "a
           );
         })}
       </ol>
-      <p className="stepper-compact" aria-hidden="true">
+      <p className="stepper-compact">
         {stepWord} {current + 1} {ofWord} {steps.length} · {steps[current]}
       </p>
     </nav>
