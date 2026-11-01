@@ -198,7 +198,7 @@ export const no = {
     join: "Bli med",
     more: "Mer",
     liveToggle: "Live",
-    boardToggle: "Storskjerm",
+    boardToggle: "Oversikt",
     // SpectateGame's own back button — distinct from `liveToggle` above (that
     // one SWITCHES a mode; this one LEAVES the single-game view for the grid),
     // even though they used to share the same copy.

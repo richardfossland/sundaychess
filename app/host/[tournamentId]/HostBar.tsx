@@ -6,7 +6,7 @@ import { Icon } from "@/lib/client/Icon";
 import { no } from "@/lib/locale/no";
 
 /** Vertens toppfelt: logo + turneringsnavn + rundemerke på én linje, bytte
- * Storskjerm/Live ved siden av, og sekundærhandlinger (Vis på storskjerm, Last
+ * Oversikt/Live ved siden av, og sekundærhandlinger (Vis på storskjerm, Last
  * ned turneringsfil, Diagnostikk) som ligger inline på bred skjerm og samles i
  * «Mer»-menyen under ~1200 px. */
 export function HostBar({

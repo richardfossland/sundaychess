@@ -238,7 +238,7 @@ test.describe("designregler med turnering", () => {
   test.beforeAll(async ({ playwright }) => {
     const request = await playwright.request.newContext({ baseURL: "http://localhost:3000" });
     try {
-      // Runde 1 er startet: arrangørvisningen er i liga, så Storskjerm/Live-
+      // Runde 1 er startet: arrangørvisningen er i liga, så Oversikt/Live-
       // veksleren og «Mer»-menyen har alt de skal vise.
       const match = await publicFlowMatch(request, { white: "Ada", black: "Bo" });
       tournamentId = match.tournamentId;
@@ -311,7 +311,7 @@ test.describe("designregler med turnering", () => {
     await expect(show).toBeHidden();
   });
 
-  test("Storskjerm/Live-veksleren bytter visning", async ({ page, context }) => {
+  test("Oversikt/Live-veksleren bytter visning", async ({ page, context }) => {
     await hostContext(context);
     await open(page, `/host/${tournamentId}`, DESKTOP, "light");
 
