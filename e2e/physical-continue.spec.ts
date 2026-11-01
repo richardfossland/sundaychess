@@ -11,7 +11,7 @@ test.use({ acceptDownloads: true });
 async function claim(page: Page, pin: string, name: string) {
   await page.goto("/play");
   await page.locator("#pin").fill(pin);
-  await page.getByRole("button", { name: no.player.join, exact: true }).click();
+  await page.getByRole("button", { name: new RegExp(no.player.join) }).click();
   await expect(page.getByTestId("claim-list")).toBeVisible();
   await page.getByTestId("claim-list").getByRole("button", { name: new RegExp(name) }).click();
   await page.getByRole("button", { name: no.player.resumeAck }).click();
@@ -53,7 +53,7 @@ test("fysisk → digital → runde 2 → fil → fysisk igjen", async ({ page, b
   const s3 = await (await browser.newContext()).newPage();
   await s3.goto("/play");
   await s3.locator("#pin").fill(pin);
-  await s3.getByRole("button", { name: no.player.join, exact: true }).click();
+  await s3.getByRole("button", { name: new RegExp(no.player.join) }).click();
   await expect(s3.getByTestId("claim-list")).toBeVisible();
   await expect(s3.getByTestId("claim-list").getByRole("button", { name: /Anna/ })).toHaveCount(0);
   await expect(page.getByTestId("claimed")).toHaveCount(2, { timeout: 20_000 });
