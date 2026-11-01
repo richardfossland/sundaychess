@@ -110,18 +110,18 @@ export const no = {
     // Én linje under hvert valg på /arranger: hva det betyr for en ny lærer.
     quickStartSub: "Lager turneringen med en gang, med vanlige valg (liga, 5 runder)",
     customizeSub: "Velg selv format, runder, tid og lag, steg for steg",
-    enterSub: "Gå tilbake til en turnering du har laget, med vertskoden",
+    enterSub: "Gå tilbake til en turnering du har laget, med arrangørkoden",
     // Auto-title for "Rask start" — becomes "Turnering DD.MM" (see
     // app/arranger/page.tsx). Kept as a plain prefix so the date formatting
     // (which isn't language content) stays out of the locale file.
     quickStartTitlePrefix: "Turnering",
     enterTitle: "Åpne turnering",
-    enterPrompt: "Skriv vertskoden for å åpne turneringen igjen",
-    hostCodeLabel: "Vertskode",
+    enterPrompt: "Skriv arrangørkoden for å åpne turneringen igjen",
+    hostCodeLabel: "Arrangørkode",
     missingHostCode:
-      "Vertskoden mangler på denne enheten. Gå til forsiden og åpne turneringen på nytt med vertskoden din.",
+      "Arrangørkoden mangler på denne enheten. Gå til forsiden og åpne turneringen på nytt med arrangørkoden din.",
     open: "Åpne",
-    pinLabel: "Bli-med-PIN",
+    pinLabel: "PIN for å bli med",
     joinUrlLabel: "Eller gå til",
     players: "Spillere",
     noPlayers: "Ingen har blitt med ennå …",
@@ -131,6 +131,9 @@ export const no = {
     rank: "#",
     name: "Navn",
     score: "Poeng",
+    rankHelp: "Plassering",
+    scoreHelp: "Poeng: 1 for seier, ½ for remis",
+    moreRows: "til",
     tiebreak: "Buchholz",
     tiebreakHelp:
       "Summen av motstandernes poeng — skiller spillere med like mange poeng.",
@@ -150,9 +153,12 @@ export const no = {
     drawChoiceHint:
       "Uavgjort i runden — spill omkamp, eller send den høyest rangerte videre.",
     rematchStarted: "Omkamp startet — spilles nå.",
-    forceResolve: "Tving fullføring",
+    forceResolve: "Avslutt gjenstående partier",
+    forceResolveHelp:
+      "Partiene som fortsatt pågår settes til remis (½–½), så du kan gå videre til neste runde.",
     forceResolveConfirm:
-      "Sette alle uavgjorte partier til remis (½–½)? Dette kan ikke angres.",
+      "Avslutte alle partier som fortsatt pågår? De settes til remis (½–½), og det kan ikke angres.",
+    nextRoundHelp: "Alle partier må være ferdige før neste runde.",
     inProgress: "Pågår",
     finished: "Ferdig",
     bye: "Frirunde",
@@ -187,9 +193,10 @@ export const no = {
     tapToReveal: "Trykk for å vise",
     tapToHide: "Trykk for å skjule",
     // LobbyView: the host code is never shown by default (UX-2).
-    revealHostCode: "Vis vertskode",
+    revealHostCode: "Vis arrangørkode",
     hostCodeWarning: "Ikke vis på storskjerm",
     join: "Bli med",
+    more: "Mer",
     liveToggle: "Live",
     boardToggle: "Storskjerm",
     // SpectateGame's own back button — distinct from `liveToggle` above (that
@@ -348,6 +355,11 @@ export const no = {
   wizard: {
     step: "Steg",
     of: "av",
+    // Navn på stegene i /arranger-veiviseren (Stepper).
+    stepName: "Navn",
+    stepFormat: "Form",
+    stepRules: "Regler",
+    stepExtras: "Lag og reaksjoner",
     titleStep: "Tittel",
     titleHint: "Valgfritt — f.eks. «7A vårturnering»",
     titlePlaceholder: "Turneringstittel",

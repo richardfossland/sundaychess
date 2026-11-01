@@ -44,12 +44,12 @@ export function HostFileButton({ state }: { state: BoardState }) {
   }
 
   return (
-    <span style={{ position: "relative" }}>
-      <button type="button" className="btn btn-ghost" style={{ padding: "8px 14px" }} title={L.downloadTitle} data-testid="host-download-file" onClick={() => void download()}>
+    <span className="host-file">
+      <button type="button" className="btn btn-ghost" title={L.downloadTitle} data-testid="host-download-file" onClick={() => void download()}>
         {L.download}
       </button>
       {msg && (
-        <span role="alert" className="banner banner-error" data-testid="host-download-error" style={{ position: "absolute", right: 0, top: "100%", width: 260, fontSize: "var(--fs-xs)" }}>
+        <span role="alert" className="banner banner-error host-file-error" data-testid="host-download-error">
           {msg}
         </span>
       )}

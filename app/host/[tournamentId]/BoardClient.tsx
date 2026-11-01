@@ -13,6 +13,8 @@ import { BracketView } from "./BracketView";
 import { FinishedView } from "./FinishedView";
 import { LiveGamesView } from "./LiveGamesView";
 import { Icon } from "@/lib/client/Icon";
+import { Segmented } from "@/lib/client/Segmented";
+import { HostBar } from "./HostBar";
 import {
   effectiveHostCode,
   settPresentasjon,
@@ -104,61 +106,63 @@ export function BoardClient({ tournamentId }: { tournamentId: string }) {
 
   // I tavlevisning står skjermen uten tilsyn: vis «mistet kontakten» først
   // etter flere mislykkede runder på rad (~15 s), ikke ved hvert lille hikke.
+  const roundBadge =
+    status === "league"
+      ? `${no.host.round} ${state.tournament.currentRound} / ${state.tournament.config.leagueRounds}`
+      : status === "playoff"
+        ? no.host.bracket
+        : status === "finished"
+          ? no.host.finished
+          : null;
+  const toggle = (
+    <Segmented
+      aria-label={`${no.host.boardToggle} / ${no.host.liveToggle}`}
+      value={mode}
+      onChange={setMode}
+      options={[
+        { value: "board", label: no.host.boardToggle },
+        { value: "live", label: <><Icon name="live" size={12} /> {no.host.liveToggle}</> },
+      ]}
+    />
+  );
   const visTilkobling = presentasjon ? failures >= 3 : error;
 
   return (
     <div className={presentasjon ? "presentasjon" : undefined}>
       {visTilkobling && (
         <div
-          className="banner banner-wait"
-          style={{ position: "fixed", top: 16, left: 20, zIndex: 40, padding: "6px 12px" }}
+          className="banner banner-wait conn-badge"
+          style={{ left: 20 }}
           role="status"
           aria-live="polite"
         >
           {presentasjon ? storskjermTekst.tavle.tilkobling : no.player.reconnecting}
         </div>
       )}
-      {/* One fixed toolbar, not two — the live/board toggle only exists once a
-          round is running, the diagnostics button only on the device that holds
-          the host code, and neither must leave an empty fixed box behind. */}
-      {(liveable || !presentasjon) && (
-        <div
-          className="row"
-          style={{ position: "fixed", top: 16, right: 20, zIndex: 40, gap: 4 }}
+      {/* Vertens toppfelt (D4): logo + navn + rundemerke på én linje, handlinger
+          inline på bred skjerm og i «Mer»-menyen på smal. Tavlevisning har
+          bare den lille Storskjerm/Live-veksleren (D6 rydder den). */}
+      {!presentasjon && (
+        <HostBar
+          title={state.tournament.title ?? ""}
+          badge={roundBadge}
+          toggle={liveable ? toggle : null}
         >
-          {liveable && (
-            <>
-              <button
-                className={`btn ${mode === "board" ? "btn-primary" : "btn-ghost"}`}
-                style={{ padding: "8px 14px" }}
-                aria-pressed={mode === "board"}
-                onClick={() => setMode("board")}
-              >
-                {no.host.boardToggle}
-              </button>
-              <button
-                className={`btn ${mode === "live" ? "btn-primary" : "btn-ghost"}`}
-                style={{ padding: "8px 14px" }}
-                aria-pressed={mode === "live"}
-                onClick={() => setMode("live")}
-              >
-                <Icon name="live" size={12} /> {no.host.liveToggle}
-              </button>
-            </>
-          )}
-          {!presentasjon && <StorskjermButton />}
-          {!presentasjon && status !== "playoff" && (status !== "lobby" || state.tournament.currentRound > 0) && state.tournament.config.format !== "cup" && <HostFileButton state={state} />}
+          <StorskjermButton />
+          {status !== "playoff" && (status !== "lobby" || state.tournament.currentRound > 0) && state.tournament.config.format !== "cup" && <HostFileButton state={state} />}
           {hostCode && (
             <button
-              className="btn btn-ghost"
-              style={{ padding: "8px 14px" }}
+              type="button"
+              className="btn btn-ghost host-action"
+              data-menu-close
               onClick={() => setShowDiag(true)}
             >
               <Icon name="diag" size={16} /> {no.diag.open}
             </button>
           )}
-        </div>
+        </HostBar>
       )}
+      {presentasjon && liveable && <div className="presentasjon-veksler">{toggle}</div>}
       {presentasjon && (
         <button
           className="btn btn-ghost presentasjon-avslutt"

@@ -11,6 +11,7 @@ import { useCountdown } from "@/lib/client/useCountdown";
 import { JoinChip } from "@/lib/client/JoinChip";
 import { FullscreenToggle } from "@/lib/client/FullscreenToggle";
 import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
+import { StandingsTable } from "./StandingsTable";
 import { OverrideModal } from "./OverrideModal";
 import { CodesModal } from "./CodesModal";
 import { NotesModal } from "./NotesModal";
@@ -221,43 +222,28 @@ export function LeagueView({
   }
 
   return (
-    <main className="wrap" style={{ padding: "28px 24px 64px" }}>
-      <header className="spread" style={{ marginBottom: 24 }}>
-        <span className="brandmark">
-          <span className="knight">♞</span> Sunday<b>Chess</b>
-        </span>
-        <div className="row" style={{ gap: 6, alignItems: "center" }}>
-          {tournament.title && <span className="muted">{tournament.title}</span>}
-          {!presentasjon && (
-            <button
-              type="button"
-              className="btn btn-ghost"
-              style={{ padding: "6px 10px", fontSize: 13, minHeight: 0 }}
-              title={no.host.editNotes}
-              aria-label={no.host.editNotes}
-              onClick={() => setShowNotes(true)}
-            >
-              <Icon name="edit" size={16} />
-            </button>
-          )}
-        </div>
-        <span className="badge badge-live">
-          {no.host.round} {tournament.currentRound} / {tournament.config.leagueRounds}
-        </span>
+    <main className="wrap host-main">
+      <header className={presentasjon ? "spread host-head-tv" : "host-sub"}>
+        {presentasjon && (
+          <>
+            <span className="brandmark">
+              <span className="knight">♞</span> Sunday<b>Chess</b>
+            </span>
+            {tournament.title && <span className="muted">{tournament.title}</span>}
+            <span className="badge badge-live">
+              {no.host.round} {tournament.currentRound} / {tournament.config.leagueRounds}
+            </span>
+          </>
+        )}
         {timerSec && currentRound && (
-          <div className="row" style={{ gap: 10 }}>
+          <div className="row gap-3">
             <RoundTimer
               startedAt={currentRound.startedAt}
               durationSec={timerSec}
               extendedMs={currentRound.extendedMs ?? 0}
             />
             {!presentasjon && (
-              <button
-                className="btn btn-ghost"
-                style={{ padding: "8px 12px" }}
-                disabled={busy}
-                onClick={addMinute}
-              >
+              <button className="btn btn-ghost" disabled={busy} onClick={addMinute}>
                 {busy ? <span className="spin" /> : no.host.addMinute}
               </button>
             )}
@@ -266,74 +252,41 @@ export function LeagueView({
         <span className="grow" />
         <JoinChip pin={tournament.joinPin} />
         {!presentasjon && (
-          <button className="btn btn-ghost" onClick={() => setShowCodes(true)}>
-            {no.host.showCodes}
-          </button>
+          <>
+            <button type="button" className="btn btn-ghost" onClick={() => setShowNotes(true)}>
+              <Icon name="edit" size={16} /> {no.host.editNotes}
+            </button>
+            <button className="btn btn-ghost" onClick={() => setShowCodes(true)}>
+              {no.host.showCodes}
+            </button>
+          </>
         )}
       </header>
 
       <div className="board-grid split-league">
         {/* Standings */}
         <section className="card">
-          <h2 style={{ fontSize: 22, marginBottom: 12 }}>{no.host.standings}</h2>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>{no.host.rank}</th>
-                <th>{no.host.name}</th>
-                <th className="num">{no.host.score}</th>
-                <th className="num" title={no.host.tiebreakHelp}>
-                  {no.host.tiebreak}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {standings.map((s) => (
-                <tr key={s.playerId}>
-                  <td>
-                    <span className={`rankpill ${s.rank <= 3 ? "r" + s.rank : ""}`}>
-                      {s.rank}
-                    </span>
-                  </td>
-                  <td>
-                    {s.displayName}
-                    {teamById(s.playerId) && (
-                      <span
-                        className="team-dot"
-                        title={teamById(s.playerId) ?? ""}
-                        style={{
-                          background: teamColor(teamById(s.playerId) ?? ""),
-                          display: "inline-block",
-                          marginLeft: 7,
-                        }}
-                      />
-                    )}
-                  </td>
-                  <td className="num"><b>{s.score}</b></td>
-                  <td className="num muted">{s.tiebreak}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <h2 className="card-title">{no.host.standings}</h2>
+          <StandingsTable standings={standings} teamById={teamById} />
 
           {/* lagstilling — sum of each team's player scores */}
           {teamRows.length > 0 && (
-            <div className="stack" style={{ gap: 8, marginTop: 20 }}>
+            <div className="stack gap-2 mt-5">
               <p className="eyebrow">{no.teams.standings}</p>
-              <div className="stack" style={{ gap: 6 }}>
+              <div className="stack gap-2">
                 {teamRows.map((r, i) => (
-                  <div className="spread" key={r.team} style={{ fontSize: 15 }}>
-                    <span className="row" style={{ gap: 8 }}>
+                  <div className="spread side-row" key={r.team}>
+                    <span className="row gap-2">
                       <span className="muted">{i + 1}.</span>
                       <span className="team-chip">
                         <span className="team-dot" style={{ background: teamColor(r.team) }} />
                         {r.team}
                       </span>
-                      <span className="faint" style={{ fontSize: "var(--fs-xs)" }}>
+                      <span className="faint fs-xs">
                         {r.players} {no.teams.members}
                       </span>
                     </span>
-                    <b style={{ color: "var(--gold)", fontSize: 16 }}>{r.score}</b>
+                    <b className="gold-num">{r.score}</b>
                   </div>
                 ))}
               </div>
@@ -342,16 +295,16 @@ export function LeagueView({
 
           {/* tipping leaderboard — appears once anyone has earned a point */}
           {(tipping?.length ?? 0) > 0 && (
-            <div className="stack" style={{ gap: 8, marginTop: 20 }}>
+            <div className="stack gap-2 mt-5">
               <p className="eyebrow"><Icon name="target" size={14} /> {no.predict.leaderboard}</p>
-              <div className="stack" style={{ gap: 4 }}>
+              <div className="stack gap-1">
                 {(tipping ?? []).slice(0, 5).map((t, i) => (
-                  <div className="spread" key={t.playerId} style={{ fontSize: 14 }}>
+                  <div className="spread side-row" key={t.playerId}>
                     <span>
                       <span className="muted">{i + 1}.</span>{" "}
                       {nameById(t.playerId)}
                     </span>
-                    <b style={{ color: "var(--gold)" }}>
+                    <b className="gold-num">
                       {t.points} {no.predict.points}
                     </b>
                   </div>
@@ -363,17 +316,16 @@ export function LeagueView({
           {/* Absent/left players — collapsed out of the way; "Ta inn igjen"
               is the only way back in, and only takes effect next round. */}
           {!presentasjon && leftPlayers.length > 0 && (
-            <details className="stack" style={{ marginTop: 20 }}>
-              <summary className="eyebrow" style={{ cursor: "pointer" }}>
+            <details className="stack mt-5">
+              <summary className="eyebrow summary-pointer">
                 {no.host.outOfTournamentSection(leftPlayers.length)}
               </summary>
-              <div className="stack" style={{ gap: 6, marginTop: 8 }}>
+              <div className="stack gap-2 mt-2">
                 {leftPlayers.map((p) => (
-                  <div className="spread" key={p.id} style={{ fontSize: 14 }}>
+                  <div className="spread side-row" key={p.id}>
                     <span className="muted">{p.displayName}</span>
                     <button
                       className="btn btn-ghost"
-                      style={{ padding: "4px 10px", fontSize: 13, minHeight: 0 }}
                       disabled={busy}
                       onClick={() => setReinstateTarget({ id: p.id, name: p.displayName })}
                     >
@@ -388,38 +340,27 @@ export function LeagueView({
 
         {/* Games grid */}
         <section className="card">
-          <div className="spread" style={{ marginBottom: 12 }}>
-            <h2 style={{ fontSize: 22 }}>{no.host.games}</h2>
+          <div className="spread mb-3">
+            <h2 className="card-title">{no.host.games}</h2>
             <span className="badge">
               {roundGames.length - liveCount} / {roundGames.length}
             </span>
           </div>
 
-          <div className="stack" style={{ gap: 10 }}>
+          <div className="stack gap-3">
             {roundGames.map((g) => (
               <GameRow
                 key={g.id}
-                className="spread"
+                className={`spread game-row${
+                  presentasjon || g.status === "bye" || g.blackPlayerId === null ? " is-static" : ""
+                }`}
                 onClick={
                   presentasjon
                     ? undefined
                     : () => g.blackPlayerId !== null && g.status !== "bye" && setOverrideGame(g)
                 }
-                style={{
-                  textAlign: "left",
-                  background: "var(--ink-soft)",
-                  border: "1px solid var(--ink-line)",
-                  borderRadius: 10,
-                  padding: "12px 14px",
-                  cursor:
-                    presentasjon || g.status === "bye" || g.blackPlayerId === null
-                      ? "default"
-                      : "pointer",
-                  color: "inherit",
-                  font: "inherit",
-                }}
               >
-                <span>
+                <span className="game-row-names">
                   <b>{nameById(g.whitePlayerId)}</b>
                   {g.blackPlayerId ? (
                     <>
@@ -449,56 +390,45 @@ export function LeagueView({
           </div>
 
           {!presentasjon && timeUp && liveCount > 0 && (
-            <div
-              className="banner"
-              style={{
-                marginTop: 16,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-                background: "color-mix(in srgb, var(--warn) 18%, var(--ink-2))",
-                border: "1px solid color-mix(in srgb, var(--warn) 50%, transparent)",
-                color: "var(--warn-ink)",
-              }}
-            >
+            <div className="banner timeup-banner">
               <span><Icon name="alarm" size={16} /> {no.host.timeUpSuggestion}</span>
-              <button className="btn btn-danger" disabled={busy} onClick={requestForce} style={{ flexShrink: 0 }}>
+              <button className="btn btn-danger" disabled={busy} onClick={requestForce}>
                 {busy ? <span className="spin" /> : no.host.endRound}
               </button>
             </div>
           )}
 
           {!presentasjon && (
-          <div className="row" style={{ marginTop: 18 }}>
-            <button
-              className="btn btn-primary grow"
-              disabled={busy || !allResolved}
-              onClick={advance}
-            >
-              {busy ? <span className="spin" /> : isLastRound ? "Fullfør" : no.host.nextRound}
-            </button>
-            {/* Finish early: only makes sense while there's still a round left
-                to skip — once this IS the last configured round, "Fullfør"
-                above already does the same thing. */}
-            {!isLastRound && (
-              <button className="btn btn-ghost" disabled={busy} onClick={requestFinishEarly}>
-                {no.host.finishEarly}
-              </button>
-            )}
-            {liveCount > 0 && (
-              <button className="btn btn-danger" disabled={busy} onClick={requestForce}>
-                {busy ? <span className="spin" /> : no.host.forceResolve}
-              </button>
-            )}
-          </div>
+            <>
+              <div className="round-actions">
+                <button
+                  className="btn btn-primary"
+                  disabled={busy || !allResolved}
+                  onClick={advance}
+                >
+                  {busy ? <span className="spin" /> : isLastRound ? "Fullfør" : no.host.nextRound}
+                </button>
+                {/* Finish early: only makes sense while there's still a round left
+                    to skip — once this IS the last configured round, "Fullfør"
+                    above already does the same thing. */}
+                {!isLastRound && (
+                  <button className="btn btn-ghost" disabled={busy} onClick={requestFinishEarly}>
+                    {no.host.finishEarly}
+                  </button>
+                )}
+                {liveCount > 0 && (
+                  <button className="btn btn-ghost" disabled={busy} onClick={requestForce}>
+                    {busy ? <span className="spin" /> : no.host.forceResolve}
+                  </button>
+                )}
+              </div>
+              <div className="round-help">
+                {!allResolved && <p>{no.host.nextRoundHelp}</p>}
+                {liveCount > 0 && <p>{no.host.forceResolveHelp}</p>}
+              </div>
+            </>
           )}
-          {!presentasjon && !allResolved && (
-            <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
-              Alle partier må være ferdige før neste runde.
-            </p>
-          )}
-          {!presentasjon && error && <div className="banner banner-error" style={{ marginTop: 10 }}>{error}</div>}
+          {!presentasjon && error && <div className="banner banner-error mt-3">{error}</div>}
         </section>
       </div>
 

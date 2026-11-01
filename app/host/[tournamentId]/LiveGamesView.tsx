@@ -319,15 +319,15 @@ export function LiveGamesView({
   // The header card markup for one game (names + clocks).
   const Heads = (g: (typeof live)[number]) => (
     <div
-      className="spread"
-      style={{ marginBottom: 8, fontSize: headerFontSize(visible.length), alignItems: "center" }}
+      className="spread live-head"
+      style={{ fontSize: headerFontSize(visible.length) }}
     >
-      <span className="row" style={{ gap: 6 }}>
+      <span className="row gap-1 live-side">
         <b>{nameById(g.whitePlayerId)}</b>
         <SideClock clk={clockOf(g)} side="w" />
       </span>
       <span className="faint">vs</span>
-      <span className="row" style={{ gap: 6 }}>
+      <span className="row gap-1 live-side">
         <SideClock clk={clockOf(g)} side="b" />
         <b>{nameById(g.blackPlayerId)}</b>
       </span>
@@ -338,15 +338,14 @@ export function LiveGamesView({
   if (live.length === 1) {
     const g = live[0];
     return (
-      <main className="wrap" style={{ padding: "12px 24px 48px", maxWidth: "min(96vw, 1100px)" }}>
+      <main className="wrap live-main live-main-one">
         <button
           onClick={() => { setOpenId(g.id); setOpenResult(null); }}
-          className="card reveal"
-          style={{ padding: 16, cursor: "pointer", textAlign: "left", color: "inherit", width: "100%" }}
+          className="card reveal live-card live-card-one"
         >
           {Heads(g)}
-          <div className="stack" style={{ alignItems: "center" }}>
-            <div className="board-shell-lg" style={{ borderRadius: 8, overflow: "hidden" }}>
+          <div className="stack align-center">
+            <div className="board-shell-lg live-board">
               <PlayBoard
                 id={`big-${g.id}`}
                 fen={fenOf(g)}
@@ -367,7 +366,7 @@ export function LiveGamesView({
   }
 
   return (
-    <main className="wrap" style={{ padding: "12px 24px 64px", maxWidth: "min(96vw, 1800px)" }}>
+    <main className="wrap live-main live-main-grid">
       {live.length === 0 ? (
         // Tavlevisning: ingen "tilbake til arrangering"-kort (vertskontroll).
         roundOver && onExitLive && !presentasjon ? (
@@ -375,9 +374,9 @@ export function LiveGamesView({
           // host back to the arranging view to advance the round / bracket.
           <div className="result-overlay">
             <Confetti count={120} />
-            <div className="result-card stack" style={{ alignItems: "center", gap: 14 }}>
+            <div className="result-card stack align-center gap-3">
               <div className="result-emoji"><Icon name="flag" size={84} strokeWidth={1.4} /></div>
-              <h2 style={{ fontSize: "clamp(28px,5vw,46px)", textAlign: "center" }}>
+              <h2 className="result-title">
                 {no.host.roundOver}
               </h2>
               <button className="btn btn-primary btn-lg" onClick={onExitLive}>
@@ -386,29 +385,26 @@ export function LiveGamesView({
             </div>
           </div>
         ) : (
-          <p className="muted text-center" style={{ padding: 40 }}>
+          <p className="muted text-center live-empty">
             Ingen partier pågår akkurat nå.
           </p>
         )
       ) : (
         <>
           <div
+            className="live-grid"
             style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(auto-fill, minmax(${gridMin(visible.length)}px, 1fr))`,
-              gap: 20,
-              justifyContent: "center",
+              gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${gridMin(visible.length)}px), 1fr))`,
             }}
           >
             {visible.map((g) => (
               <button
                 key={g.id}
                 onClick={() => { setOpenId(g.id); setOpenResult(null); }}
-                className="card reveal"
-                style={{ padding: 12, cursor: "pointer", textAlign: "left", color: "inherit" }}
+                className="card reveal live-card"
               >
                 {Heads(g)}
-                <div style={{ borderRadius: 8, overflow: "hidden" }}>
+                <div className="live-board">
                   <PlayBoard
                     id={`mini-${g.id}`}
                     fen={fenOf(g)}
@@ -425,7 +421,7 @@ export function LiveGamesView({
             ))}
           </div>
           {live.length > LIVE_GRID_CAP && (
-            <div className="text-center" style={{ marginTop: 20 }}>
+            <div className="text-center mt-5">
               <button className="btn btn-ghost" onClick={() => setShowAll((v) => !v)}>
                 {showAll ? no.host.showFewerGames : no.host.showAllGames(live.length)}
               </button>
@@ -438,20 +434,11 @@ export function LiveGamesView({
           not block the other live boards (suppressed once the round is over, when
           the round-complete card takes over). */}
       {winFlash && !roundOver && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            display: "grid",
-            placeItems: "center",
-            pointerEvents: "none",
-            zIndex: 55,
-          }}
-        >
+        <div className="win-flash">
           <Confetti count={90} />
-          <div className="result-card stack" style={{ alignItems: "center", gap: 8 }}>
+          <div className="result-card stack align-center gap-2">
             <div className="result-emoji"><Icon name="party" size={84} strokeWidth={1.4} /></div>
-            <h2 style={{ fontSize: "clamp(24px,4.5vw,40px)", textAlign: "center" }}>
+            <h2 className="result-title result-title-sm">
               {winFlash}
             </h2>
           </div>

@@ -13,18 +13,9 @@ export function JoinChip({ pin }: { pin: string }) {
   }, []);
 
   return (
-    <span
-      className="badge"
-      style={{ fontSize: 14, padding: "7px 14px", gap: 10 }}
-      aria-label={`Bli med på ${host}/play med PIN ${pin}`}
-    >
-      <span className="muted">{host}/play</span>
-      <b
-        className="mono"
-        style={{ color: "var(--gold)", fontSize: 17, letterSpacing: "0.1em" }}
-      >
-        {pin}
-      </b>
+    <span className="badge join-chip" aria-label={`Bli med på ${host}/play med PIN ${pin}`}>
+      <span className="muted join-chip-url">{host}/play</span>
+      <b className="mono join-chip-pin">{pin}</b>
     </span>
   );
 }

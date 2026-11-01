@@ -71,7 +71,7 @@ export default function HostEntry() {
 
   return (
     <main className="center-screen">
-      <div className="card card-narrow stack scale-in">
+      <div className={`card ${mode === "create" ? "card-form" : "card-narrow"} stack scale-in`}>
         <PageHeader
           backHref={mode === "choose" ? "/" : undefined}
           onBack={
