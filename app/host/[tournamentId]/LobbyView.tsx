@@ -22,6 +22,9 @@ import { effectiveHostCode, usePresentasjon } from "@/lib/client/storskjerm/useP
 /** A player who has been continuously disconnected for this long while still in
  * the lobby is auto-removed (they left the app). Conservative so a brief wifi
  * blip on a Chromebook never evicts a real student. */
+/** Tavlevisning: høyeste antall spillerbrikker før «+N til». */
+const TV_ROSTER_MAX = 30;
+
 const AUTO_KICK_MS = 3 * 60 * 1000;
 
 export function LobbyView({
@@ -116,6 +119,10 @@ export function LobbyView({
   // comment — the arranger wizard runs before that, so it can't check this).
   // The lobby is the first place with a real player count, and the last
   // chance to change the round count before it's baked into every pairing.
+  // Tavlevisning: skriften krymper når mange har blitt med, og over 30 vises
+  // resten som «+N til» så listen alltid passer i skjermhøyden.
+  const shown = presentasjon ? active.slice(0, TV_ROSTER_MAX) : active;
+  const density = active.length <= 12 ? "l" : active.length <= 20 ? "m" : "s";
   const roundsHint = roundsWarning(active.length, tournament.config.leagueRounds);
 
   // Presence bookkeeping for the conservative auto-kick: a player must have
@@ -224,7 +231,7 @@ export function LobbyView({
   }, [tournament.id, onChanged]);
 
   return (
-    <main className="wrap host-main">
+    <main className={`wrap host-main${presentasjon ? " tv-screen tv-lobby" : ""}`}>
       <header className={presentasjon ? "spread host-head-tv reveal" : "host-sub reveal"}>
         {presentasjon && (
           <>
@@ -271,7 +278,7 @@ export function LobbyView({
         )}
       </header>
 
-      <div className="board-grid split-lobby">
+      <div className="board-grid split-lobby tv-grid">
         {/* Join panel */}
         <section
           className="card stack text-center reveal join-card"
@@ -285,7 +292,7 @@ export function LobbyView({
           </p>
           {joinUrl && (
             <div className="scale-in qr-frame">
-              <QRCode value={joinUrl} size={172} />
+              <QRCode value={joinUrl} size={presentasjon ? 360 : 172} />
             </div>
           )}
           {!presentasjon && (
@@ -327,8 +334,8 @@ export function LobbyView({
               {no.host.noPlayers}
             </p>
           ) : (
-            <div className="chips roster-chips">
-              {active.map((p) => {
+            <div className="chips roster-chips" data-density={presentasjon ? density : undefined}>
+              {shown.map((p) => {
                 const online = present.has(p.id);
                 return (
                   <span className="chip" key={p.id}>
@@ -377,6 +384,9 @@ export function LobbyView({
                 );
               })}
             </div>
+          )}
+          {presentasjon && active.length > shown.length && (
+            <p className="tiebreak-note">+{active.length - shown.length} {no.host.moreRows}</p>
           )}
         </section>
       </div>
