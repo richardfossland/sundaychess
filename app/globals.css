@@ -120,8 +120,8 @@
   --medal-1: #8a6508;
   --medal-2: #5d6676;
   --medal-3: #8f5524;
-  --gold-ink: #7a5c0a; /* deep gold — readable on light surfaces (>= 5:1) */
-  --gold-light-ink: #7a5c0a;
+  --gold-ink: #6e5208; /* deep gold — readable on light surfaces (>= 5:1) */
+  --gold-light-ink: #6e5208;
 
   --ink: #ece6d9;
   --ink-2: #ffffff;
@@ -131,15 +131,15 @@
   --ink-line-strong: rgba(20, 24, 33, 0.22);
 
   --txt: #161b27;
-  --txt-dim: #4f586a;
-  --txt-faint: #566074;
+  --txt-dim: #454e60;
+  --txt-faint: #4c566a;
   --ctl-border: #687083;
 
-  --turn: #2a7a4b;
+  --turn: #1f6a3f;
   --turn-deep: #1f6139;
-  --warn: #b85f26;
-  --danger: #b8372f;
-  --live-ink: #2a7a4b;
+  --warn: #96461a;
+  --danger: #a52f28;
+  --live-ink: #1f6a3f;
   --warn-ink: #7a3d12;
   --danger-ink: #8f2a23;
   --ok-ink: #1b5a35;
