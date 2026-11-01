@@ -17,7 +17,9 @@ export type ResultSource =
   | "bye"
   | "timeout_draw"
   | "walkover"
-  | "opponent_absent";
+  | "opponent_absent"
+  /** Over-the-board result carried over from a physical tournament (M5b, migr. 0017). */
+  | "physical";
 export type PlayerStatus = "active" | "left";
 export type Turn = "w" | "b";
 
@@ -54,6 +56,23 @@ export interface TournamentConfig {
   /** Rekkefølge på tiebreaks (se lib/tournament/tiebreaks.ts). Absent ⇒ kun
    * Buchholz, som i dag. Ligger i jsonb — ingen migrasjon. */
   tiebreaks?: string[];
+  /** Parringssystem for ligaen. Absent ⇒ eldre Monrad-adapter (`pair()`); satt ⇒
+   * `pairRound(system, …)` med ekte startnummer/rating/historikk (M5b). */
+  pairingSystem?: "monrad" | "swiss" | "roundRobin";
+  /** Alle-mot-alle: dobbel runde. Kun sammen med pairingSystem. */
+  doubleRoundRobin?: boolean;
+  /** Poeng for automatisk frirunde (1 | 0.5). Absent ⇒ 1. */
+  byePoints?: 1 | 0.5;
+  /** Satt KUN av /api/tournament/from-physical: turneringen fortsetter en fysisk
+   * turnering. Aldri tatt imot fra klienten ved vanlig opprettelse. */
+  fromPhysical?: {
+    /** Lokal id på den fysiske turneringen (brukes som id i eksportfila). */
+    sourceId: string;
+    /** Kan nye spillere melde seg på fritt (ikke bare gjøre krav på et navn)? */
+    allowFreeJoin: boolean;
+    /** «Klubb» / «Klasse». */
+    groupLabel?: string;
+  };
 }
 
 export interface Tournament {
@@ -79,6 +98,14 @@ export interface Player {
   seed: number | null;
   /** Team name (lagturnering, migration 0006); null/undefined = no team. */
   team?: string | null;
+  /** Fysisk-opprinnelse (migration 0017): rating, klubb/klasse, startnummer. */
+  rating?: number | null;
+  club?: string | null;
+  start_no?: number | null;
+  /** Forhåndsregistrert fra en fysisk turnering; eleven «gjør krav på» navnet med PIN. */
+  pre_registered?: boolean;
+  /** Når navnet ble krevd; null = ledig. */
+  claimed_at?: string | null;
   joined_at: string;
 }
 

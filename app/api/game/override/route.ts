@@ -31,7 +31,7 @@ async function handlePost(req: Request): Promise<Response> {
 
   // A bye isn't a played game — overriding it would mis-score the bye player
   // (the absent route guards byes too). Reject rather than corrupt standings.
-  if (game.status === "bye") return fail(409, "cannot_override_bye");
+  if (game.status === "bye" || game.black_player_id === null) return fail(409, "cannot_override_bye");
 
   const newStatus = body.result;
   const result = await resolveGameRpc(game.id, newStatus, "teacher_override");

@@ -5,6 +5,7 @@ import { useBoardState } from "@/lib/client/useBoardState";
 import { useWakeLock } from "@/lib/client/useWakeLock";
 import { identity } from "@/lib/client/identity";
 import { no } from "@/lib/locale/no";
+import { HostFileButton } from "./HostFileButton";
 import { DiagnosticsModal } from "./DiagnosticsModal";
 import { LobbyView } from "./LobbyView";
 import { LeagueView } from "./LeagueView";
@@ -146,6 +147,7 @@ export function BoardClient({ tournamentId }: { tournamentId: string }) {
             </>
           )}
           {!presentasjon && <StorskjermButton />}
+          {!presentasjon && status !== "playoff" && (status !== "lobby" || state.tournament.currentRound > 0) && state.tournament.config.format !== "cup" && <HostFileButton state={state} />}
           {hostCode && (
             <button
               className="btn btn-ghost"

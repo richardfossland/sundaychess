@@ -400,7 +400,9 @@ export function LeagueView({
                 key={g.id}
                 className="spread"
                 onClick={
-                  presentasjon ? undefined : () => g.status !== "bye" && setOverrideGame(g)
+                  presentasjon
+                    ? undefined
+                    : () => g.blackPlayerId !== null && g.status !== "bye" && setOverrideGame(g)
                 }
                 style={{
                   textAlign: "left",
@@ -408,7 +410,10 @@ export function LeagueView({
                   border: "1px solid var(--ink-line)",
                   borderRadius: 10,
                   padding: "12px 14px",
-                  cursor: presentasjon || g.status === "bye" ? "default" : "pointer",
+                  cursor:
+                    presentasjon || g.status === "bye" || g.blackPlayerId === null
+                      ? "default"
+                      : "pointer",
                   color: "inherit",
                   font: "inherit",
                 }}

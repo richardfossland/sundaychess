@@ -149,3 +149,33 @@ Listen → «Åpne publisert turnering»: turnerings-id (eller lenke) + arrangø
 ### Plass for M2
 
 M2 eier `PhysicalBoard.tsx`. M5a la inn to linjer: `<CloudMenu t run />` i hodet og `<ReportsPanel t apply />` over runde-tabellen. Per-brett-merke kan M2 bygge med `relevantReports(t, reports)` (`ReportsPanel.tsx`) og `useReports(id, active)`.
+
+## Fortsett digitalt og tilbake til fil (M5b)
+
+Migrasjon 0017 (`docs/MIGRATIONS-0017.md`, kjøres FØR koden). Lokal-først er uendret; dette er et bevisst, enveis steg ut av den lokale loggen og en eksport tilbake.
+
+### Fysisk → digital
+«Fortsett digitalt» (turneringshodet, og «Importer og fortsett digitalt» ved filimport) sender hendelsesloggen til `POST /api/tournament/from-physical`. Bare **mellom runder** (ingen åpen/utkast-runde, minst én runde igjen, ≤ 7 runder i alt, ≥ 2 aktive). **Utslag avvises** (`409 knockout`, «Utslagsturneringer kan ikke fortsette digitalt ennå»), fremtidig arbeid.
+
+| Skritt | Detalj |
+|---|---|
+| Vern (samme rekkefølge som publish) | rå kropp ≤ 512 KB (413) → ≤ 5 000 hendelser / ≤ 500 spillere (422) → DB-budsjett scope `publish` 10/IP/døgn (429) → avspilling gjennom reduceren (422 `invalid_log`) → `continueRefusal` (409) |
+| Auth | Anonym som `/api/tournament`; innlogget Sunday Account-arrangør stemples som eier. Svar: `{id, joinPin, hostCode, pairToken}`; klienten lagrer kode/token som ved vanlig opprettelse og går til `/host/<id>` |
+| Spillere | `players` med `pre_registered`, `start_no`, `rating`, `club` (ikke `team`: lag er 2–4 faste navn), trukne = `left` |
+| Runder | Hver fullførte runde = `rounds` (`done`) + resultat-only `games` (ingen trekk, `pgn=''`, startstilling) |
+| Resultatkoding | `1-0/0-1/½-½` → `white_win/black_win/draw`, kilde `physical`; `+-/-+` → vinn, kilde `walkover`; `=` → `aborted`, `walkover`; frirunde full/½/0 → `bye` / `draw` / `aborted` med `black_player_id = null` (`byeTypeOf` i `score.ts`; `recompute_scores` uendret) |
+| Senpåmeldte | ½ for tapte runder → virtuell ½-frirunde-parti (som `historyOf`) |
+| Config | `leagueRounds` = `totalRounds`, `pairingSystem`, `tiebreaks`, `byePoints`, `doubleRoundRobin`, `fromPhysical{sourceId, allowFreeJoin, groupLabel}` (kun satt av denne ruten) |
+| Status | `lobby`, `current_round` = antall fullførte runder. Arrangøren starter neste runde som vanlig (`startLeague` parrer `current_round + 1`) |
+
+**Ligamotor.** `config.pairingSystem` (valgfri; fravær = gammel Monrad-adapter `pair()`, uendret for eksisterende turneringer) bytter `pairLeagueRound` til `pairRound(system, …)` med ekte startnummer, rating, frirunde-typer og forfeit-bevisst historikk (`enginePairings`). Walkover teller ikke som møte/farge. `config.tiebreaks` brukes nå også av brett-ruten (`standingsOptions`), og motoren får ALLE spillere (også de som har forlatt) så rating/fravær blir identisk; digitale tabeller viser kun aktive spillere (fysisk viser også trukne).
+
+**Navnevalg.** `POST /api/join/names {pin}` lister ledige forhåndsregistrerte navn (aldri resume-kode). Eleven taster PIN og velger navn: `POST /api/join/claim` (atomisk `claim_player`; dobbelt krav = 409 `already_claimed`). Krav er mulig til turneringen er ferdig (også mellom runder). «Navnet mitt står ikke her» (vanlig join) bare hvis fysisk `allowLateEntry` (ellers 403 `names_only`). Arrangøren kan nullstille et krav i lobbyen (`/api/lobby/reset-claim`): ny resume-kode, så gammel enhet mister tilgangen.
+
+**Lokalt** markeres den fysiske turneringen `fortsatt digitalt → lenke` (`lib/physical/digitalMeta.ts`, ikke i fila): skrivebeskyttet, sky-menyen skjult, filene kan fortsatt eksporteres.
+
+### Digital → fil
+«Last ned turneringsfil» i arrangørvisningen (ligatilstand mellom runder, lobby med spilte runder, ferdig; ikke cup/sluttspill/pågående parti). `lib/physical/fromDigital.ts` bygger loggen (createTournament, addPlayer, pairRound med de faktiske parringene, publishRound, setResult, completeRound, ev. withdraw/finish) og verifiserer den ved å spille den av. Spillere uten parti i en runde men senere tilbake får 0-poengs frirunde; spillere som aldri kommer tilbake trekkes. Fil-id = original fysisk id (`fromPhysical.sourceId`), ellers den digitale; hendelses-id-ene er nye, så import mot en lokal original gir «avvikende» (velg «Behold begge»).
+
+### Designvalg
+Ingen `bye_points`-kolonne: ½/0-frirunde kodes som `draw`/`aborted` med svart = null (ingen endring av `recompute_scores`). `team` brukes ikke for klubb. `seed` røres ikke (brukes av sluttspill). Tester: `test/physicalContinue.test.ts` (likhet fysisk = digital = re-importert for alle tiebreaks, krav, rutesømmer), `test/migration0017.test.ts` (PGlite), `e2e/physical-continue.spec.ts`.

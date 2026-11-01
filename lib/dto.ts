@@ -36,6 +36,13 @@ export interface PublicPlayer {
   status: "active" | "left";
   seed: number | null;
   team: string | null;
+  /** M5b: from a physical tournament (rating / club or class / start number). */
+  rating?: number | null;
+  club?: string | null;
+  startNo?: number | null;
+  /** Pre-registered name from a physical tournament; `claimed` = a student took it. */
+  preRegistered?: boolean;
+  claimed?: boolean;
 }
 
 export interface PublicGame {
@@ -107,6 +114,15 @@ export function toPublicPlayer(p: Player): PublicPlayer {
     status: p.status,
     seed: p.seed,
     team: p.team ?? null,
+    ...(p.pre_registered
+      ? {
+          preRegistered: true,
+          claimed: !!p.claimed_at,
+          rating: p.rating ?? null,
+          club: p.club ?? null,
+          startNo: p.start_no ?? null,
+        }
+      : {}),
   };
 }
 

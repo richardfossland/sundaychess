@@ -218,6 +218,26 @@ export const api = {
     return r;
   },
 
+  /** M5b: continue a physical tournament digitally (event log -> digital lobby). */
+  continueFromPhysical: async (events: unknown[]) => {
+    const r = await post<CreatedTournament>("/api/tournament/from-physical", { events });
+    if (r.pairToken) identity.savePairToken(r.hostCode, r.pairToken);
+    return r;
+  },
+
+  joinNames: (pin: string) =>
+    post<{
+      names: { id: string; displayName: string; club: string | null }[];
+      canJoinFresh: boolean;
+      groupLabel: string | null;
+    }>("/api/join/names", { pin }),
+
+  claimName: (pin: string, playerId: string) =>
+    post<JoinResult>("/api/join/claim", { pin, playerId }),
+
+  resetClaim: (tournamentId: string, hostCode: string, playerId: string) =>
+    post<{ ok: boolean }>("/api/lobby/reset-claim", { tournamentId, hostCode, playerId }),
+
   join: (pin: string, displayName: string) =>
     post<JoinResult>("/api/join", { pin, displayName }),
 

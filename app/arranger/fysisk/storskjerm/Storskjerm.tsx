@@ -16,7 +16,7 @@ const L = no.physicalPrint;
 const PAGE_MS = 8000;
 const IDLE_MS = 3000;
 
-const RESULT_TEXT: Record<string, string> = { "1-0": "1–0", "0-1": "0–1", "½-½": "½–½", "+-": "+ –", "-+": "– +", "=": "0–0" };
+const RESULT_TEXT: Record<string, string> = { "1-0": "1–0", "0-1": "0–1", "½-½": "½–½", "+-": "+ –", "-+": "– +", "=": "0–0", "0-0": "0–0" };
 
 function useLocal<T>(key: string, parse: (raw: string | null) => T, init: T) {
   const [v, setV] = useState<T>(init);
