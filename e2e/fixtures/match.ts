@@ -104,7 +104,8 @@ export async function publicFlowMatch(
   const t = await postJson<{ id: string; joinPin: string; hostCode: string }>(
     request,
     "/api/tournament",
-    { title: "E2E" },
+    // E2E_TITLE: lokal kjøring mot en ekte database kan merke testdata for opprydding.
+    { title: process.env.E2E_TITLE ?? "E2E" },
   );
 
   type Joined = {

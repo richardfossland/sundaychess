@@ -2,8 +2,9 @@ import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 import { no } from "@/lib/locale/no";
 import { tekst as storskjermTekst } from "@/lib/client/storskjerm/tekst";
-import { publicFlowMatch } from "./fixtures/match";
-import { seedHostCode } from "./helpers/identity";
+import { openAs, publicFlowMatch, type Match } from "./fixtures/match";
+import type { StoredPlayer } from "@/lib/client/identity";
+import { seedHostCode, seedPlayer } from "./helpers/identity";
 
 // Varig designtest: håndhever designreglene fra designrunden D0–D7 på tvers av
 // sidene, så en senere endring ikke stille ødelegger mobil, mørkt tema eller
@@ -161,6 +162,35 @@ async function open(page: Page, url: string, size: { width: number; height: numb
   );
 }
 
+/**
+ * Storskjermen ligger i `.presentasjon-fit` (overflow: hidden), så
+ * `scrollHeight <= innerHeight` kan aldri feile: det som stikker ut blir bare
+ * klippet. Mål i stedet at hvert element inni hvert `.tv-card` slutter innenfor
+ * kortets nedre kant.
+ */
+async function expectCardsNotClipped(page: Page, where: string): Promise<void> {
+  const result = await page.evaluate(() => {
+    const cards = Array.from(document.querySelectorAll(".tv-card"));
+    const bad: string[] = [];
+    for (const card of cards) {
+      const bottom = card.getBoundingClientRect().bottom;
+      for (const el of Array.from(card.querySelectorAll("*"))) {
+        const h = el as HTMLElement;
+        if (typeof h.checkVisibility === "function" && !h.checkVisibility({ visibilityProperty: true })) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width < 1 || r.height < 1) continue;
+        if (r.bottom > bottom + 1) {
+          const cls = typeof h.className === "string" ? h.className.split(/\s+/)[0] : "";
+          bad.push(`<${el.tagName.toLowerCase()}${cls ? "." + cls : ""}> «${(el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 30)}» slutter ${Math.round(r.bottom)} > kort ${Math.round(bottom)}`);
+        }
+      }
+    }
+    return { cards: cards.length, bad };
+  });
+  expect(result.cards, `${where}: fant ingen .tv-card å måle`).toBeGreaterThan(0);
+  expect(result.bad, `${where}: innhold klippes av kortet:\n  ${result.bad.slice(0, 8).join("\n  ")}`).toEqual([]);
+}
+
 const size = (s: { width: number }) => (s.width === MOBILE.width ? "375" : String(s.width));
 
 // ---------------------------------------------------------------------------
@@ -194,11 +224,13 @@ test.describe("designregler uten database", () => {
         await open(page, "/solo", vp, scheme);
         await page.getByRole("button", { name: new RegExp(`^${no.solo.start}`) }).click();
         await expect(page.getByTestId("board-shell")).toBeVisible();
-        // Spillvisningen skal passe i én skjermhøyde på desktop. På telefon
-        // scroller siden naturlig (brett + trekkliste), så høyde sjekkes bare her.
+        // Spillvisningen skal passe i én skjermhøyde både på desktop og på en
+        // moderne telefon (375×812). På de minste telefonene (360×640) har
+        // brettet et gulv på ~300 px og siden scroller heller enn at brettet
+        // blir uspillelig lite; det dekkes av «mobil»-testene under.
         await expectDesign(page, `/solo i parti (${vp.width}×${vp.height}, ${scheme})`, {
           targets: vp.width === MOBILE.width,
-          fitsHeight: vp.width !== MOBILE.width,
+          fitsHeight: true,
         });
       });
     }
@@ -239,6 +271,109 @@ test.describe("skjermleser", () => {
 // ---------------------------------------------------------------------------
 // Sider med database: én turnering gjenbrukes av alle testene under.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Små telefoner: turneringsparti og venterom (D2/D3). Egen turnering med
+// reaksjoner og klokke slått på, så den rike spillvisningen (`gl-rich`) testes.
+// ---------------------------------------------------------------------------
+
+const SMALL_PHONES = [
+  { width: 360, height: 640 },
+  { width: 375, height: 667 },
+];
+/** Brettet skal aldri bli mindre enn dette på telefon (gulvet i CSS er ~300). */
+const MIN_BOARD = 280;
+
+test.describe("mobil: turneringsparti og venterom", () => {
+  test.describe.configure({ mode: "serial" });
+
+  let game: Match;
+  let bye: StoredPlayer | null = null;
+
+  test.beforeAll(async ({ playwright }) => {
+    const request = await playwright.request.newContext({ baseURL: "http://localhost:3000" });
+    try {
+      const post = async <T,>(path: string, data: unknown): Promise<T> => {
+        const res = await request.post(path, { data });
+        expect(res.status(), `POST ${path} → ${res.status()} ${await res.text()}`).toBe(200);
+        return (await res.json()) as T;
+      };
+      const t = await post<{ id: string; joinPin: string; hostCode: string }>("/api/tournament", {
+        title: process.env.E2E_TITLE ?? "E2E",
+        config: { reactions: true, clockSec: 300, roundTimerSec: 600 },
+      });
+      type Joined = { tournamentId: string; playerId: string; resumeCode: string; displayName: string };
+      const joined: Joined[] = [];
+      // Tre spillere: ett parti og én frirunde (venterommet).
+      for (const name of ["Ada", "Bo", "Cy"]) joined.push(await post<Joined>("/api/join", { pin: t.joinPin, displayName: name }));
+      await post("/api/round/start", { tournamentId: t.id, hostCode: t.hostCode });
+      const board = (await (await request.get(`/api/tournament/${t.id}`)).json()) as {
+        games: { id: string; status: string; whitePlayerId: string; blackPlayerId: string | null }[];
+      };
+      const byId = new Map(joined.map((j) => [j.playerId, j]));
+      const stored = (j: Joined): StoredPlayer => ({
+        tournamentId: j.tournamentId,
+        playerId: j.playerId,
+        resumeCode: j.resumeCode,
+        displayName: j.displayName,
+      });
+      const live = board.games.find((g) => g.status === "live" && g.blackPlayerId);
+      expect(live, "runde 1 ga ikke noe parti").toBeTruthy();
+      const byeGame = board.games.find((g) => g.status === "bye");
+      expect(byeGame, "runde 1 ga ingen frirunde").toBeTruthy();
+      game = {
+        tournamentId: t.id,
+        gameId: live!.id,
+        hostCode: t.hostCode,
+        white: stored(byId.get(live!.whitePlayerId)!),
+        black: stored(byId.get(live!.blackPlayerId!)!),
+      };
+      bye = stored(byId.get(byeGame!.whitePlayerId)!);
+    } finally {
+      await request.dispose();
+    }
+  });
+
+  /** Knapper og felt der teksten er bredere enn knappen (kuttet). */
+  async function clippedButtons(page: Page): Promise<string[]> {
+    return page.evaluate(() =>
+      Array.from(document.querySelectorAll("main button, .game-layout button"))
+        .filter((b) => b.getBoundingClientRect().width > 0 && b.scrollWidth > b.clientWidth + 1)
+        .map((b) => `«${(b.textContent ?? "").trim().slice(0, 30)}» scrollWidth ${b.scrollWidth} > clientWidth ${b.clientWidth}`),
+    );
+  }
+
+  for (const vp of SMALL_PHONES) {
+    test(`turneringsparti · ${vp.width}×${vp.height}: brett ≥ ${MIN_BOARD} px, ingen kuttede knapper`, async ({ context }) => {
+      // openAs åpner en NY side i konteksten (ikke `page`-fixturen).
+      const page = await openAs(context, game.white);
+      await page.setViewportSize(vp);
+      await page.evaluate(() => document.fonts.ready);
+      const board = await page.getByTestId("board-shell").boundingBox();
+      expect(board, "brettet har ingen størrelse").not.toBeNull();
+      expect(board!.width, `brettet er bare ${Math.round(board!.width)} px bredt`).toBeGreaterThanOrEqual(MIN_BOARD);
+      expect(await clippedButtons(page), "knapper kuttes").toEqual([]);
+
+      // Reaksjonene ligger i én rad (ikke stablet loddrett).
+      const tops = await page.locator(".reaction-btn").evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().top)))]);
+      expect(tops.length, "reaksjonene skal ligge i én rad").toBeLessThanOrEqual(1);
+
+      // Trykkflater: ikke målt her; brettets 8×8 ruter (37,5 px på 300 px) er ikke knapper i designreglenes forstand.
+      await expectDesign(page, `turneringsparti (${vp.width}×${vp.height})`, { targets: false });
+    });
+
+    test(`venterom · ${vp.width}×${vp.height}: ingen overflyt, ingen kuttede knapper`, async ({ page, context }) => {
+      await seedPlayer(context, bye!);
+      await page.setViewportSize(vp);
+      await page.goto("/play");
+      await expect(page.locator(".pl-status-main")).toBeVisible({ timeout: 25_000 });
+      await page.evaluate(() => document.fonts.ready);
+      expect(await clippedButtons(page), "knapper kuttes").toEqual([]);
+      // Trykkflater utelatt: venterommet viser et øvelsesbrett med ruter under 40 px.
+      await expectDesign(page, `venterom (${vp.width}×${vp.height})`, { targets: false });
+    });
+  }
+});
 
 test.describe("designregler med turnering", () => {
   // Serielt: alle deler turneringen som lages i beforeAll.
@@ -284,6 +419,7 @@ test.describe("designregler med turnering", () => {
         targets: false,
         fitsHeight: true,
       });
+      await expectCardsNotClipped(page, `storskjerm (1280×720, ${scheme})`);
     });
   }
 
