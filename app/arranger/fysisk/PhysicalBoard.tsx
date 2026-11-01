@@ -35,7 +35,7 @@ function ExportReminder({ t }: { t: PhysicalTournament }) {
   }, []);
   if (hidden || !shouldRemindExport(t)) return null;
   return (
-    <div className={`banner ${weak ? "banner-error" : ""} spread gap-3`} role="status" data-testid="export-reminder">
+    <div className={`banner ${weak ? "banner-error" : ""} spread gap-3 pr-reminder`} role="status" data-testid="export-reminder">
       <span>{weak ? L.exportReminderIos : L.exportReminder(done)}</span>
       <button type="button" className="btn btn-sm btn-ghost" onClick={() => { dismissReminder(t); setHidden(true); }}>{L.exportReminderDismiss}</button>
     </div>

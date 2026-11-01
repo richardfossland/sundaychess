@@ -23,7 +23,7 @@ export function StandingsPanel({ t }: { t: PhysicalTournament }) {
     <section className="stack" aria-label={p.standings}>
       <p className="eyebrow">{heading}</p>
       <div className="px-scroll">
-        <table className="table">
+        <table className="table px-std">
           <thead>
             <tr>
               <th className="num" title={p.rankTitle}>{p.rank}</th>

@@ -353,7 +353,8 @@ export function PhysicalWizard() {
               <span className="wz-help">{t.confirmHelp}</span>
             </div>
             <dl className="sum-list">
-              <SumRow label={t.rowName} value={`${title.trim()} (${groupLabel.toLowerCase()})`} onChange={() => goTo(0)} />
+              <SumRow label={t.rowName} value={title.trim()} onChange={() => goTo(0)} />
+              <SumRow label={t.rowGroup} value={groupLabel} onChange={() => goTo(0)} />
               <SumRow label={t.rowSystem} value={t.systems[system].label} onChange={() => goTo(1)} />
               <SumRow label={t.rowRounds} value={String(totalRounds)} onChange={() => goTo(2)} />
               <SumRow label={t.rowTiebreaks} value={tiebreaks.map((k) => no.tiebreaks[k].label).join(", ") || "–"} onChange={() => goTo(3)} />
