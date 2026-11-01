@@ -97,3 +97,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Playfair Display og Hanken Grotesk (skrifter)
+
+- Kilder: https://github.com/clauseggers/Playfair-Display og https://github.com/marcologous/hanken-grotesk
+  (woff2-filene er latin-delsettet av variabelfontene, hentet fra npm `@fontsource-variable/playfair-display@5.3.0`
+  og `@fontsource-variable/hanken-grotesk@5.3.0`)
+- Lisens: SIL Open Font License 1.1 (Copyright 2017 The Playfair Display Project Authors; Copyright 2021 The
+  Hanken Grotesk Project Authors). Full lisenstekst: `app/fonts/OFL-PlayfairDisplay.txt` og
+  `app/fonts/OFL-HankenGrotesk.txt`.
+- Brukt i: `app/fonts/*.woff2`, lastet via `next/font/local` i `app/layout.tsx` (tidligere `next/font/google`,
+  byttet så bygget ikke trenger nettverk til Google Fonts). Filene er ikke endret.

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Playfair_Display, Hanken_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { OfflineBanner } from "@/lib/client/OfflineBanner";
 import { ServiceWorker } from "@/lib/client/ServiceWorker";
@@ -9,16 +9,19 @@ import { ThemeToggle } from "@/lib/client/ThemeToggle";
 // flash. Sets data-theme on <html>; globals.css keys the light overrides off it.
 const themeScript = `(function(){try{var t=localStorage.getItem('chess:theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='dark';}})();`;
 
-// Suite brand fonts.
-const display = Playfair_Display({
+// Suite brand fonts, bundled in the repo (variable woff2, latin subset, OFL-1.1) so
+// builds never depend on fonts.googleapis.com. Licences in app/fonts/ and THIRD-PARTY-NOTICES.md.
+const display = localFont({
+  src: "./fonts/playfair-display-latin-wght-normal.woff2",
   variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["700", "800"],
+  weight: "400 900",
+  display: "swap",
 });
-const body = Hanken_Grotesk({
+const body = localFont({
+  src: "./fonts/hanken-grotesk-latin-wght-normal.woff2",
   variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "100 900",
+  display: "swap",
 });
 
 export const viewport: Viewport = { themeColor: "#11141b" };
