@@ -10,7 +10,7 @@ test.use({ acceptDownloads: true });
 
 async function claim(page: Page, pin: string, name: string) {
   await page.goto("/play");
-  await page.getByPlaceholder(no.player.pinPlaceholder).fill(pin);
+  await page.locator("#pin").fill(pin);
   await page.getByRole("button", { name: no.player.join, exact: true }).click();
   await expect(page.getByTestId("claim-list")).toBeVisible();
   await page.getByTestId("claim-list").getByRole("button", { name: new RegExp(name) }).click();
@@ -52,7 +52,7 @@ test("fysisk → digital → runde 2 → fil → fysisk igjen", async ({ page, b
   await claim(s2, pin, "Bjørn");
   const s3 = await (await browser.newContext()).newPage();
   await s3.goto("/play");
-  await s3.getByPlaceholder(no.player.pinPlaceholder).fill(pin);
+  await s3.locator("#pin").fill(pin);
   await s3.getByRole("button", { name: no.player.join, exact: true }).click();
   await expect(s3.getByTestId("claim-list")).toBeVisible();
   await expect(s3.getByTestId("claim-list").getByRole("button", { name: /Anna/ })).toHaveCount(0);

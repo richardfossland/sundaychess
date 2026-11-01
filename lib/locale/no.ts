@@ -1233,7 +1233,7 @@ export const no = {
     confirm: "Opprett digital turnering",
     cancel: "Avbryt",
     working: "Oppretter …",
-    importAndContinue: "Importer og fortsett digitalt",
+    importAndContinue: "Åpne og fortsett digitalt",
     created: "Digital turnering opprettet.",
     openHost: "Åpne arrangørvisning",
     continuedBanner: "Denne turneringen fortsetter digitalt. Den fysiske kopien er skrivebeskyttet.",
