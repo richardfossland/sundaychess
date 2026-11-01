@@ -9,6 +9,7 @@ import { errDetail, report } from "@/lib/client/telemetry";
 import { isValidPin } from "@/lib/codes";
 import { resumeTrouble } from "@/lib/client/resumeCopy";
 import { WaitingRoom } from "./WaitingRoom";
+import "./play.css";
 import { Icon } from "@/lib/client/Icon";
 import { PageHeader } from "@/lib/client/PageHeader";
 
@@ -233,13 +234,10 @@ export default function Play() {
   if (screen === "removed") {
     return (
       <main className="center-screen">
-        <div
-          className="card card-narrow stack text-center scale-in"
-          style={{ alignItems: "center" }}
-        >
+        <div className="card card-narrow stack pl-card scale-in">
           <PageHeader />
-          <div><Icon name="wave" size={40} strokeWidth={1.5} /></div>
-          <h2 className="fs-xl">{no.player.removedTitle}</h2>
+          <div className="pl-icon"><Icon name="wave" size={40} strokeWidth={1.5} /></div>
+          <h2 className="pl-title">{no.player.removedTitle}</h2>
           <p className="muted">{no.player.removedBody}</p>
           <button
             className="btn btn-primary btn-lg"
@@ -360,7 +358,7 @@ export default function Play() {
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && name.trim() && doJoin()}
               />
-              <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>
+              <span className="muted fs-xs">
                 {no.player.nameHint}
               </span>
             </div>
@@ -398,7 +396,7 @@ export default function Play() {
                   onClick={() => void doClaim(n.id)}
                 >
                   {n.displayName}
-                  {n.club ? <span className="faint" style={{ marginLeft: 8, fontSize: "var(--fs-xs)" }}>{n.club}</span> : null}
+                  {n.club ? <span className="faint fs-xs pl-club">{n.club}</span> : null}
                 </button>
               ))}
             </div>
@@ -407,26 +405,18 @@ export default function Play() {
                 {no.continueDigital.pickNotListed}
               </button>
             ) : (
-              <p className="faint" style={{ fontSize: "var(--fs-xs)" }}>{no.continueDigital.pickNoFresh}</p>
+              <p className="faint fs-xs">{no.continueDigital.pickNoFresh}</p>
             )}
           </>
         )}
 
         {screen === "showCode" && me && (
           <>
-            <div className="text-center stack" style={{ gap: 4 }}>
+            <div className="text-center stack gap-1">
               <div><Icon name="key" size={36} /></div>
               <p className="eyebrow">{no.player.resumeTitle}</p>
             </div>
-            <div
-              className="text-center"
-              style={{
-                padding: "18px 0",
-                border: "1px dashed color-mix(in srgb, var(--gold) 40%, transparent)",
-                borderRadius: 14,
-                background: "rgba(235,184,75,0.05)",
-              }}
-            >
+            <div className="text-center pl-code pl-code-wide">
               <div className="big-code">{me.resumeCode}</div>
             </div>
             <div className="banner banner-wait">{no.player.resumeHint}</div>

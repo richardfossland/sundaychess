@@ -15,6 +15,11 @@ export interface WaitingProgress {
   /** "Runde n av N · X partier igjen", or "Venter på at arrangøren starter
    * runde n+1" once every game in the current round is resolved. */
   label: string;
+  /** The current round number, and how many of its games are still live. With
+   * `live === 0` the round is over and the next one waits for the host — the
+   * waiting room then says "Venter på runde n+1" once instead of two lines. */
+  round: number;
+  live: number;
   /** The current round's timer, ready for a compact <RoundTimer>. Null when no
    * timer is configured for the tournament, or the round hasn't started yet. */
   timer: { startedAt: string | null; durationSec: number; extendedMs: number } | null;
@@ -96,7 +101,7 @@ export function waitingProgress(
         }
       : null;
 
-  return { label, timer };
+  return { label, round: tournament.currentRound, live, timer };
 }
 
 /** Should the waiting room offer "play solo while you wait" (linking out to

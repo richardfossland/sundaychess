@@ -121,23 +121,23 @@ export function PuzzleCard() {
   }, [selected, legal]);
 
   return (
-    <div className="card stack" style={{ padding: 18, width: "100%", maxWidth: 420, alignItems: "center", gap: 10 }}>
-      <div className="spread" style={{ width: "100%" }}>
-        <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}><Icon name="puzzle" size={14} /> {no.puzzle.title}</p>
+    <div className="card stack pl-aside pl-puzzle">
+      <div className="spread pl-fill">
+        <p className="eyebrow"><Icon name="puzzle" size={14} /> {no.puzzle.title}</p>
         {solvedCount > 0 && (
           <span className="badge">
             {solvedCount} {no.puzzle.counter}
           </span>
         )}
       </div>
-      <p style={{ fontSize: 14 }}>
+      <p className="pl-puzzle-prompt">
         <b>{no.puzzle.prompt}</b>{" "}
         <span className="muted">
           — {turn === "w" ? no.puzzle.toMoveWhite : no.puzzle.toMoveBlack}
         </span>
       </p>
 
-      <div style={{ width: "100%", borderRadius: 8, overflow: "hidden" }}>
+      <div className="pl-puzzle-board">
         <Chessboard
           options={{
             ...BOARD_BASE_OPTIONS,
@@ -156,7 +156,7 @@ export function PuzzleCard() {
 
       {solved ? (
         <>
-          <div className="banner banner-turn" style={{ width: "100%" }}>
+          <div className="banner banner-turn pl-fill">
             {no.puzzle.solved}
           </div>
           <button className="btn btn-primary btn-block" onClick={next}>
@@ -164,11 +164,11 @@ export function PuzzleCard() {
           </button>
         </>
       ) : wrong ? (
-        <div className="banner banner-error" style={{ width: "100%" }}>
+        <div className="banner banner-error pl-fill">
           {no.puzzle.wrong}
         </div>
       ) : (
-        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={next}>
+        <button className="text-link" onClick={next}>
           {no.puzzle.next}
         </button>
       )}
