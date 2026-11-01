@@ -35,6 +35,10 @@
   /* chess / status accents */
   --board-light: #ecd9b0;
   --board-dark: #6f8f6a;
+  --board-last: rgba(240, 196, 40, 0.62);
+  --board-selected: rgba(40, 120, 230, 0.55);
+  --board-dot: rgba(20, 28, 20, 0.4);
+  --board-premove: rgba(235, 140, 60, 0.55);
   --turn: #5ec27a;
   --turn-deep: #3f9e5a;
   --warn: #e0894a;
@@ -829,6 +833,12 @@ a:focus-visible,
   }
 }
 
+/* motstanderens avatar: blekk i stedet for gull */
+.avatar-lg.avatar-ink {
+  background: linear-gradient(180deg, var(--ink-soft), var(--btn-end));
+  color: var(--txt);
+  border: 1px solid var(--ink-line-strong);
+}
 /* generic round avatar */
 .avatar-lg {
   width: 40px;
@@ -840,38 +850,6 @@ a:focus-visible,
   color: var(--on-gold);
   background: var(--gold-grad);
   box-shadow: var(--shadow-1);
-}
-
-/* ============ player identity card (who is white / black) ============ */
-.player-card {
-  position: relative;
-  overflow: hidden;
-}
-/* a tinted left accent stripe in the player's piece colour */
-.player-card::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 5px;
-  border-radius: var(--radius) 0 0 var(--radius);
-}
-.player-card-white::before {
-  background: linear-gradient(180deg, #fdfaf2, #d8cfb8);
-}
-.player-card-black::before {
-  background: linear-gradient(180deg, #2b303b, #0c0e13);
-}
-.player-card-white {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, #fdfaf2 8%, var(--ink-soft)),
-    #1a1f29
-  );
-}
-.player-card-black {
-  background: linear-gradient(180deg, #161a22, #0c0e13);
 }
 
 /* the colour chip: a piece glyph on a white / black swatch */
@@ -948,96 +926,503 @@ a:focus-visible,
   -webkit-tap-highlight-color: transparent;
 }
 
-/* responsive game layout: board centre, player info stacked (narrow) or on the
-   sides (wide), so no screen wastes space */
-.game-grid {
+/* ============ spillvisning (D2): GameLayout ============
+   Én layout for solo, to-spiller og turneringsparti.
+   Smal skjerm: én kolonne (status, motstander, brett, deg, knapper, ekstra,
+   trekkliste, verktøy) som skal passe i 100dvh. Bred skjerm (>= 1024 px):
+   brett med spillerlinjer til venstre, sidepanel til høyre. Brettet skaleres
+   etter vindushøyden: --gl-board = min(100dvh - --gl-chrome, ledig bredde).
+   --gl-chrome er summen av alt som ligger rundt brettet (marg, to spillerlinjer,
+   rammer, mellomrom) og må holdes i takt med målene under. */
+.game-page {
+  --gl-gutter: var(--sp-4);
+  --gl-aside: 340px;
+  --gl-eval: 0px;
+  --gl-frame: 16px; /* brettramme: 2 x 8 px */
+  --gl-bar: 48px;
+  --gl-chrome: 400px;
+  --gl-board: min(
+    100vw - 2 * var(--gl-gutter) - var(--gl-frame) - var(--gl-eval),
+    100dvh - var(--gl-chrome),
+    760px
+  );
+  --gl-w: calc(var(--gl-board) + var(--gl-frame) + var(--gl-eval));
+  min-height: 100dvh;
+  padding: var(--gl-gutter);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.game-page.gl-rich {
+  --gl-chrome: 560px;
+}
+.game-layout.has-eval {
+  --gl-eval: 42px;
+}
+.game-layout {
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  width: 100%;
+  gap: var(--sp-2);
 }
-.game-grid .game-center {
+.gl-main,
+.gl-aside {
+  display: contents;
+}
+.gl-main > *,
+.gl-aside > * {
+  width: var(--gl-w);
+  max-width: 100%;
+}
+.gl-status { order: 1; }
+.gl-top { order: 2; }
+.gl-boardrow { order: 3; }
+.gl-bottom { order: 4; }
+.gl-actions { order: 5; }
+.gl-extra { order: 6; }
+.gl-moves { order: 7; }
+.gl-tools { order: 8; }
+
+.gl-status .banner,
+.gl-extra .banner {
+  padding: var(--sp-2) var(--sp-3);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+}
+.gl-status .turn-slot,
+.gl-status .banner-line {
+  min-height: 0;
+}
+.gl-status .turn-slot {
+  min-height: 44px;
+}
+.gl-extra {
   display: flex;
   flex-direction: column;
+  gap: var(--sp-2);
+}
+.gl-extra:empty {
+  display: none;
+}
+.gl-extra .notice-slot {
+  min-height: 44px;
+}
+.gl-extra .notice-slot:empty {
+  min-height: 0;
+}
+
+/* brettet */
+.gl-boardrow {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: stretch;
+  justify-content: center;
+}
+.game-layout .board-frame {
+  padding: 8px;
+  border-radius: 14px;
+}
+.game-layout .board-frame::before {
+  inset: 4px;
+  border-radius: 10px;
+}
+.game-layout .board-shell {
+  width: var(--gl-board);
+}
+.gl-board-label {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* alltid montert, men usynlig (L2): reserverer plassen når partiet er over */
+.is-hidden {
+  visibility: hidden;
+}
+.banner-action {
+  display: flex;
   align-items: center;
-  gap: 14px;
-  width: 100%;
+  justify-content: space-between;
+  gap: var(--sp-3);
 }
-.game-side {
-  width: 100%;
-  max-width: min(94vw, 600px);
+.banner-action .btn {
+  flex-shrink: 0;
 }
-@media (min-width: 1000px) {
-  .game-grid {
+.banner-premove {
+  border-color: color-mix(in srgb, var(--warn) 60%, transparent);
+}
+/* Fast, utenfor flyten: et synkroniseringsavbrudd skal aldri flytte brettet. */
+.sync-badge {
+  position: fixed;
+  top: var(--sp-4);
+  left: var(--sp-4);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+}
+.fs-display-glyph {
+  font-size: 40px;
+}
+
+/* spillerlinje */
+.pbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: var(--gl-bar);
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--ink-2);
+  border: 1px solid var(--ink-line);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.2s;
+}
+.pbar.is-active {
+  border-color: color-mix(in srgb, var(--turn) 60%, transparent);
+}
+.pbar .avatar-lg {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+.pbar-id {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.pbar-name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pbar-spacer {
+  flex: 1;
+  min-width: 0;
+}
+/* Alltid montert (L2): bare synlighet/animasjon endres når turen skifter. */
+.pbar-dot {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--turn);
+  visibility: hidden;
+}
+.pbar-dot.is-on {
+  visibility: visible;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--turn) 70%, transparent);
+  animation: ping 1.6s var(--ease-out) infinite;
+}
+
+/* slåtte brikker: samme boks fylt eller tom (L2: ingen høydeendring) */
+.captured {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 28px;
+  box-sizing: border-box;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+.captured.has-content {
+  background: var(--s-05);
+  border-color: var(--ink-line);
+}
+.captured-adv {
+  flex-shrink: 0;
+  margin-right: 2px;
+  font-size: var(--fs-xs);
+  color: var(--gold-ink);
+}
+.captured-piece {
+  flex-shrink: 0;
+  font-size: 20px;
+  line-height: 1;
+}
+.captured-black {
+  color: #0c0e13;
+  -webkit-text-stroke: 0.7px rgba(255, 255, 255, 0.9);
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.9);
+}
+.captured-white {
+  color: #f4f0e7;
+  -webkit-text-stroke: 0.7px rgba(0, 0, 0, 0.85);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.85);
+}
+
+/* handlinger, trekkliste, verktøy */
+.gl-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+.gl-actions > .btn {
+  flex: 1;
+  padding-inline: var(--sp-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  white-space: nowrap;
+}
+.gl-moves {
+  height: 44px;
+}
+.gl-moves .movelist {
+  max-width: none;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 var(--sp-3);
+}
+/* Smal skjerm: én horisontal rulleliste (1. e4 e5 2. Nf3 …), alltid én hel linje. */
+.gl-moves .movelist-rows {
+  flex-direction: row;
+  gap: var(--sp-3);
+  width: max-content;
+}
+.gl-moves .movelist-row {
+  display: flex;
+  gap: var(--sp-1);
+  white-space: nowrap;
+}
+.gl-moves .movelist-no {
+  text-align: left;
+}
+.gl-tools {
+  position: relative;
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+  align-items: center;
+}
+/* De faste hjørneknappene sitter i verktøyraden i spillvisningen, ikke over brettet. */
+.gl-tools .sound-toggle,
+.gl-tools .fullscreen-toggle,
+.gl-tools .notify-toggle {
+  position: static;
+  flex-shrink: 0;
+}
+.gl-icon-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.gl-pop {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--sp-2));
+  z-index: 30;
+  width: min(100%, 320px);
+  padding: var(--sp-3);
+  border-radius: var(--radius-sm);
+  background: var(--ink-2);
+  border: 1px solid var(--ink-line-strong);
+  box-shadow: var(--shadow-2);
+}
+.gl-pop-title {
+  display: block;
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--txt-dim);
+}
+.board-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: var(--sp-2);
+  vertical-align: -3px;
+  border-radius: 4px;
+  border: 1px solid var(--ink-line-strong);
+}
+
+/* brettfarger — scoped til spillvisningen; storskjermens minibrett beholder :root */
+[data-board-theme="green"] {
+  --board-light: #ecd9b0;
+  --board-dark: #6f8f6a;
+  --board-last: rgba(240, 196, 40, 0.62);
+  --board-selected: rgba(40, 120, 230, 0.55);
+  --board-dot: rgba(20, 28, 20, 0.4);
+}
+[data-board-theme="wood"] {
+  --board-light: #f0d9b5;
+  --board-dark: #a97a50;
+  --board-last: rgba(60, 160, 255, 0.5);
+  --board-selected: rgba(30, 140, 70, 0.55);
+  --board-dot: rgba(30, 18, 8, 0.42);
+}
+[data-board-theme="gold"] {
+  --board-light: #f3e6bf;
+  --board-dark: #a77b2e;
+  --board-last: rgba(30, 120, 210, 0.5);
+  --board-selected: rgba(30, 150, 90, 0.6);
+  --board-dot: rgba(30, 20, 5, 0.45);
+}
+
+/* bred skjerm: brett + sidepanel */
+@media (min-width: 1024px) {
+  .game-page {
+    --gl-aside: 340px;
+    --gl-bar: 52px;
+    /* 2 x 16 marg + 2 x 52 spillerlinje + 2 x 8 mellomrom + 16 ramme = 172 */
+    --gl-chrome: 180px;
+    --gl-board: min(
+      100dvh - var(--gl-chrome),
+      100vw - 2 * var(--gl-gutter) - var(--gl-aside) - var(--sp-5) - var(--gl-frame) - var(--gl-eval),
+      900px
+    );
+  }
+  .game-page.gl-rich {
+    --gl-chrome: 180px;
+  }
+  .game-layout {
     display: grid;
-    grid-template-columns: minmax(190px, 1fr) auto minmax(190px, 1fr);
-    align-items: center;
-    gap: 30px;
-    max-width: 1640px;
-  }
-  .game-grid .panel-opp {
-    justify-self: end;
-  }
-  .game-grid .panel-me {
-    justify-self: start;
-  }
-  .game-grid .game-side {
-    max-width: 330px;
-  }
-  .game-grid .game-center {
+    grid-template-columns: auto var(--gl-aside);
+    column-gap: var(--sp-5);
+    align-items: stretch;
     width: auto;
   }
-  /* with side panels and space around, let the board fill the room.
-     48vw keeps clear of the two panels; 80vh leaves room for the turn
-     banner above and the action buttons below. */
-  .game-grid .board-shell {
-    width: min(48vw, 80vh, 900px);
+  .gl-main,
+  .gl-aside {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    min-width: 0;
   }
-}
-/* very wide screens (projector / large monitor): go bigger still */
-@media (min-width: 1500px) {
-  .game-grid .board-shell {
-    width: min(46vw, 82vh, 1040px);
+  .gl-main > *,
+  .gl-aside > * {
+    order: 0;
+    width: 100%;
   }
-}
-/* Landscape phone: below this height the mobile single-column stack — timer,
-   turn banner, board, resign/draw, notice slot, move list, both side panels —
-   adds up to well over the available height, pushing resign/draw off the
-   bottom of the screen with no visible way to scroll to them. Go two columns
-   instead: the board stays put on the left, everything else moves to a
-   narrower column on the right, so the actions are a lot closer to the top of
-   that stack instead of the very end of one long one.
-   `.game-center` (a plain box, not a grid child of `.game-grid` today) is
-   flattened with `display: contents` so its own children — the round timer,
-   turn banner, board, resign/draw row, notice slot and move list — become
-   individually placeable grid items right alongside the two `.game-side`
-   panels. No JSX changes needed: same DOM, just re-laid-out. */
-@media (orientation: landscape) and (max-height: 500px) {
-  .game-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(180px, 300px);
-    align-items: start;
-    gap: 6px 14px;
-    max-height: 100dvh;
+  .gl-main {
+    width: var(--gl-w);
+  }
+  .gl-moves {
+    flex: 1 1 0;
+    height: auto;
+    min-height: 120px;
+  }
+  .gl-moves .movelist {
+    display: block;
+    overflow-x: hidden;
     overflow-y: auto;
+    padding: var(--sp-2) var(--sp-3);
   }
-  .game-grid .game-center {
-    display: contents;
+  .gl-moves .movelist-rows {
+    flex-direction: column;
+    gap: 1px;
+    width: auto;
   }
-  /* The board is the one piece that stays in the left column — centred
-     against the height of everything stacked in the right column, via a
-     span comfortably larger than that stack will ever be. */
-  .game-grid .board-frame {
-    grid-column: 1;
-    grid-row: span 20;
-    align-self: center;
-    justify-self: center;
+  .gl-moves .movelist-row {
+    display: grid;
+    gap: 10px;
   }
-  .game-grid > *:not(.board-frame) {
-    grid-column: 2;
+  .gl-moves .movelist-no {
+    text-align: right;
+  }
+  .gl-tools {
+    margin-top: 0;
   }
 }
+
+/* liggende mobil: lav høyde. Samme to kolonner, tettere spillerlinjer. */
+@media (orientation: landscape) and (max-height: 600px) and (max-width: 1023px) and (min-width: 640px) {
+  .game-page {
+    --gl-gutter: var(--sp-2);
+    --gl-aside: 280px;
+    --gl-bar: 40px;
+    --gl-chrome: 120px;
+    --gl-board: min(
+      100dvh - var(--gl-chrome),
+      100vw - 2 * var(--gl-gutter) - var(--gl-aside) - var(--sp-4) - var(--gl-frame) - var(--gl-eval)
+    );
+  }
+  .game-page.gl-rich {
+    --gl-chrome: 120px;
+  }
+  .game-layout {
+    display: grid;
+    grid-template-columns: auto var(--gl-aside);
+    column-gap: var(--sp-4);
+    align-items: stretch;
+    width: auto;
+  }
+  .gl-main,
+  .gl-aside {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    min-width: 0;
+  }
+  .gl-main > *,
+  .gl-aside > * {
+    order: 0;
+    width: 100%;
+  }
+  .gl-main {
+    width: var(--gl-w);
+  }
+  .gl-moves {
+    flex: 1 1 0;
+    height: auto;
+    min-height: 60px;
+  }
+  .gl-moves .movelist {
+    display: block;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: var(--sp-2) var(--sp-3);
+  }
+  .gl-moves .movelist-rows {
+    flex-direction: column;
+    gap: 1px;
+    width: auto;
+  }
+  .gl-moves .movelist-row {
+    display: grid;
+    gap: 10px;
+  }
+  .gl-moves .movelist-no {
+    text-align: right;
+  }
+  .pbar .avatar-lg {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* Smal mobil: litt tettere spillerlinjer */
+@media (max-width: 480px) {
+  .pbar {
+    gap: var(--sp-2);
+    padding-inline: var(--sp-2);
+  }
+  .pbar .color-chip-label {
+    display: none;
+  }
+  .gl-actions > .btn {
+    padding-inline: var(--sp-2);
+    font-size: var(--fs-sm);
+  }
+}
+
 /* spectator/projector board — much larger on a big screen */
 .board-shell-lg {
   width: min(82vw, 80vh, 820px);
@@ -1210,6 +1595,56 @@ a:focus-visible,
 .result-card {
   text-align: center;
   animation: popIn 0.5s var(--spring) both;
+}
+.review-card {
+  padding: var(--sp-4);
+  width: 100%;
+  max-width: 460px;
+  gap: var(--sp-3);
+}
+.review-summary {
+  font-size: var(--fs-md);
+  line-height: 1.5;
+}
+.review-stats {
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  justify-content: space-between;
+}
+.stat {
+  gap: 2px;
+  min-width: 64px;
+}
+.stat-value {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+.text-gold { color: var(--gold-ink); }
+.self-start { align-self: flex-start; }
+.replay { width: 100%; }
+.replay-head {
+  width: 100%;
+  max-width: 560px;
+}
+.replay-play { min-width: 110px; }
+.game-layout .board-shell-replay,
+.board-shell.board-shell-replay {
+  width: min(94vw, 62dvh, 560px);
+}
+.result-card-wide {
+  max-width: 680px;
+  width: 100%;
+}
+.result-stack {
+  align-items: center;
+  gap: var(--sp-3);
+}
+.result-title {
+  font-size: clamp(34px, 8vw, 60px);
+}
+.gl-retry {
+  padding: var(--sp-3);
+  gap: var(--sp-2);
 }
 .medal-1 { color: var(--medal-1); }
 .medal-2 { color: var(--medal-2); }
@@ -2075,16 +2510,6 @@ a:focus-visible,
 :root[data-theme="light"] .board-frame::before {
   border-color: rgba(122, 92, 10, 0.35);
 }
-:root[data-theme="light"] .player-card-white {
-  background: linear-gradient(180deg, #ffffff, #f1ebdd);
-}
-:root[data-theme="light"] .player-card-black {
-  background: linear-gradient(180deg, #e6e1d6, #d3ccbc);
-}
-:root[data-theme="light"] .player-card-white::before {
-  background: linear-gradient(180deg, #ffffff, #cfc6ad);
-  box-shadow: inset -1px 0 0 rgba(20, 24, 33, 0.15);
-}
 :root[data-theme="light"] .color-chip-white {
   background: #ffffff;
   color: var(--txt);
@@ -2268,6 +2693,7 @@ input[type="radio"] {
 /* ============ D1: inngang og navigasjon ============ */
 
 /* ---- avstandsklasser (tokens, ikke inline style) ---- */
+.mt-2 { margin-top: var(--sp-2); }
 .gap-1 { gap: var(--sp-1); }
 .gap-2 { gap: var(--sp-2); }
 .gap-3 { gap: var(--sp-3); }

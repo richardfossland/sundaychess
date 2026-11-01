@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { CSSProperties } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Chess } from "chess.js";
@@ -28,7 +27,11 @@ import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { Confetti } from "@/lib/client/Confetti";
 import { EvalBar } from "@/lib/client/EvalBar";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
-import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
+import { BOARD_BASE_OPTIONS, highlightStyles } from "@/lib/client/boardOptions";
+import { BoardThemePicker } from "@/lib/client/BoardThemeMenu";
+import { GameLayout } from "@/lib/client/GameLayout";
+import { MoveList } from "@/lib/client/MoveList";
+import { PlayerBar } from "@/lib/client/PlayerBar";
 import { useReducedMotion } from "@/lib/client/useReducedMotion";
 import { SoundToggle } from "@/lib/client/SoundToggle";
 import { sound } from "@/lib/client/sound";
@@ -112,6 +115,8 @@ export default function Solo() {
   // ref during render) so "Angre"/"Nytt parti" can safely gate on it in JSX.
   // Synced everywhere `refresh()` is (see there).
   const [historyLen, setHistoryLen] = useState(0);
+  // SAN list for the move list — kept as state like `historyLen` (never read from the ref during render).
+  const [sans, setSans] = useState<string[]>([]);
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
   const [thinking, setThinking] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -144,7 +149,9 @@ export default function Solo() {
 
   const refresh = () => {
     setFen(chess.current.fen());
-    setHistoryLen(chess.current.history().length);
+    const h = chess.current.history();
+    setHistoryLen(h.length);
+    setSans(h);
   };
 
   // ---- coach advice, precomputed off the main thread ----
@@ -469,6 +476,11 @@ export default function Solo() {
             </div>
           )}
 
+          <div className="sect">
+            <span className="sect-title" id="solo-board-theme">{no.board.theme}</span>
+            <BoardThemePicker labelledBy="solo-board-theme" />
+          </div>
+
           <div className="btn-stack mt-5">
             <button className="btn btn-primary btn-block btn-lg" onClick={start}>
               {no.solo.start} →
@@ -483,108 +495,101 @@ export default function Solo() {
   }
 
   // ---------- game ----------
-  const squareStyles: Record<string, CSSProperties> = {};
-  if (lastMove) {
-    squareStyles[lastMove.from] = { background: "rgba(235,184,75,0.35)" };
-    squareStyles[lastMove.to] = { background: "rgba(235,184,75,0.35)" };
-  }
-  if (selected) squareStyles[selected] = { background: "rgba(86,192,106,0.45)" };
-  for (const sq of legal) {
-    squareStyles[sq] = {
-      ...(squareStyles[sq] ?? {}),
-      backgroundImage: "radial-gradient(circle, rgba(86,192,106,0.7) 22%, transparent 24%)",
-    };
-  }
+  const squareStyles = highlightStyles({ last: lastMove, selected, legal });
 
   const outText =
     outcome === "win" ? no.solo.youWon : outcome === "loss" ? no.solo.youLost : no.solo.draw;
   const outSub =
     outcome === "win" ? no.solo.wonSub : outcome === "loss" ? no.solo.lostSub : no.solo.drawSub;
 
-  return (
-    <main className="center-screen is-game">
-      {outcome === "win" && <Confetti count={120} />}
-      <div className="stack" style={{ alignItems: "center", width: "100%", maxWidth: 600, gap: 16 }}>
-        <div className="spread" style={{ width: "min(92vw,560px)" }}>
-          <div className="row" style={{ gap: 10 }}>
-            <span className="avatar-lg">{no.solo.you[0]}</span>
-            <b>{no.solo.you}</b>
-          </div>
-          <span className="faint" style={{ fontStyle: "italic" }}>vs</span>
-          <div className="row" style={{ gap: 10 }}>
-            <b>{no.solo.computer}</b>
-            <span
-              className="avatar-lg"
-              style={{ background: "linear-gradient(180deg,var(--ink-soft),var(--btn-end))", color: "var(--txt)", border: "1px solid var(--ink-line-strong)" }}
-            >
-              <Icon name="bot" size={22} />
-            </span>
-          </div>
-        </div>
+  const oppColor: Color = playerColor === "white" ? "black" : "white";
+  const colorName = (c: Color) => (c === "white" ? no.solo.white : no.solo.black);
 
-        {!outcome && (
+  return (
+    <GameLayout
+      status={
+        !outcome ? (
           <div
             className={`banner ${isMyTurn ? "banner-turn" : "banner-wait"}`}
-            style={{ width: "min(92vw,560px)" }}
             role="status"
             aria-live="polite"
           >
             {thinking ? no.solo.thinking : isMyTurn ? `♟ ${no.solo.yourTurn}` : no.solo.waiting}
           </div>
-        )}
-
-        <div className="row" style={{ gap: 12, alignItems: "stretch", justifyContent: "center" }}>
-          {coachCfg?.evalBar && <EvalBar fen={fen} />}
-          <div className="board-frame">
-            <div className="board-shell">
-              <Chessboard
-                options={{
-                  ...BOARD_BASE_OPTIONS,
-                  position: fen,
-                  boardOrientation: playerColor,
-                  allowDragging: isMyTurn,
-                  showAnimations: !reducedMotion,
-                  onPieceDrop: onDrop,
-                  onSquareClick,
-                  squareStyles,
-                  id: "solo-board",
-                }}
-              />
+        ) : undefined
+      }
+      top={
+        <PlayerBar
+          name={no.solo.computer}
+          color={oppColor}
+          colorLabel={colorName(oppColor)}
+          avatar={<Icon name="bot" size={20} />}
+          fen={fen}
+          active={!outcome && !isMyTurn}
+        />
+      }
+      bottom={
+        <PlayerBar
+          name={no.solo.you}
+          color={playerColor}
+          colorLabel={colorName(playerColor)}
+          avatar={no.solo.you[0]}
+          me
+          fen={fen}
+          active={!outcome && isMyTurn}
+        />
+      }
+      board={
+        <Chessboard
+          options={{
+            ...BOARD_BASE_OPTIONS,
+            position: fen,
+            boardOrientation: playerColor,
+            allowDragging: isMyTurn,
+            showAnimations: !reducedMotion,
+            onPieceDrop: onDrop,
+            onSquareClick,
+            squareStyles,
+            id: "solo-board",
+          }}
+        />
+      }
+      evalBar={coachCfg?.evalBar ? <EvalBar fen={fen} /> : undefined}
+      extra={
+        <>
+          {/* coach: tag the move just played, and pause for a do-over on a blunder */}
+          {coachTag && !awaitRetry && !outcome && (
+            <div
+              className={`banner ${coachTag === "blunder" ? "banner-error" : coachTag === "inaccuracy" ? "banner-wait" : "banner-turn"}`}
+              role="status"
+              aria-live="polite"
+            >
+              <Icon name={coachTag === "blunder" ? "warn" : coachTag === "inaccuracy" ? "flag" : "thumbsUp"} size={16} />{" "}
+              {coachTag === "blunder"
+                ? no.coach.tagBlunder
+                : coachTag === "inaccuracy"
+                  ? no.coach.tagInaccuracy
+                  : no.coach.tagGood}
             </div>
-          </div>
-        </div>
-
-        {/* coach: tag the move just played, and pause for a do-over on a blunder */}
-        {coachTag && !awaitRetry && !outcome && (
-          <div
-            className={`banner ${coachTag === "blunder" ? "banner-error" : coachTag === "inaccuracy" ? "banner-wait" : "banner-turn"}`}
-            style={{ width: "min(92vw,560px)" }}
-            role="status"
-            aria-live="polite"
-          >
-            <Icon name={coachTag === "blunder" ? "warn" : coachTag === "inaccuracy" ? "flag" : "thumbsUp"} size={16} />{" "}
-            {coachTag === "blunder"
-              ? no.coach.tagBlunder
-              : coachTag === "inaccuracy"
-                ? no.coach.tagInaccuracy
-                : no.coach.tagGood}
-          </div>
-        )}
-        {awaitRetry && (
-          <div className="card stack" style={{ padding: 14, width: "min(92vw,560px)", gap: 8 }}>
-            <p>{no.coach.tagBlunder}</p>
-            <div className="row">
-              <button className="btn btn-primary grow" onClick={retryBlunder}>
-                <Icon name="retry" size={16} /> {no.coach.retry}
-              </button>
-              <button className="btn grow" onClick={keepBlunder}>
-                {no.coach.keep}
-              </button>
+          )}
+          {awaitRetry && (
+            <div className="card stack gl-retry">
+              <p>{no.coach.tagBlunder}</p>
+              <div className="row">
+                <button className="btn btn-primary grow" onClick={retryBlunder}>
+                  <Icon name="retry" size={16} /> {no.coach.retry}
+                </button>
+                <button className="btn grow" onClick={keepBlunder}>
+                  {no.coach.keep}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-
-        <div className="row">
+          )}
+        </>
+      }
+      moves={<MoveList sans={sans} />}
+      actions={
+        <>
           <button
             className="btn btn-ghost"
             onClick={undo}
@@ -602,8 +607,11 @@ export default function Solo() {
           <Link href="/" className="btn btn-ghost">
             {no.solo.back}
           </Link>
-        </div>
-      </div>
+        </>
+      }
+      tools={<SoundToggle />}
+    >
+      {outcome === "win" && <Confetti count={120} />}
 
       {outcome && (
         <div className="result-overlay">
@@ -614,7 +622,7 @@ export default function Solo() {
               onClose={() => setReviewPgn(null)}
             />
           ) : replayPgn !== null ? (
-            <div className="result-card" style={{ maxWidth: 680, width: "100%" }}>
+            <div className="result-card result-card-wide">
               <ReplayBoard
                 pgn={replayPgn}
                 orientation={playerColor}
@@ -624,14 +632,14 @@ export default function Solo() {
               />
             </div>
           ) : (
-            <div className="result-card stack" style={{ alignItems: "center", gap: 12 }}>
+            <div className="result-card stack result-stack">
               <div className="result-emoji">
                 <Icon name={outcome === "win" ? "party" : outcome === "draw" ? "draw" : "bot"} size={84} strokeWidth={1.4} />
               </div>
-              <h1 style={{ fontSize: "clamp(34px,8vw,60px)" }}>{outText}</h1>
+              <h1 className="result-title">{outText}</h1>
               <p className="muted">{outSub}</p>
               {level === "adaptive" && ratingDelta !== null && (
-                <p className="faint" style={{ fontSize: 13 }}>
+                <p className="faint fs-xs">
                   {ratingDelta > 0
                     ? no.solo.levelUp
                     : ratingDelta < 0
@@ -641,7 +649,7 @@ export default function Solo() {
                   {ratingDelta !== 0 ? ` (${ratingDelta > 0 ? "+" : ""}${ratingDelta})` : ""}
                 </p>
               )}
-              <div className="row" style={{ marginTop: 6 }}>
+              <div className="row mt-2">
                 <button className="btn btn-primary btn-lg" onClick={start}>
                   {no.solo.newGame}
                 </button>
@@ -702,7 +710,6 @@ export default function Solo() {
         />
       )}
 
-      <SoundToggle />
-    </main>
+    </GameLayout>
   );
 }

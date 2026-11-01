@@ -19,54 +19,22 @@ export function CapturedPieces({
   const adv = side === "white" ? cap.materialDiff : -cap.materialDiff;
   // Captured pieces belong to the OPPONENT's colour. The white player's pile is
   // therefore black pieces — near-black glyphs that used to vanish against the
-  // dark card. Give every glyph a contrasting outline (crisp text-stroke + a
-  // soft halo) so both colours read clearly, and sit them on a subtle chip.
-  const capturedBlack = side === "white";
-  const fill = capturedBlack ? "#0c0e13" : "#f4f0e7";
-  const outline = capturedBlack ? "rgba(255,255,255,.9)" : "rgba(0,0,0,.85)";
+  // dark card. `.captured-black/-white` give every glyph a contrasting outline
+  // (crisp text-stroke + a soft halo) so both colours read clearly.
+  const pieceClass = side === "white" ? "captured-black" : "captured-white";
   const hasContent = pieces.length > 0 || adv > 0;
 
   // Both branches (empty and filled) render the SAME box — same display mode,
   // padding, and border width — so a capture never changes this element's
   // height (L2: nothing above .board-shell may change height mid-game). Only
-  // colours differ (transparent when empty). `flexWrap:"nowrap"` +
-  // `overflow:"hidden"` cap the height at one row instead of adding rows every
-  // ~8 captures; the +N badge is rendered FIRST so it's never what gets
-  // clipped when a long capture pile overflows the card.
+  // colours differ (transparent when empty). The row is `nowrap` + `overflow:
+  // hidden` so it never adds lines every ~8 captures; the +N badge is rendered
+  // FIRST so it's never what gets clipped when a long pile overflows.
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 2,
-        minHeight: 26,
-        boxSizing: "border-box",
-        flexWrap: "nowrap",
-        overflow: "hidden",
-        maxWidth: "100%",
-        padding: "2px 7px",
-        borderRadius: 8,
-        background: hasContent ? "var(--s-05)" : "transparent",
-        border: `1px solid ${hasContent ? "var(--ink-line)" : "transparent"}`,
-      }}
-    >
-      {adv > 0 && (
-        <b style={{ flexShrink: 0, marginRight: 2, fontSize: 13, color: "var(--gold)" }}>
-          +{adv}
-        </b>
-      )}
+    <span className={`captured ${hasContent ? "has-content" : ""}`}>
+      {adv > 0 && <b className="captured-adv">+{adv}</b>}
       {pieces.map((p, i) => (
-        <span
-          key={i}
-          style={{
-            flexShrink: 0,
-            fontSize: 20,
-            lineHeight: 1,
-            color: fill,
-            WebkitTextStroke: `0.7px ${outline}`,
-            textShadow: `0 0 2px ${outline}`,
-          }}
-        >
+        <span key={i} className={`captured-piece ${pieceClass}`}>
           {glyph(p)}
         </span>
       ))}
