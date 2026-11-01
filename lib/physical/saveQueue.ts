@@ -2,8 +2,9 @@
 // ende i feil rekkefølge eller bli tapt ved omlasting. Køen:
 //  - skriver aldri to ganger samtidig (neste skrivning starter når forrige er ferdig),
 //  - slår sammen ventende tilstander (bare den nyeste skrives),
-//  - kan `flush()`es: ved visibilitychange/pagehide startes ventende skriving UMIDDELBART
-//    (IndexedDB-transaksjoner på samme store kjøres i opprettelsesrekkefølge, så rekkefølgen holder).
+//  - kan `flush()`es: ved visibilitychange/pagehide venter den til alt er skrevet. Skrivingene
+//    forblir serialiserte (aldri to samtidig), og journalen ryddes bare når den lagrede tilstanden
+//    er den NYESTE som er lagt i køen.
 
 import type { Journal } from "./journal";
 import { saveTournament, toStored, type PhysicalStore } from "./storage";
@@ -44,6 +45,8 @@ export function createSaveQueue(
   let bases: string[][] = [];
   let blocked = false;
   let pending: PhysicalTournament | null = null;
+  /** Nyeste tilstand lagt i køen. Journalen rydder bare for denne. */
+  let latest: PhysicalTournament | null = null;
   let inflight: Promise<void> | null = null;
   let state: SaveState = "idle";
   let failed = false;
@@ -79,9 +82,10 @@ export function createSaveQueue(
     const ok = await saveTournament(store, t);
     if (ok) bases = [...bases, idsOf(t)].slice(-3);
     if (!ok) failed = true;
-    // Journalen kan ryddes når lageret har bekreftet og ingenting nyere venter.
+    // Journalen kan ryddes når lageret har bekreftet DEN NYESTE tilstanden (ikke bare en eldre
+    // skriving som tilfeldigvis ble ferdig mens en nyere venter eller skrives).
     else {
-      if (!pending && journal) journal.clear(t.id);
+      if (t === latest && !pending && journal) journal.clear(t.id);
       try {
         onSaved?.(t);
       } catch {
@@ -119,18 +123,14 @@ export function createSaveQueue(
     enqueue(t) {
       if (blocked) return;
       pending = t;
+      latest = t;
       journal?.write(toStored(t));
       set("saving");
       void pump();
     },
     async flush() {
-      // Ventende tilstand mens en skriving pågår: start den med en gang (parallelt) i stedet for å vente.
-      if (inflight && pending) {
-        const next = pending;
-        pending = null;
-        await Promise.all([inflight, write(next).then(() => undefined)]);
-        return;
-      }
+      // Ikke start en parallell skriving: pump-løkka tar ventende tilstand rett etter pågående
+      // skriving, i rekkefølge. (Journalen er allerede skrevet synkront ved enqueue.)
       await (inflight ?? Promise.resolve());
     },
     idle: () => inflight ?? Promise.resolve(),
