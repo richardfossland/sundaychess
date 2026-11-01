@@ -18,6 +18,7 @@ const GAME_RESULT: Record<ResultCode, { result: GameResult; forfeit: boolean }> 
   "+-": { result: "1-0", forfeit: true },
   "-+": { result: "0-1", forfeit: true },
   "=": { result: "0-0", forfeit: true },
+  "0-0": { result: "0-0", forfeit: false },
 };
 
 /** Poeng (hvit, svart) for et resultat. */

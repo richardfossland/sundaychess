@@ -15,6 +15,8 @@ type Screen =
   | "init"
   | "join"
   | "name"
+  /** «Velg navnet ditt»: forhåndsregistrerte navn fra en fysisk turnering (M5b). */
+  | "pick"
   | "showCode"
   | "resume"
   | "playing"
@@ -27,6 +29,8 @@ export default function Play() {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [me, setMe] = useState<StoredPlayer | null>(null);
+  const [pickNames, setPickNames] = useState<{ id: string; displayName: string; club: string | null }[]>([]);
+  const [canFresh, setCanFresh] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resumeError, setResumeError] = useState(false);
@@ -98,13 +102,56 @@ export default function Play() {
     attemptResume();
   }, [attemptResume]);
 
-  function goName() {
+  async function goName() {
     setError(null);
     if (!isValidPin(pin)) {
       setError(no.player.invalidPin);
       return;
     }
+    // M5b: a tournament continued from a physical one lists its unclaimed names.
+    // Any failure here just falls through to the ordinary name entry.
+    setBusy(true);
+    try {
+      const r = await api.joinNames(pin);
+      if (r.names.length > 0) {
+        setPickNames(r.names);
+        setCanFresh(r.canJoinFresh);
+        setScreen("pick");
+        return;
+      }
+    } catch {
+      /* ordinary join */
+    } finally {
+      setBusy(false);
+    }
     setScreen("name");
+  }
+
+  async function doClaim(playerId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api.claimName(pin, playerId);
+      const stored: StoredPlayer = {
+        tournamentId: r.tournamentId,
+        playerId: r.playerId,
+        resumeCode: r.resumeCode,
+        displayName: r.displayName,
+      };
+      identity.savePlayer(stored);
+      setMe(stored);
+      setScreen("showCode");
+    } catch (e) {
+      const errCode = e instanceof ApiError ? e.code : "";
+      if (errCode === "already_claimed") {
+        setError(no.continueDigital.pickTaken);
+        setPickNames((l) => l.filter((n) => n.id !== playerId));
+      } else {
+        setError(no.common.error);
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function doJoin() {
@@ -326,6 +373,42 @@ export default function Play() {
             </button>
             <button className="btn btn-ghost btn-block" onClick={() => setScreen("join")}>
               {no.common.back}
+            </button>
+          </>
+        )}
+
+        {screen === "pick" && (
+          <>
+            <p className="eyebrow">{no.continueDigital.pickTitle}</p>
+            <p className="muted" style={{ fontSize: 13 }}>{no.continueDigital.pickHint}</p>
+            {error && (
+              <div className="banner banner-error" role="alert">
+                {error}
+              </div>
+            )}
+            <div className="stack" style={{ gap: 8 }} data-testid="claim-list">
+              {pickNames.map((n) => (
+                <button
+                  key={n.id}
+                  type="button"
+                  className="btn btn-block"
+                  disabled={busy}
+                  onClick={() => void doClaim(n.id)}
+                >
+                  {n.displayName}
+                  {n.club ? <span className="faint" style={{ marginLeft: 8, fontSize: 12 }}>{n.club}</span> : null}
+                </button>
+              ))}
+            </div>
+            {canFresh ? (
+              <button className="btn btn-ghost btn-block" onClick={() => setScreen("name")}>
+                {no.continueDigital.pickNotListed}
+              </button>
+            ) : (
+              <p className="faint" style={{ fontSize: 12 }}>{no.continueDigital.pickNoFresh}</p>
+            )}
+            <button className="btn btn-ghost btn-block" onClick={() => setScreen("join")}>
+              {no.continueDigital.pickBack}
             </button>
           </>
         )}

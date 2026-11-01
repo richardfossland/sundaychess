@@ -6,6 +6,8 @@ import { no } from "@/lib/locale/no";
 import { classifyConflict, saveImported, type Conflict, type Resolution } from "@/lib/import/apply";
 import { parseTournamentFile, type ParsedFile } from "@/lib/import/parse";
 import { navigate } from "./nav";
+import { continueDigitally } from "./ContinueDigital";
+import { continueRefusal } from "@/lib/physical/toDigital";
 import { getStore } from "./usePhysical";
 
 interface Pending {
@@ -54,6 +56,25 @@ export function ImportFile() {
       const id = await saveImported(await getStore(), pending.parsed.tournament, resolution);
       setPending(null);
       navigate(`/arranger/fysisk/${id}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : f.saveFailed);
+      setPending(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function commitAndContinue() {
+    if (!pending) return;
+    setBusy(true);
+    try {
+      const resolution: Resolution = pending.conflict.kind === "none" ? "replace" : "copy";
+      const store = await getStore();
+      const id = await saveImported(store, pending.parsed.tournament, resolution);
+      // Bruker id-en som ble lagret (kopi får ny id), så markeringen havner på riktig turnering.
+      const digitalId = await continueDigitally({ ...pending.parsed.tournament, id });
+      setPending(null);
+      window.location.assign(`/host/${digitalId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : f.saveFailed);
       setPending(null);
@@ -111,8 +132,16 @@ export function ImportFile() {
                 </span>
               </div>
             )}
+            {pending && continueRefusal(pending.parsed.tournament) && (
+              <div className="banner" data-testid="import-continue-refusal">{no.continueDigital.errors[continueRefusal(pending.parsed.tournament)!]}</div>
+            )}
             <div className="row" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button type="button" className="btn btn-ghost" onClick={() => setPending(null)}>{f.cancel}</button>
+              {pending && !continueRefusal(pending.parsed.tournament) && (
+                <button type="button" className="btn" data-testid="import-continue-digital" disabled={blocked || busy} onClick={() => void commitAndContinue()}>
+                  {no.continueDigital.importAndContinue}
+                </button>
+              )}
               {c.kind === "none" ? (
                 <button type="button" className="btn btn-primary" disabled={blocked || busy} onClick={() => commit("replace")}>{f.importButton}</button>
               ) : (

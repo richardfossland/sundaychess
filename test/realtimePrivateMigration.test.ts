@@ -80,12 +80,13 @@ beforeAll(async () => {
     create function cron.unschedule(text) returns boolean language sql as 'select true';
   `);
   const files = readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort();
-  expect(files.at(-1)).toBe("0016_physical_cloud.sql");
+  expect(files.at(-1)).toBe("0017_physical_continue.sql");
   for (const f of files) await db.exec(sqlOf(f));
   // Re-applying must be a no-op (idempotent).
   await db.exec(sqlOf("0014_realtime_private.sql"));
   await db.exec(sqlOf("0015_code_attempts.sql"));
   await db.exec(sqlOf("0016_physical_cloud.sql"));
+  await db.exec(sqlOf("0017_physical_continue.sql"));
 
   await db.query(
     "insert into public.tournaments (id, join_pin, host_code) values ($1, '123456', 'AAAA-11')",
@@ -296,6 +297,7 @@ describe("0016 physical cloud", () => {
 
   it("is idempotent: the whole file can be run twice", async () => {
     await db.exec(sqlOf("0016_physical_cloud.sql"));
+  await db.exec(sqlOf("0017_physical_continue.sql"));
   });
 
   it("does not disturb 0013's revoke on cleanup_old_tournaments", async () => {

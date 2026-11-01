@@ -333,7 +333,7 @@ function step(s: Draft | null, e: PhysicalEvent, seen: Set<string>): Draft {
       if (!p) fail("boardNotFound");
       if (!RESULT_CODES.includes(e.result)) fail("resultInvalid");
       if (p.black === null) fail("resultOnBye");
-      if (s.settings.system === "knockout" && (e.result === "½-½" || e.result === "=")) fail("resultNoDraw");
+      if (s.settings.system === "knockout" && (e.result === "½-½" || e.result === "=" || e.result === "0-0")) fail("resultNoDraw");
       p.result = e.result;
       p.resultSource = e.source === "player_report" ? "player_report" : "arbiter";
       break;

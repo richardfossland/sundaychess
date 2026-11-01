@@ -7,7 +7,7 @@ import { useTabHidden } from "@/lib/client/useTabHidden";
 
 const L = no.physicalCloud;
 const POLL_MS = 15_000;
-const SHOWN: Record<string, string> = { "1-0": "1–0", "0-1": "0–1", "½-½": "½–½", "+-": "+ –", "-+": "– +", "=": "0–0" };
+const SHOWN: Record<string, string> = { "1-0": "1–0", "0-1": "0–1", "½-½": "½–½", "+-": "+ –", "-+": "– +", "=": "0–0", "0-0": "0–0" };
 
 /** Live parringer og tabell for spillere og foresatte. Online, poller hvert 15. sekund. */
 export function PublicView({ id }: { id: string }) {

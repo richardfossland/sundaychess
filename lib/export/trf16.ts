@@ -92,6 +92,7 @@ function cellFor(pl: PhysicalPlayer, round: number, p: PhysicalPairing | undefin
     case "1-0": code = white ? "1" : "0"; break;
     case "0-1": code = white ? "0" : "1"; break;
     case "½-½": code = "="; break;
+    case "0-0": code = "0"; break; // spilt, ingen poeng
     case "+-": code = white ? "+" : "-"; break;
     case "-+": code = white ? "-" : "+"; break;
     default: code = "-"; // «=» begge uteble: forfeit-tap for begge

@@ -376,14 +376,14 @@ export function LeagueView({
               <button
                 key={g.id}
                 className="spread"
-                onClick={() => g.status !== "bye" && setOverrideGame(g)}
+                onClick={() => g.blackPlayerId !== null && g.status !== "bye" && setOverrideGame(g)}
                 style={{
                   textAlign: "left",
                   background: "var(--ink-soft)",
                   border: "1px solid var(--ink-line)",
                   borderRadius: 10,
                   padding: "12px 14px",
-                  cursor: g.status === "bye" ? "default" : "pointer",
+                  cursor: g.status === "bye" || g.blackPlayerId === null ? "default" : "pointer",
                   color: "inherit",
                   font: "inherit",
                 }}

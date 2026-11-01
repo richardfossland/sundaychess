@@ -4,9 +4,11 @@
 // Points (spec §6): win 1, draw 0.5, loss 0, bye 1, aborted 0.
 
 import type { Game, GameStatus, Player, Round } from "@/lib/types";
+import type { ByeType } from "@/lib/tournament/pairing/types";
 import {
   computeStandings as computeTiebreakStandings,
   type TiebreakGame,
+  resolveTiebreaks,
   type TiebreakKey,
 } from "@/lib/tournament/tiebreaks";
 
@@ -28,6 +30,15 @@ export interface StandingsOptions {
   rounds?: Round[];
 }
 
+/** Standings options from a tournament's config: configured tiebreaks (M5b) or none
+ * (⇒ legacy score → Buchholz → name). */
+export function standingsOptions(
+  config: { tiebreaks?: string[] },
+  rounds: Round[],
+): StandingsOptions {
+  return config.tiebreaks ? { tiebreaks: resolveTiebreaks(config.tiebreaks), rounds } : {};
+}
+
 const FORFEIT_SOURCES = new Set(["walkover", "opponent_absent"]);
 
 /** Game-rader → historikk for tiebreak-motoren. Pågående partier utelates. */
@@ -39,7 +50,8 @@ export function gamesToHistory(games: Game[], rounds: Round[]): TiebreakGame[] {
     const round = num.get(g.round_id) ?? 0;
     const base = { round, white: g.white_player_id, black: g.black_player_id };
     if (g.status === "bye" || g.black_player_id === null) {
-      out.push({ ...base, black: null, result: "bye" });
+      const byeType = byeTypeOf(g);
+      out.push({ ...base, black: null, result: "bye", ...(byeType !== "full" ? { byeType } : {}) });
       continue;
     }
     const result =
@@ -51,6 +63,13 @@ export function gamesToHistory(games: Game[], rounds: Round[]): TiebreakGame[] {
     });
   }
   return out;
+}
+
+/** Frirunde-type for et parti uten svart spiller. Vanlig frirunde = 'bye' (1 p).
+ * Fra fysisk turnering (M5b) lagres ½-frirunde som status 'draw' og 0-frirunde som
+ * 'aborted' (black = null), slik at den eksisterende `recompute_scores` gir riktig sum. */
+export function byeTypeOf(g: Pick<Game, "status">): ByeType {
+  return g.status === "draw" ? "half" : g.status === "aborted" ? "zero" : "full";
 }
 
 /** Points earned by each side from a single finished game. */
@@ -187,7 +206,7 @@ export function hadByeSet(games: Game[]): Set<string> {
 export function byeCounts(games: Game[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const g of games) {
-    if (g.status === "bye") {
+    if (g.black_player_id === null && g.status !== "live") {
       counts.set(g.white_player_id, (counts.get(g.white_player_id) ?? 0) + 1);
     }
   }
@@ -205,7 +224,7 @@ export function colorCounts(
     counts.set(id, c);
   };
   for (const g of games) {
-    if (g.status === "bye" || isUnplayed(g)) continue; // byes / forfeits have no colour
+    if (g.status === "bye" || g.black_player_id === null || isUnplayed(g)) continue; // byes / forfeits have no colour
     bump(g.white_player_id, "white");
     if (g.black_player_id) bump(g.black_player_id, "black");
   }
@@ -219,8 +238,10 @@ function configuredStandings(
 ): StandingRow[] {
   const order = opts.tiebreaks!;
   const active = players.filter((p) => p.status === "active");
+  // ALLE spillere (også de som har forlatt) går inn i motoren, slik at rating-
+  // og fraværslogikken er identisk med fysisk modus; rader filtreres etterpå.
   const table = computeTiebreakStandings(
-    active.map((p) => ({ id: p.id })),
+    players.map((p) => ({ id: p.id, rating: p.rating ?? undefined })),
     gamesToHistory(games, opts.rounds!),
     order,
   );

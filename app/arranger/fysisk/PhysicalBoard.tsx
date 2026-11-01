@@ -8,6 +8,8 @@ import { canUndo } from "@/lib/physical/reducer";
 import type { PhysicalTournament } from "@/lib/physical/schema";
 import { NavLink } from "./nav";
 import { FileMenu } from "./FileMenu";
+import { ContinueDigital } from "./ContinueDigital";
+import { loadDigitalMeta, type DigitalMeta } from "@/lib/physical/digitalMeta";
 import { CloudMenu } from "./cloud/CloudMenu";
 import { PrintMenu } from "./print/PrintMenu";
 import { PlayersPanel } from "./PlayersPanel";
@@ -43,6 +45,11 @@ function ExportReminder({ t }: { t: PhysicalTournament }) {
 export function PhysicalBoard({ id }: { id: string }) {
   const { state: t, status, error, setError, apply, run, undo, readOnly, takeOver, storeKind, saveState, toast, dismissToast } = usePhysicalTournament(id);
   const [tab, setTab] = useState<Tab>("round");
+  const [digital, setDigital] = useState<DigitalMeta | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDigital(loadDigitalMeta(id));
+  }, [id]);
   const p = no.physical;
 
   // Angre med Ctrl/⌘+Z (ikke mens man skriver i et felt).
@@ -52,11 +59,12 @@ export function PhysicalBoard({ id }: { id: string }) {
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       e.preventDefault();
+      if (digital) return;
       undo();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo]);
+  }, [undo, digital]);
 
   // Toast forsvinner av seg selv.
   useEffect(() => {
@@ -101,8 +109,9 @@ export function PhysicalBoard({ id }: { id: string }) {
             <PrintMenu id={t.id} />
             <FileMenu t={t} />
             {/* En skrivebeskyttet fane har kanskje utdatert logg og skal aldri pushe til skyen. */}
-            {!readOnly && <CloudMenu t={t} run={run} />}
-            <button type="button" className="btn btn-sm btn-ghost" onClick={undo} disabled={!canUndo(t)}>
+            {!readOnly && !digital && <CloudMenu t={t} run={run} />}
+            {!readOnly && !digital && t.status !== "finished" && <ContinueDigital t={t} />}
+            <button type="button" className="btn btn-sm btn-ghost" onClick={undo} disabled={!canUndo(t) || !!digital}>
               <Icon name="undo" size={14} /> {p.undo}
             </button>
             <NavLink href="/arranger/fysisk" className="btn btn-sm btn-ghost">{p.backToList}</NavLink>
@@ -122,6 +131,14 @@ export function PhysicalBoard({ id }: { id: string }) {
             </button>
           </div>
         )}
+        {digital && (
+          <div className="banner stack" role="status" data-testid="continued-digital-banner" style={{ gap: 6 }}>
+            <b>{no.continueDigital.continuedBanner}</b>
+            <a className="btn btn-sm" href={`/host/${digital.digitalId}`}>
+              {no.continueDigital.continuedLink} ({no.continueDigital.continuedPin(digital.joinPin)})
+            </a>
+          </div>
+        )}
         <ExportReminder t={t} />
         {storeKind === "memory" && <div className="banner banner-error">{p.storageMemoryWarn}</div>}
         {saveState === "failed" && <div className="banner banner-error">{p.saveFailed}</div>}
@@ -135,7 +152,7 @@ export function PhysicalBoard({ id }: { id: string }) {
           ))}
         </div>
 
-        <fieldset disabled={readOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+        <fieldset disabled={readOnly || !!digital} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         <div id="tab-panel" role="tabpanel" aria-labelledby={`tab-${active}`} className="stack">
           {active === "round" && <RoundPanel t={t} apply={apply} run={run} />}
           {active === "standings" && <StandingsPanel t={t} />}

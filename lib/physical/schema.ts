@@ -9,9 +9,10 @@ export const SCHEMA_VERSION = 1 as const;
 export type PhysicalSystem = "monrad" | "swiss" | "roundRobin" | "knockout";
 export const PHYSICAL_SYSTEMS: readonly PhysicalSystem[] = ["monrad", "swiss", "roundRobin", "knockout"];
 
-/** '+-' / '-+' = walkover (hvit/svart vinner uten parti), '=' = begge uteble (0–0). */
-export type ResultCode = "1-0" | "0-1" | "½-½" | "+-" | "-+" | "=";
-export const RESULT_CODES: readonly ResultCode[] = ["1-0", "0-1", "½-½", "+-", "-+", "="];
+/** '+-' / '-+' = walkover (hvit/svart vinner uten parti), '=' = begge uteble (0–0, ikke spilt).
+ * '0-0' = partiet ble SPILT men ingen fikk poeng (kun fra import av digital turnering, f.eks. avbrutt parti): teller som møte og farge. */
+export type ResultCode = "1-0" | "0-1" | "½-½" | "+-" | "-+" | "=" | "0-0";
+export const RESULT_CODES: readonly ResultCode[] = ["1-0", "0-1", "½-½", "+-", "-+", "=", "0-0"];
 
 export interface PhysicalSettings {
   system: PhysicalSystem;
