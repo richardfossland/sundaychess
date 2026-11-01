@@ -19,7 +19,6 @@ async function setup(page: Page, context: BrowserContext, title: string, players
   await page.getByLabel(p.nameLabel).fill(title);
   for (let i = 0; i < 4; i++) await page.getByRole("button", { name: no.common.next }).click();
   await page.getByLabel(p.pasteLabel).fill(players.map((n, i) => `${n}; ${1500 - i * 50}; K`).join("\n"));
-  await page.getByRole("button", { name: p.pasteImport }).click();
   await page.getByRole("button", { name: no.common.next }).click();
   await page.getByRole("button", { name: p.confirmCreate }).click();
   await expect(page.getByRole("heading", { name: title })).toBeVisible();

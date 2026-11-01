@@ -30,18 +30,17 @@ export function PrintMenu({ id }: { id: string }) {
   }, [open]);
 
   return (
-    <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
+    <div ref={ref} className="pm-wrap">
       <button type="button" className="btn btn-sm btn-ghost" aria-haspopup="menu" aria-expanded={open} aria-label={L.menuAria} onClick={() => setOpen((o) => !o)}>
         {L.menu} <Icon name="chevronDown" size={14} />
       </button>
       {open && (
-        <div role="menu" className="card stack" style={{ position: "absolute", right: 0, top: "100%", zIndex: 30, minWidth: 210, gap: 2, padding: 6 }}>
+        <div role="menu" className="card stack pm-pop">
           {PRINT_KINDS.map((k) => (
             <a
               key={k}
               role="menuitem"
-              className="btn btn-sm btn-ghost"
-              style={{ justifyContent: "flex-start" }}
+              className="btn btn-sm btn-ghost pm-item"
               href={printPath(id, k)}
               onClick={(e) => {
                 if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
@@ -53,8 +52,8 @@ export function PrintMenu({ id }: { id: string }) {
               {L.kinds[k]}
             </a>
           ))}
-          <hr style={{ width: "100%", border: 0, borderTop: "1px solid var(--ink-line)", margin: "4px 0" }} />
-          <button type="button" role="menuitem" className="btn btn-sm" onClick={() => { setBlocked(!openStorskjerm(id)); setOpen(false); }}>
+          <hr className="pm-sep" />
+          <button type="button" role="menuitem" className="btn btn-sm pm-item" onClick={() => { setBlocked(!openStorskjerm(id)); setOpen(false); }}>
             {L.openBig}
           </button>
         </div>

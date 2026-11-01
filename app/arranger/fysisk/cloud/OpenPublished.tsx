@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/lib/client/Icon";
 import { no } from "@/lib/locale/no";
 import { fetchTransport } from "@/lib/physical/cloud";
 import { saveMeta } from "@/lib/physical/cloudMeta";
@@ -18,6 +19,7 @@ const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 export function OpenPublished() {
   const [id, setId] = useState("");
   const [code, setCode] = useState("");
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -48,20 +50,24 @@ export function OpenPublished() {
   }
 
   return (
-    <details>
-      <summary className="btn btn-sm btn-ghost" style={{ listStyle: "none", cursor: "pointer" }}>{L.openTitle}</summary>
-      <form className="stack" style={{ gap: 8, marginTop: 8 }} onSubmit={go}>
-        <label className="stack" style={{ gap: 2 }}>
-          <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{L.openIdLabel}</span>
-          <input className="input" value={id} onChange={(e) => setId(e.target.value)} autoComplete="off" />
-        </label>
-        <label className="stack" style={{ gap: 2 }}>
-          <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{L.openCodeLabel}</span>
-          <input className="input" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" autoCapitalize="characters" placeholder="ABCD-12" />
-        </label>
-        {err && <div className="banner banner-error" role="alert">{err}</div>}
-        <button type="submit" className="btn btn-primary" disabled={busy || !id.trim() || !code.trim()}>{L.openGo}</button>
-      </form>
-    </details>
+    <div className="stack gap-3">
+      <button type="button" className="btn btn-block" aria-expanded={open} aria-controls="open-published" onClick={() => setOpen((o) => !o)}>
+        {L.openTitle} <Icon name="chevronDown" size={16} className={open ? "flip" : undefined} />
+      </button>
+      {open && (
+        <form id="open-published" className="stack panel-inset" onSubmit={go}>
+          <div className="field">
+            <label htmlFor="op-id">{L.openIdLabel}</label>
+            <input id="op-id" className="input" value={id} onChange={(e) => setId(e.target.value)} autoComplete="off" />
+          </div>
+          <div className="field">
+            <label htmlFor="op-code">{L.openCodeLabel}</label>
+            <input id="op-code" className="input" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" autoCapitalize="characters" placeholder="ABCD-12" />
+          </div>
+          {err && <div className="banner banner-error" role="alert">{err}</div>}
+          <button type="submit" className="btn btn-primary" disabled={busy || !id.trim() || !code.trim()}>{L.openGo}</button>
+        </form>
+      )}
+    </div>
   );
 }

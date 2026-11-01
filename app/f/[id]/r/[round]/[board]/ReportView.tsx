@@ -7,6 +7,7 @@ import { newId } from "@/lib/physical/events";
 import { getDeviceId, sendReport } from "@/lib/physical/reportClient";
 import type { PublicSnapshot } from "@/lib/physical/snapshot";
 import { Icon } from "@/lib/client/Icon";
+import "../../../../../arranger/fysisk/physical.css";
 
 const L = no.physicalCloud;
 const SIDES: { value: ReportResult; label: string }[] = [
@@ -135,12 +136,12 @@ export function ReportView({ id, round, board }: { id: string; round: number; bo
   const alreadyDone = !!pairing?.result;
 
   return (
-    <main className="center-screen" style={{ alignItems: "flex-start" }}>
-      <div className="card card-narrow stack" style={{ gap: 14 }} data-testid="report-view">
-        <div>
+    <main className="center-screen center-top">
+      <div className="card card-narrow stack gap-4" data-testid="report-view">
+        <div className="pr-title">
           <p className="eyebrow">{snap?.title ?? "SundayChess"}</p>
-          <h1 style={{ margin: 0, fontSize: 24 }}>{L.repTitle}</h1>
-          <p className="muted" style={{ margin: "4px 0 0" }}>
+          <h1 className="pr-h1">{L.repTitle}</h1>
+          <p className="muted m-0">
             {no.physicalPrint.cardRound(round)} · {no.physicalPrint.cardBoard(board)}
           </p>
         </div>
@@ -148,7 +149,7 @@ export function ReportView({ id, round, board }: { id: string; round: number; bo
         {missing && <div className="banner banner-error">{L.pubNotFound}</div>}
         {!k && !missing && <div className="banner banner-error">{L.repMissingKey}</div>}
         {pairing && pairing.black && (
-          <div className="card" style={{ padding: 10 }}>
+          <div className="card rp-card">
             <div><Icon name="circle" size={14} className="dot-white" /> <b>{name(pairing.white)}</b></div>
             <div><Icon name="circle" size={14} className="dot-black" /> <b>{name(pairing.black)}</b></div>
           </div>
@@ -158,7 +159,7 @@ export function ReportView({ id, round, board }: { id: string; round: number; bo
         {alreadyDone && phase !== "sent" && <div className="banner">{L.repHasResult}</div>}
 
         {phase === "sent" && (
-          <div className="stack" style={{ gap: 10 }}>
+          <div className="stack gap-3">
             <div className="banner banner-ok" role="status" data-testid="report-sent">{L.repThanks}</div>
             {!alreadyDone && rd?.status !== "completed" && (
               <button type="button" className="btn btn-ghost" onClick={again}>{L.repChange}</button>
@@ -168,9 +169,9 @@ export function ReportView({ id, round, board }: { id: string; round: number; bo
 
         {phase !== "sent" && k && !missing && !alreadyDone && rd?.status !== "completed" && (
           <>
-            <div className="stack" style={{ gap: 6 }}>
-              <span className="muted" style={{ fontSize: 13 }}>{L.repWhoAmI}</span>
-              <div className="row" style={{ gap: 8 }}>
+            <div className="stack gap-2">
+              <span className="muted fs-xs">{L.repWhoAmI}</span>
+              <div className="row gap-2">
                 {([["white", L.repIWhite], ["black", L.repIBlack]] as const).map(([v, label]) => (
                   <button key={v} type="button" className={`btn grow ${reporter === v ? "btn-primary" : "btn-ghost"}`} aria-pressed={reporter === v} onClick={() => setReporter(reporter === v ? "unknown" : v)}>
                     {label}
@@ -179,14 +180,13 @@ export function ReportView({ id, round, board }: { id: string; round: number; bo
               </div>
             </div>
 
-            <div className="stack" style={{ gap: 8 }}>
-              <span className="muted" style={{ fontSize: 13 }}>{L.repPickResult}</span>
+            <div className="stack gap-2">
+              <span className="muted fs-xs">{L.repPickResult}</span>
               {SIDES.map((s) => (
                 <button
                   key={s.value}
                   type="button"
-                  className={`btn btn-lg btn-block ${picked === s.value ? "btn-primary" : ""}`}
-                  style={{ minHeight: 64, fontSize: 20 }}
+                  className={`btn btn-lg btn-block rep-result ${picked === s.value ? "btn-primary" : ""}`}
                   aria-pressed={picked === s.value}
                   disabled={phase === "sending"}
                   onClick={() => setPicked(s.value)}
@@ -197,7 +197,7 @@ export function ReportView({ id, round, board }: { id: string; round: number; bo
             </div>
 
             {picked && (
-              <div className="stack" style={{ gap: 8 }}>
+              <div className="stack gap-2">
                 <b>{L.repConfirmLine(resultLabel)}</b>
                 <button type="button" className="btn btn-primary btn-lg btn-block" disabled={phase === "sending"} onClick={send}>
                   {phase === "sending" ? L.repSending : L.repSend}

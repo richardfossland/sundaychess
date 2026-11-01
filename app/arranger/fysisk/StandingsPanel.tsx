@@ -26,9 +26,9 @@ export function StandingsPanel({ t }: { t: PhysicalTournament }) {
         <table className="table">
           <thead>
             <tr>
-              <th className="num">{p.rank}</th>
+              <th className="num" title={p.rankTitle}>{p.rank}</th>
               <th>{p.name}</th>
-              <th className="num">{p.points}</th>
+              <th className="num" title={p.pointsTitle}>{p.points}</th>
               {tbs.map((k) => <th key={k} className="num" title={no.tiebreaks[k].help}>{no.tiebreaks[k].label}</th>)}
             </tr>
           </thead>
@@ -44,9 +44,9 @@ export function StandingsPanel({ t }: { t: PhysicalTournament }) {
           </tbody>
         </table>
       </div>
-      {tbs.length > 0 && (
-        <details>
-          <summary style={{ cursor: "pointer", minHeight: 44, display: "flex", alignItems: "center", fontWeight: 700 }}>{p.tiebreakExplain}</summary>
+      <div className="px-legend">
+        <p className="m-0 muted fs-xs">{p.tableHelpIntro}{tbs.length > 0 ? ` ${p.tiebreakIntro}` : ""}</p>
+        {tbs.length > 0 && (
           <dl className="px-explain">
             {tbs.map((k) => (
               <div key={k}>
@@ -55,8 +55,8 @@ export function StandingsPanel({ t }: { t: PhysicalTournament }) {
               </div>
             ))}
           </dl>
-        </details>
-      )}
+        )}
+      </div>
     </section>
   );
 }
@@ -71,11 +71,11 @@ export function CrosstablePanel({ t }: { t: PhysicalTournament }) {
         <table className="table">
           <thead>
             <tr>
-              <th className="num">{p.rank}</th>
-              <th className="num">{p.startNo}</th>
+              <th className="num" title={p.rankTitle}>{p.rank}</th>
+              <th className="num" title={p.startNoTitle}>{p.startNo}</th>
               <th>{p.name}</th>
-              {x.rounds.map((r) => <th key={r} className="px-cell">R{r}</th>)}
-              <th className="num">{p.points}</th>
+              {x.rounds.map((r) => <th key={r} className="px-cell" title={p.roundN(r)}>R{r}</th>)}
+              <th className="num" title={p.pointsTitle}>{p.points}</th>
             </tr>
           </thead>
           <tbody>
@@ -105,7 +105,7 @@ export function CrosstablePanel({ t }: { t: PhysicalTournament }) {
           </tbody>
         </table>
       </div>
-      <span className="muted" style={{ fontSize: 13 }}>{p.crosstableLegend}</span>
+      <p className="muted fs-xs m-0">{p.crosstableLegend}</p>
     </section>
   );
 }

@@ -2999,3 +2999,13 @@ input[type="radio"] {
   flex-wrap: wrap;
   margin-top: var(--sp-2);
 }
+
+/* ============ D5: fysisk modus – flere hjelpeklasser ============ */
+.m-0 { margin: 0; }
+.justify-end { justify-content: flex-end; }
+.flex-wrap { flex-wrap: wrap; }
+.align-start { align-items: flex-start; }
+.no-underline { text-decoration: none; }
+.block { display: block; }
+.center-top { align-items: flex-start; }
+.text-left { text-align: left; }
