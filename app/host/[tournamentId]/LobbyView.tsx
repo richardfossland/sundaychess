@@ -17,6 +17,7 @@ import { no } from "@/lib/locale/no";
 import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { NotesModal } from "./NotesModal";
 import { Icon } from "@/lib/client/Icon";
+import { effectiveHostCode, usePresentasjon } from "@/lib/client/storskjerm/usePresentasjon";
 
 /** A player who has been continuously disconnected for this long while still in
  * the lobby is auto-removed (they left the app). Conservative so a brief wifi
@@ -31,6 +32,9 @@ export function LobbyView({
   onChanged: () => void;
 }) {
   const { tournament, players } = state;
+  // Tavlevisning (projektor/cast): kun det publikum skal se. Ingen vertskode →
+  // heller ingen auto-kick-sveip fra denne fanen.
+  const presentasjon = usePresentasjon();
   const [joinUrl, setJoinUrl] = useState("");
   const [hostCode, setHostCode] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -89,9 +93,9 @@ export function LobbyView({
     const base = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
     /* eslint-disable react-hooks/set-state-in-effect */
     setJoinUrl(`${base.replace(/\/$/, "")}/play`);
-    setHostCode(identity.hostCode(tournament.id));
+    setHostCode(effectiveHostCode(identity.hostCode(tournament.id), presentasjon));
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [tournament.id]);
+  }, [tournament.id, presentasjon]);
 
   async function startLeague() {
     if (!hostCode) return setError(no.host.missingHostCode);
@@ -227,6 +231,7 @@ export function LobbyView({
         </span>
         <div className="row" style={{ gap: 12, alignItems: "flex-start" }}>
           {tournament.title && <span className="muted">{tournament.title}</span>}
+          {!presentasjon && (
           <button
             type="button"
             className="btn btn-ghost"
@@ -237,7 +242,8 @@ export function LobbyView({
           >
             <Icon name="edit" size={16} />
           </button>
-          {hostCode && (
+          )}
+          {!presentasjon && hostCode && (
             hostCodeRevealed ? (
               <div className="stack" style={{ gap: 4, alignItems: "flex-end" }}>
                 <div className="row" style={{ gap: 6 }}>
@@ -298,6 +304,7 @@ export function LobbyView({
               <QRCode value={joinUrl} size={172} />
             </div>
           )}
+          {!presentasjon && (
           <button
             className="btn btn-primary btn-lg"
             style={{ marginTop: 6, minWidth: 220 }}
@@ -312,16 +319,17 @@ export function LobbyView({
               `${no.host.startLeague} →`
             )}
           </button>
-          {active.length < 2 && (
+          )}
+          {!presentasjon && active.length < 2 && (
             <p className="faint" style={{ fontSize: 13 }}>Minst 2 spillere må bli med.</p>
           )}
-          {unclaimed > 0 && (
+          {!presentasjon && unclaimed > 0 && (
             <p className="faint" style={{ fontSize: 13 }} data-testid="unclaimed-hint">{no.continueDigital.hostUnclaimedCount(unclaimed)}</p>
           )}
-          {roundsHint && (
+          {!presentasjon && roundsHint && (
             <p className="faint" style={{ fontSize: 13 }}><Icon name="warn" size={16} /> {roundsHint}</p>
           )}
-          {error && <div className="banner banner-error">{error}</div>}
+          {!presentasjon && error && <div className="banner banner-error">{error}</div>}
         </section>
 
         {/* Roster */}
@@ -364,7 +372,7 @@ export function LobbyView({
                         {p.claimed ? no.continueDigital.hostClaimed : no.continueDigital.hostUnclaimed}
                       </span>
                     )}
-                    {p.preRegistered && p.claimed && (
+                    {!presentasjon && p.preRegistered && p.claimed && (
                       <button
                         className="chip-kick"
                         title={no.continueDigital.hostResetClaim}
@@ -380,6 +388,7 @@ export function LobbyView({
                         {p.team}
                       </span>
                     )}
+                    {!presentasjon && (
                     <button
                       className="chip-kick"
                       title={no.host.kick}
@@ -388,6 +397,7 @@ export function LobbyView({
                     >
                       <Icon name="close" size={14} />
                     </button>
+                    )}
                   </span>
                 );
               })}
@@ -398,7 +408,7 @@ export function LobbyView({
 
       <FullscreenToggle />
 
-      {resetTarget && (
+      {!presentasjon && resetTarget && (
         <ConfirmDialog
           message={no.continueDigital.hostResetConfirm(resetTarget.name)}
           confirmLabel={no.continueDigital.hostResetClaim}
@@ -411,7 +421,7 @@ export function LobbyView({
         />
       )}
 
-      {kickTarget && (
+      {!presentasjon && kickTarget && (
         <ConfirmDialog
           message={no.host.kickConfirm(kickTarget.name)}
           confirmLabel={no.host.kick}
@@ -424,7 +434,7 @@ export function LobbyView({
         />
       )}
 
-      {showNotes && (
+      {!presentasjon && showNotes && (
         <NotesModal
           tournamentId={tournament.id}
           hostCode={hostCode ?? ""}

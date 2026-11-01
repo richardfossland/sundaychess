@@ -15,6 +15,7 @@ import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
 import { BracketBoard } from "@/lib/client/BracketBoard";
 import { no } from "@/lib/locale/no";
 import { Icon } from "@/lib/client/Icon";
+import { usePresentasjon } from "@/lib/client/storskjerm/usePresentasjon";
 
 const AWARD_EMOJI: Record<Award["key"], string> = {
   fastest_mate: "⚡",
@@ -63,6 +64,7 @@ function printResultLabel(g: PublicGame): string {
 
 export function FinishedView({ state }: { state: BoardState }) {
   const { standings, players, games, rounds, tournament } = state;
+  const presentasjon = usePresentasjon();
 
   // victory fanfare, once, when the podium appears
   useEffect(() => {
@@ -118,7 +120,7 @@ export function FinishedView({ state }: { state: BoardState }) {
   const [notes, setNotes] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    const hostCode = identity.hostCode(tournament.id);
+    const hostCode = presentasjon ? null : identity.hostCode(tournament.id);
     if (!hostCode) return;
     api
       .getTournamentConfig(tournament.id, hostCode)
@@ -131,7 +133,7 @@ export function FinishedView({ state }: { state: BoardState }) {
     return () => {
       cancelled = true;
     };
-  }, [tournament.id]);
+  }, [tournament.id, presentasjon]);
 
   const awards = useMemo(
     () =>
@@ -386,18 +388,21 @@ export function FinishedView({ state }: { state: BoardState }) {
             })}
         </div>
 
-        <div className="row no-print" style={{ marginTop: 28, gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-          <Link href="/arranger" className="btn btn-primary btn-lg">
-            {no.host.newTournament} →
-          </Link>
-          <button
-            type="button"
-            className="btn btn-ghost btn-lg"
-            onClick={() => window.print()}
-          >
-            <Icon name="print" size={16} /> {no.host.printResults}
-          </button>
-        </div>
+        {/* Tavlevisning: ingen «Ny turnering»/utskrift på projektoren. */}
+        {!presentasjon && (
+          <div className="row no-print" style={{ marginTop: 28, gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+            <Link href="/arranger" className="btn btn-primary btn-lg">
+              {no.host.newTournament} →
+            </Link>
+            <button
+              type="button"
+              className="btn btn-ghost btn-lg"
+              onClick={() => window.print()}
+            >
+              <Icon name="print" size={16} /> {no.host.printResults}
+            </button>
+          </div>
+        )}
       </div>
 
       <SoundToggle />

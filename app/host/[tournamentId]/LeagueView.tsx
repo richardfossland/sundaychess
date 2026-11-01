@@ -15,6 +15,7 @@ import { CodesModal } from "./CodesModal";
 import { NotesModal } from "./NotesModal";
 import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { Icon } from "@/lib/client/Icon";
+import { effectiveHostCode, usePresentasjon } from "@/lib/client/storskjerm/usePresentasjon";
 
 function resultLabel(g: PublicGame, name: (id: string | null) => string): string {
   switch (g.status) {
@@ -37,6 +38,20 @@ function resultLabel(g: PublicGame, name: (id: string | null) => string): string
   }
 }
 
+/** I tavlevisning er partiraden ren visning (div); ellers åpner den override. */
+function GameRow({
+  onClick,
+  ...rest
+}: {
+  onClick?: () => void;
+} & Omit<React.HTMLAttributes<HTMLElement>, "onClick">) {
+  return onClick ? (
+    <button type="button" onClick={onClick} {...(rest as object)} />
+  ) : (
+    <div {...rest} />
+  );
+}
+
 export function LeagueView({
   state,
   onChanged,
@@ -45,6 +60,8 @@ export function LeagueView({
   onChanged: () => void;
 }) {
   const { tournament, players, games, standings, rounds, tipping } = state;
+  // Tavlevisning (projektor/cast): ingen arrangørkontroller, ingen modaler.
+  const presentasjon = usePresentasjon();
   const [hostCode, setHostCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,8 +85,8 @@ export function LeagueView({
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setHostCode(identity.hostCode(tournament.id));
-  }, [tournament.id]);
+    setHostCode(effectiveHostCode(identity.hostCode(tournament.id), presentasjon));
+  }, [tournament.id, presentasjon]);
 
   const nameById = useMemo(() => {
     const m = new Map(players.map((p) => [p.id, p.displayName]));
@@ -210,16 +227,18 @@ export function LeagueView({
         </span>
         <div className="row" style={{ gap: 6, alignItems: "center" }}>
           {tournament.title && <span className="muted">{tournament.title}</span>}
-          <button
-            type="button"
-            className="btn btn-ghost"
-            style={{ padding: "6px 10px", fontSize: 13, minHeight: 0 }}
-            title={no.host.editNotes}
-            aria-label={no.host.editNotes}
-            onClick={() => setShowNotes(true)}
-          >
-            <Icon name="edit" size={16} />
-          </button>
+          {!presentasjon && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              style={{ padding: "6px 10px", fontSize: 13, minHeight: 0 }}
+              title={no.host.editNotes}
+              aria-label={no.host.editNotes}
+              onClick={() => setShowNotes(true)}
+            >
+              <Icon name="edit" size={16} />
+            </button>
+          )}
         </div>
         <span className="badge badge-live">
           {no.host.round} {tournament.currentRound} / {tournament.config.leagueRounds}
@@ -231,21 +250,25 @@ export function LeagueView({
               durationSec={timerSec}
               extendedMs={currentRound.extendedMs ?? 0}
             />
-            <button
-              className="btn btn-ghost"
-              style={{ padding: "8px 12px" }}
-              disabled={busy}
-              onClick={addMinute}
-            >
-              {busy ? <span className="spin" /> : no.host.addMinute}
-            </button>
+            {!presentasjon && (
+              <button
+                className="btn btn-ghost"
+                style={{ padding: "8px 12px" }}
+                disabled={busy}
+                onClick={addMinute}
+              >
+                {busy ? <span className="spin" /> : no.host.addMinute}
+              </button>
+            )}
           </div>
         )}
         <span className="grow" />
         <JoinChip pin={tournament.joinPin} />
-        <button className="btn btn-ghost" onClick={() => setShowCodes(true)}>
-          {no.host.showCodes}
-        </button>
+        {!presentasjon && (
+          <button className="btn btn-ghost" onClick={() => setShowCodes(true)}>
+            {no.host.showCodes}
+          </button>
+        )}
       </header>
 
       <div className="board-grid split-league">
@@ -338,7 +361,7 @@ export function LeagueView({
 
           {/* Absent/left players — collapsed out of the way; "Ta inn igjen"
               is the only way back in, and only takes effect next round. */}
-          {leftPlayers.length > 0 && (
+          {!presentasjon && leftPlayers.length > 0 && (
             <details className="stack" style={{ marginTop: 20 }}>
               <summary className="eyebrow" style={{ cursor: "pointer" }}>
                 {no.host.outOfTournamentSection(leftPlayers.length)}
@@ -373,17 +396,24 @@ export function LeagueView({
 
           <div className="stack" style={{ gap: 10 }}>
             {roundGames.map((g) => (
-              <button
+              <GameRow
                 key={g.id}
                 className="spread"
-                onClick={() => g.blackPlayerId !== null && g.status !== "bye" && setOverrideGame(g)}
+                onClick={
+                  presentasjon
+                    ? undefined
+                    : () => g.blackPlayerId !== null && g.status !== "bye" && setOverrideGame(g)
+                }
                 style={{
                   textAlign: "left",
                   background: "var(--ink-soft)",
                   border: "1px solid var(--ink-line)",
                   borderRadius: 10,
                   padding: "12px 14px",
-                  cursor: g.status === "bye" || g.blackPlayerId === null ? "default" : "pointer",
+                  cursor:
+                    presentasjon || g.status === "bye" || g.blackPlayerId === null
+                      ? "default"
+                      : "pointer",
                   color: "inherit",
                   font: "inherit",
                 }}
@@ -413,11 +443,11 @@ export function LeagueView({
                     </span>
                   )}
                 </span>
-              </button>
+              </GameRow>
             ))}
           </div>
 
-          {timeUp && liveCount > 0 && (
+          {!presentasjon && timeUp && liveCount > 0 && (
             <div
               className="banner"
               style={{
@@ -438,6 +468,7 @@ export function LeagueView({
             </div>
           )}
 
+          {!presentasjon && (
           <div className="row" style={{ marginTop: 18 }}>
             <button
               className="btn btn-primary grow"
@@ -460,16 +491,17 @@ export function LeagueView({
               </button>
             )}
           </div>
-          {!allResolved && (
+          )}
+          {!presentasjon && !allResolved && (
             <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
               Alle partier må være ferdige før neste runde.
             </p>
           )}
-          {error && <div className="banner banner-error" style={{ marginTop: 10 }}>{error}</div>}
+          {!presentasjon && error && <div className="banner banner-error" style={{ marginTop: 10 }}>{error}</div>}
         </section>
       </div>
 
-      {overrideGame && (
+      {!presentasjon && overrideGame && (
         <OverrideModal
           gameId={overrideGame.id}
           hostCode={hostCode ?? ""}
@@ -487,7 +519,7 @@ export function LeagueView({
         />
       )}
 
-      {showCodes && (
+      {!presentasjon && showCodes && (
         <CodesModal
           tournamentId={tournament.id}
           hostCode={hostCode ?? ""}
@@ -495,7 +527,7 @@ export function LeagueView({
         />
       )}
 
-      {showNotes && (
+      {!presentasjon && showNotes && (
         <NotesModal
           tournamentId={tournament.id}
           hostCode={hostCode ?? ""}
@@ -506,7 +538,7 @@ export function LeagueView({
 
       <FullscreenToggle />
 
-      {confirmForce && (
+      {!presentasjon && confirmForce && (
         <ConfirmDialog
           message={no.host.forceResolveConfirm}
           confirmLabel={no.host.forceResolve}
@@ -516,7 +548,7 @@ export function LeagueView({
         />
       )}
 
-      {confirmFinishEarly && (
+      {!presentasjon && confirmFinishEarly && (
         <ConfirmDialog
           message={no.host.finishEarlyConfirm(tournament.currentRound)}
           confirmLabel={no.host.finishEarly}
@@ -525,7 +557,7 @@ export function LeagueView({
         />
       )}
 
-      {reinstateTarget && (
+      {!presentasjon && reinstateTarget && (
         <ConfirmDialog
           message={no.host.reinstateConfirm(reinstateTarget.name)}
           confirmLabel={no.host.reinstate}
