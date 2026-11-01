@@ -98,30 +98,30 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
   }
 
   const meta = cloud.meta();
-  const dot = st.status === "synced" ? "var(--ok, #2a9d5c)" : st.status === "conflict" || st.status === "error" ? "var(--danger, #d64545)" : st.status === "unpublished" ? "var(--ink-soft, #999)" : "var(--warn, #d9a21b)";
+  const dotKind = st.status === "synced" ? "ok" : st.status === "conflict" || st.status === "error" ? "bad" : st.status === "unpublished" ? "off" : "warn";
 
   return (
-    <div ref={ref} style={{ position: "relative", display: "inline-block" }} data-testid="cloud-menu">
+    <div ref={ref} className="pm-wrap" data-testid="cloud-menu">
       <button type="button" className="btn btn-sm btn-ghost" aria-haspopup="menu" aria-expanded={panelOpen} aria-label={L.menuAria} onClick={() => setOpen((o) => !o)}>
-        <span aria-hidden style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: dot, marginRight: 6 }} />
+        <span aria-hidden className="cm-dot" data-kind={dotKind} />
         {L.menu}: <span data-testid="cloud-status">{L.status[st.status]}</span>
       </button>
       {panelOpen && (
-        <div className="card stack" style={{ position: "absolute", right: 0, top: "100%", zIndex: 30, width: "min(92vw, 340px)", gap: 8, padding: 12 }}>
+        <div className="card stack pm-pop pm-pop-wide">
           {!published && (
             <>
-              <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.publishIntro}</p>
-              <fieldset className="stack" style={{ gap: 4, border: 0, padding: 0, margin: 0 }} data-testid="public-names">
-                <legend style={{ fontSize: 13, fontWeight: 600, padding: 0 }}>{L.namesTitle}</legend>
-                <label className="row" style={{ gap: 6, alignItems: "flex-start", fontSize: 13 }}>
+              <p className="muted fs-xs m-0">{L.publishIntro}</p>
+              <fieldset className="stack gap-2 cm-fieldset" data-testid="public-names">
+                <legend className="cm-legend">{L.namesTitle}</legend>
+                <label className="opt cm-opt">
                   <input type="radio" name="public-names" checked={names === "initials"} onChange={() => setNames("initials")} />
                   <span>{L.namesInitials}</span>
                 </label>
-                <label className="row" style={{ gap: 6, alignItems: "flex-start", fontSize: 13 }}>
+                <label className="opt cm-opt">
                   <input type="radio" name="public-names" checked={names === "full"} onChange={() => setNames("full")} />
                   <span>{L.namesFull}</span>
                 </label>
-                <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{L.namesHelp}</span>
+                <span className="muted fs-xs">{L.namesHelp}</span>
               </fieldset>
               <button type="button" className="btn btn-primary" disabled={busy} onClick={publish}>
                 {busy ? L.publishing : L.publish}
@@ -130,11 +130,11 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
           )}
           {published && (
             <>
-              <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.publishedNote}</p>
+              <p className="muted fs-xs m-0">{L.publishedNote}</p>
               {st.status === "conflict" && (
-                <div className="banner banner-error stack" role="alert" style={{ gap: 6 }}>
+                <div className="banner banner-error stack gap-2" role="alert">
                   <b>{L.conflictTitle}</b>
-                  <span style={{ fontSize: 13 }}>{L.conflictBody}</span>
+                  <span className="fs-xs">{L.conflictBody}</span>
                   <button type="button" className="btn btn-sm" disabled={busy} onClick={loadCloud}>{L.loadCloud}</button>
                   <button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={overwrite}>{L.overwriteCloud}</button>
                 </div>
@@ -143,22 +143,22 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
               {(st.status === "offline" || st.status === "pending") && (
                 <button type="button" className="btn btn-sm btn-ghost" onClick={() => cloud.retryNow()}>{L.retry}</button>
               )}
-              <a className="btn btn-sm btn-ghost" href={publicUrl(t.id)} target="_blank" rel="noreferrer">{L.openPublic}</a>
-              <button type="button" className="btn btn-sm btn-ghost" onClick={copy}>{L.copyLink}</button>
-              <button type="button" className="btn btn-sm btn-ghost" onClick={() => setShowCode((s) => !s)}>
+              <a className="btn btn-sm btn-ghost pm-item" href={publicUrl(t.id)} target="_blank" rel="noreferrer">{L.openPublic}</a>
+              <button type="button" className="btn btn-sm btn-ghost pm-item" onClick={copy}>{L.copyLink}</button>
+              <button type="button" className="btn btn-sm btn-ghost pm-item" onClick={() => setShowCode((s) => !s)}>
                 {showCode ? L.hideCode : L.showCode}
               </button>
               {showCode && meta && (
-                <div className="stack" style={{ gap: 2 }}>
-                  <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{L.codeLabel}</span>
-                  <b data-testid="cloud-host-code" style={{ fontSize: 22, letterSpacing: 2 }}>{meta.hostCode}</b>
-                  <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{L.codeHelp}</span>
+                <div className="stack gap-1">
+                  <span className="muted fs-xs">{L.codeLabel}</span>
+                  <b data-testid="cloud-host-code" className="cm-code">{meta.hostCode}</b>
+                  <span className="muted fs-xs">{L.codeHelp}</span>
                 </div>
               )}
-              <button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={unpublish}>{L.unpublish}</button>
+              <button type="button" className="btn btn-sm btn-ghost pm-item" disabled={busy} onClick={unpublish}>{L.unpublish}</button>
             </>
           )}
-          {msg && <span role="status" className="muted" style={{ fontSize: "var(--fs-xs)" }}>{msg}</span>}
+          {msg && <span role="status" className="muted fs-xs">{msg}</span>}
         </div>
       )}
     </div>

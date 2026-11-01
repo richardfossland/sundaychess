@@ -11,7 +11,6 @@ async function createTournament(page: Page, title: string) {
   await page
     .getByLabel(no.physical.pasteLabel)
     .fill("Anna; 1500; A\nBjørn; 1400; A\nCecilie; 1300; B\nDavid; 1200; B");
-  await page.getByRole("button", { name: no.physical.pasteImport }).click();
   await page.getByRole("button", { name: no.common.next }).click();
   await page.getByRole("button", { name: no.physical.confirmCreate }).click();
   await expect(page.getByRole("heading", { name: title })).toBeVisible();

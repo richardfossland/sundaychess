@@ -67,9 +67,9 @@ export function PlayersPanel({ t, apply }: { t: PhysicalTournament; apply: (b: P
       </ul>
 
       {running && (
-        <div className="stack" style={{ gap: 10 }}>
+        <div className="stack gap-3">
           <p className="eyebrow">{late ? p.lateEntryTitle : p.addPlayer}</p>
-          {lateNote && <div className="banner banner-warn" style={{ textAlign: "left" }}>{lateNote}</div>}
+          {lateNote && <div className="banner banner-warn text-left">{lateNote}</div>}
           {canAdd && (
             <>
               <div className="pp-form">
@@ -86,7 +86,7 @@ export function PlayersPanel({ t, apply }: { t: PhysicalTournament; apply: (b: P
                     <input type="checkbox" checked={halfMissed} onChange={(e) => setHalfMissed(e.target.checked)} />
                     <span>{p.lateMissedHalf(t.rounds.length)}</span>
                   </label>
-                  <span className="muted" style={{ fontSize: 13 }}>{p.lateEntryNote(t.rounds.length + 1)}</span>
+                  <span className="muted fs-xs">{p.lateEntryNote(t.rounds.length + 1)}</span>
                 </>
               )}
             </>
@@ -152,8 +152,8 @@ function ByeEditor({ t, pl, apply }: { t: PhysicalTournament; pl: PhysicalPlayer
   for (let r = t.rounds.length + 1; r <= totalRounds(t); r++) rounds.push(r);
   if (rounds.length === 0) return <span className="muted">{p.byeNoRounds}</span>;
   return (
-    <div className="stack" style={{ gap: 4 }}>
-      <span className="muted" style={{ fontSize: 13 }}>{p.byeDialogHelp}</span>
+    <div className="stack gap-1">
+      <span className="muted fs-xs">{p.byeDialogHelp}</span>
       {rounds.map((r) => {
         const cur = t.byeRequests.find((b) => b.playerId === pl.id && b.round === r)?.byeType ?? null;
         const set = (type: "half" | "zero" | null) =>
@@ -182,13 +182,13 @@ function WithdrawDialog({ t, pl, onCancel, onConfirm }: { t: PhysicalTournament;
       onClose={onCancel}
       title={p.withdrawTitle(pl.name)}
       footer={
-        <div className="row" style={{ justifyContent: "flex-end" }}>
+        <div className="row justify-end">
           <button type="button" className="btn btn-ghost" onClick={onCancel}>{no.common.cancel}</button>
           <button type="button" className="btn btn-danger" onClick={onConfirm}>{p.withdrawConfirm}</button>
         </div>
       }
     >
-      <p style={{ margin: 0 }}>
+      <p className="m-0">
         {impact.forfeits.length > 0 ? p.withdrawForfeits(list) : impact.inDraft ? p.withdrawDraft : p.withdrawNothing}
       </p>
     </Modal>
