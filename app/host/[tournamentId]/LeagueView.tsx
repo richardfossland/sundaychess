@@ -227,7 +227,12 @@ export function LeagueView({
 
   // Tavlevisning: maks antall rader som får plass i én skjermhøyde — resten
   // blir «+N til». Skriften skaleres etter radantallet (se storskjerm.css).
-  const shownGames = presentasjon ? roundGames.slice(0, TV_GAMES_MAX) : roundGames;
+  // Pågående partier først (stabil sortering), så de ikke havner bak «+N til».
+  const shownGames = presentasjon
+    ? [...roundGames]
+        .sort((a, b) => Number(b.status === "live") - Number(a.status === "live"))
+        .slice(0, TV_GAMES_MAX)
+    : roundGames;
   const tvTipping = Math.min(tipping?.length ?? 0, 3);
   const tvStandingRows =
     Math.min(standings.length, TV_STANDINGS_MAX) +
