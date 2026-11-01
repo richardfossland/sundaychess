@@ -3089,6 +3089,7 @@ input[type="radio"] {
     display: inline-flex;
     align-items: center;
     gap: var(--sp-2);
+    margin-left: auto;
   }
   .host-actions {
     display: none;
@@ -3136,6 +3137,9 @@ input[type="radio"] {
   }
   .host-bar-tools .seg {
     flex: 1 1 auto;
+  }
+  .round-actions .btn {
+    flex: 1 1 100%;
   }
 }
 
@@ -3198,7 +3202,7 @@ input[type="radio"] {
 @media (max-width: 640px) {
   .roster-chips {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--sp-2);
   }
   .roster-chips .chip {
@@ -3206,10 +3210,16 @@ input[type="radio"] {
     padding-right: var(--sp-4);
   }
   .roster-chips .chip-name {
+    flex: 1;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+}
+@media (min-width: 480px) and (max-width: 640px) {
+  .roster-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 .chip-name {
@@ -3297,7 +3307,11 @@ input[type="radio"] {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--sp-4);
+}
+.finish-eyebrow {
+  margin: var(--sp-2) 0 var(--sp-2);
 }
 .finish-table-card {
   text-align: left;
@@ -3392,9 +3406,10 @@ input[type="radio"] {
   .finish-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
-  .finish-main {
-    padding-top: var(--sp-5);
+  .finish-grid {
+    align-items: stretch;
   }
+
   .podium-col {
     width: clamp(110px, 12vw, 160px);
   }

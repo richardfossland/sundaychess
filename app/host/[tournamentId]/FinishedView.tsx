@@ -202,9 +202,11 @@ export function FinishedView({ state }: { state: BoardState }) {
       </div>
 
       <div className="stack text-center finish-wrap">
-        <span className="brandmark reveal" style={{ ["--i" as string]: 0 } as CSSProperties}>
-          <span className="knight">♞</span> Sunday<b>Chess</b>
-        </span>
+        {presentasjon && (
+          <span className="brandmark reveal" style={{ ["--i" as string]: 0 } as CSSProperties}>
+            <span className="knight">♞</span> Sunday<b>Chess</b>
+          </span>
+        )}
         <p className="eyebrow reveal" style={{ ["--i" as string]: 1 } as CSSProperties}>
           {no.host.podium}
         </p>
@@ -242,8 +244,8 @@ export function FinishedView({ state }: { state: BoardState }) {
           {/* Full results — the podium only shows the top 3; ranks 4+ still
               matter to a class projecting this on the wall. */}
           <div className="stack gap-3 finish-results">
-            <p className="eyebrow">{no.host.standings}</p>
             <div className="card finish-table-card">
+              <p className="eyebrow finish-eyebrow">{no.host.standings}</p>
               <StandingsTable standings={standings} teamById={teamById} />
             </div>
             {nonPlayCount > 0 && (
