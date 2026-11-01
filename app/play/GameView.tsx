@@ -30,8 +30,9 @@ import { useActiveTab } from "@/lib/client/useActiveTab";
 import { useTabHidden } from "@/lib/client/useTabHidden";
 import type { StoredPlayer } from "@/lib/client/identity";
 import { Confetti, initials } from "@/lib/client/Confetti";
-import { CapturedPieces } from "@/lib/client/CapturedPieces";
-import { ChessClock } from "@/lib/client/ChessClock";
+import { GameLayout } from "@/lib/client/GameLayout";
+import { PlayerBar } from "@/lib/client/PlayerBar";
+import { highlightStyles } from "@/lib/client/boardOptions";
 import { RoundTimer } from "@/lib/client/RoundTimer";
 import { sound } from "@/lib/client/sound";
 import { SoundToggle } from "@/lib/client/SoundToggle";
@@ -155,20 +156,16 @@ function NoticeSlot({
   const meFlagged = status === "live" && myClockMs !== null && myClockMs <= 0;
 
   return (
-    <div className="notice-slot" style={ended ? { visibility: "hidden" } : undefined}>
+    <div className={`notice-slot${ended ? " is-hidden" : ""}`}>
       {meFlagged ? (
-        <div className="banner banner-error" style={{ width: "100%" }} role="status" aria-live="polite">
+        <div className="banner banner-error" role="status" aria-live="polite">
           <span className="banner-line"><Icon name="timer" size={16} /> {no.player.myTimeOut}</span>
         </div>
       ) : oppFlagged ? (
-        <div
-          className="banner banner-turn"
-          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}
-        >
+        <div className="banner banner-turn banner-action">
           <span className="banner-line">{no.player.oppOutOfTime}</span>
           <button
             className="btn btn-primary"
-            style={{ flexShrink: 0 }}
             disabled={acting}
             onClick={onClaim}
           >
@@ -176,102 +173,20 @@ function NoticeSlot({
           </button>
         </div>
       ) : drawSent ? (
-        <div className="banner banner-wait" style={{ width: "100%" }} role="status" aria-live="polite">
+        <div className="banner banner-wait" role="status" aria-live="polite">
           <span className="banner-line">½ {no.player.drawSent}</span>
         </div>
       ) : incomingDraw && !drawDialogOpen ? (
         // The offer's dialog was dismissed (Esc/backdrop) without an answer —
         // it is still pending (L3/notice-slot rule: never lose track of it),
         // so this is the way back to it.
-        <div
-          className="banner banner-wait"
-          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}
-        >
+        <div className="banner banner-wait banner-action">
           <span className="banner-line">½ {no.player.drawOfferedByOpponent}</span>
-          <button className="btn btn-ghost" style={{ flexShrink: 0 }} onClick={onReopenDraw}>
+          <button className="btn btn-ghost" onClick={onReopenDraw}>
             {no.player.answerDrawOffer}
           </button>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-/** A player's side panel (avatar, name, colour, captured pieces) — sits beside
- * the board on wide screens and stacks above/below it on narrow ones. */
-function ColorChip({ color, label }: { color: "white" | "black"; label: string }) {
-  return (
-    <span className={`color-chip color-chip-${color}`}>
-      <span className="color-chip-glyph">{color === "white" ? "♔" : "♚"}</span>
-      {label}
-    </span>
-  );
-}
-
-function SidePanel({
-  name,
-  color,
-  colorLabel,
-  fen,
-  capSide,
-  isMe,
-  active,
-  baselineFen,
-  clock,
-}: {
-  name: string;
-  color: "white" | "black";
-  colorLabel: string;
-  fen: string;
-  capSide: "white" | "black";
-  isMe: boolean;
-  active: boolean;
-  baselineFen?: string;
-  clock?: { ms: number; at: number; running: boolean } | null;
-}) {
-  return (
-    <div className={`card player-card player-card-${color}`} style={{ padding: 15 }}>
-      <div className="row" style={{ gap: 10 }}>
-        <span
-          className="avatar-lg"
-          style={
-            isMe
-              ? undefined
-              : {
-                  background: "linear-gradient(180deg, var(--ink-soft), var(--btn-end))",
-                  color: "var(--txt)",
-                  border: "1px solid var(--ink-line-strong)",
-                }
-          }
-        >
-          {initials(name)}
-        </span>
-        <div style={{ lineHeight: 1.3, minWidth: 0, flex: 1 }}>
-          <b>{name}</b>
-          <div style={{ marginTop: 3 }}>
-            <ColorChip color={color} label={colorLabel} />
-          </div>
-        </div>
-        {clock && <ChessClock ms={clock.ms} at={clock.at} running={clock.running} />}
-        {/* Always mounted, reserved 9x9 — toggling `active` only changes
-            visibility/animation, never removes the element, so its own
-            width/gap can't come and go and nudge the row (L2). */}
-        <span
-          style={{
-            width: 9,
-            height: 9,
-            flexShrink: 0,
-            borderRadius: "50%",
-            background: "var(--turn)",
-            visibility: active ? "visible" : "hidden",
-            boxShadow: "0 0 0 0 color-mix(in srgb, var(--turn) 70%, transparent)",
-            animation: active ? "ping 1.6s var(--ease-out) infinite" : "none",
-          }}
-        />
-      </div>
-      <div style={{ marginTop: 8 }}>
-        <CapturedPieces fen={fen} side={capSide} baselineFen={baselineFen} />
-      </div>
     </div>
   );
 }
@@ -917,25 +832,14 @@ export const GameView = memo(function GameView({
     status,
   ].join("|");
   const squareStyles = useMemo(() => {
-    const styles: Record<string, React.CSSProperties> = {};
-    if (lastFrom && lastTo) {
-      const hl = { background: "rgba(235,184,75,0.35)" };
-      styles[lastFrom] = { ...hl };
-      styles[lastTo] = { ...hl };
-    }
-    if (selected) {
-      styles[selected] = { background: "rgba(86,192,106,0.45)" };
-    }
-    for (const sq of legal) {
-      styles[sq] = {
-        ...(styles[sq] ?? {}),
-        backgroundImage:
-          "radial-gradient(circle, rgba(86,192,106,0.7) 22%, transparent 24%)",
-      };
-    }
+    const styles = highlightStyles({
+      last: lastFrom && lastTo ? { from: lastFrom, to: lastTo } : null,
+      selected,
+      legal,
+    });
     // Queued pre-move — distinct orange so it reads differently from a real move.
     if (preFrom && preTo && status === "live") {
-      const pm = { background: "rgba(235,140,60,0.55)" };
+      const pm = { background: "var(--board-premove)" };
       styles[preFrom] = { ...pm };
       styles[preTo] = { ...pm };
     }
@@ -949,10 +853,9 @@ export const GameView = memo(function GameView({
     return (
       <main className="center-screen" data-testid="passive-tab">
         <div
-          className="card card-narrow stack text-center"
-          style={{ alignItems: "center", gap: 12 }}
+          className="card card-narrow stack text-center result-stack"
         >
-          <div style={{ fontSize: 40 }}>♟</div>
+          <div className="fs-display-glyph">♟</div>
           <h2>{no.player.otherTabTitle}</h2>
           <p className="muted">{no.player.otherTabBody}</p>
           <button className="btn btn-primary btn-lg" onClick={claimTab}>
@@ -1012,79 +915,97 @@ export const GameView = memo(function GameView({
 
   const oppColor: "white" | "black" = myColor === "white" ? "black" : "white";
 
-  return (
-    <main className="center-screen is-game">
-      {iWon && <Confetti count={120} />}
-      {syncFailures >= 1 && (
-        // Fixed-position, out of document flow: a background sync hiccup must
-        // never move the board or block a drag-drop in progress. Escalates to
-        // an explicit retry only once it's been failing for a while (>=3) —
-        // one blip shouldn't invite a button-mash.
-        <div
-          className="banner banner-wait"
-          style={{
-            position: "fixed",
-            top: 16,
-            left: 20,
-            zIndex: 40,
-            padding: "6px 12px",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-          role="status"
-          aria-live="polite"
-        >
-          {no.player.reconnecting}
-          {syncFailures >= 3 && (
-            <button className="btn btn-ghost" style={{ padding: "2px 10px" }} onClick={() => safeLoad()}>
-              {no.player.refreshNow}
-            </button>
-          )}
-        </div>
-      )}
-      {/* L3: a true toast — fixed/out of flow (see .toast in globals.css) so a
-          transient error message can never change .center-screen's height and
-          re-centre (or on /solo, jump) the board underneath it. Auto-clears
-          after 2.2s (see `flash`). */}
-      {toast && (
-        <div className="banner banner-error toast" data-testid="toast" role="status" aria-live="polite">
-          {toast}
-        </div>
-      )}
-      <div className="game-grid">
-        {/* opponent — left on wide, top on narrow */}
-        <div className="game-side panel-opp">
-          <SidePanel
-            name={opponent?.name ?? "?"}
-            color={oppColor}
-            colorLabel={oppColor === "white" ? no.player.white : no.player.black}
-            fen={fen}
-            capSide={oppColor}
-            isMe={false}
-            active={!ended && !isMyTurn}
-            baselineFen={variantFen}
-            clock={
-              clock
-                ? {
-                    ms: oppTurnLetter === "w" ? clock.whiteMs : clock.blackMs,
-                    at: clock.at,
-                    running: clock.running && clock.turn === oppTurnLetter && !ended,
-                  }
-                : null
-            }
-          />
-        </div>
+  const sideClock = (letter: Turn) =>
+    clock
+      ? {
+          ms: letter === "w" ? clock.whiteMs : clock.blackMs,
+          at: clock.at,
+          running: clock.running && clock.turn === letter && !ended,
+        }
+      : null;
 
-        {/* centre: timer + turn banner + board + actions */}
-        <div className="game-center">
+  return (
+    <GameLayout
+      rich
+      boardLabel={isMyTurn ? `${no.player.yourTurn} – ${no.player.boardLabel}` : no.player.boardLabel}
+      boardOverlay={<ReactionOverlay ref={reactionRef} />}
+      status={
+        // One fixed banner slot, ALWAYS mounted (L2: visibility:hidden at
+        // game end, never unmounted) so nothing can change height mid-game:
+        // shows your turn, the opponent's turn, or — when you've queued a
+        // pre-move on the opponent's turn — the pre-move indicator.
+        // .banner-line clips with an ellipsis instead of wrapping.
+        <div className={`turn-slot${ended ? " is-hidden" : ""}`}>
+          <div
+            className={`banner ${isMyTurn ? "banner-turn" : "banner-wait"}${!isMyTurn && preMove ? " banner-premove" : ""}`}
+            data-testid="turn-banner"
+            role="status"
+            aria-live="polite"
+          >
+            <span
+              className="banner-line"
+              title={!isMyTurn && preMove ? no.player.premoveSetTitle : undefined}
+            >
+              {isMyTurn
+                ? `♟ ${no.player.yourTurn}`
+                : preMove
+                  ? <><Icon name="fastForward" size={16} /> {no.player.premoveSet}</>
+                  : no.player.opponentTurn}
+            </span>
+          </div>
+        </div>
+      }
+      top={
+        <PlayerBar
+          name={opponent?.name ?? "?"}
+          color={oppColor}
+          colorLabel={oppColor === "white" ? no.player.white : no.player.black}
+          avatar={initials(opponent?.name ?? "?")}
+          fen={fen}
+          baselineFen={variantFen}
+          active={!ended && !isMyTurn}
+          clock={sideClock(oppTurnLetter)}
+        />
+      }
+      bottom={
+        <PlayerBar
+          name={me.displayName}
+          color={myColor}
+          colorLabel={`${no.player.youAre} ${myColor === "white" ? no.player.white : no.player.black}`}
+          avatar={initials(me.displayName)}
+          me
+          fen={fen}
+          baselineFen={variantFen}
+          active={!ended && isMyTurn}
+          clock={sideClock(myTurnLetter)}
+        />
+      }
+      board={
+        /* L5: memo'd wrapper — same board, same handlers, but it only
+           re-renders when something it DISPLAYS changed. See
+           lib/client/PlayBoard.tsx for why ignoring the handlers'
+           identity is safe (they are routed through refs, and every
+           state they read is a function of the props compared here). */
+        <PlayBoard
+          id="play-board"
+          fen={fen}
+          orientation={myColor}
+          // Draggable on my turn AND the opponent's (to queue a pre-move).
+          allowDragging={!ended}
+          squareStyles={squareStyles}
+          stylesKey={stylesKey}
+          onDrop={onDrop}
+          onSquareClick={onSquareClick}
+        />
+      }
+      extra={
+        <>
           {timer && timer.startedAt && (
             // Kept mounted (visibility, not unmount) once the round timer has
-            // ever been present, so its slot's height never disappears out
-            // from under the banner/board when the game ends (L2). Never
-            // rendered at all when no timer is configured for this round —
-            // that's a fixed property of the round, not a mid-game change.
-            <div style={ended ? { visibility: "hidden" } : undefined}>
+            // ever been present, so its slot's height never disappears when
+            // the game ends (L2). Never rendered at all when no timer is
+            // configured for this round — a fixed property of the round.
+            <div className={ended ? "is-hidden" : undefined}>
               <RoundTimer
                 startedAt={timer.startedAt}
                 durationSec={timer.durationSec}
@@ -1093,71 +1014,11 @@ export const GameView = memo(function GameView({
               />
             </div>
           )}
-
-          {/* One fixed banner slot, ALWAYS mounted (L2: visibility:hidden at
-              game end, never unmounted) so nothing above .board-shell can
-              change height mid-game: shows your turn, the opponent's turn, or
-              — when you've queued a pre-move on the opponent's turn — the
-              pre-move indicator. .turn-slot reserves one line of .banner
-              (~57px, see globals.css) and .banner-line clips with an ellipsis
-              instead of wrapping to a second line. */}
-          <div className="turn-slot" style={ended ? { visibility: "hidden" } : undefined}>
-            <div
-              className={`banner ${isMyTurn ? "banner-turn" : "banner-wait"}`}
-              data-testid="turn-banner"
-              style={{
-                width: "100%",
-                ...(!isMyTurn && preMove ? { borderColor: "rgba(235,140,60,0.6)" } : {}),
-              }}
-              role="status"
-              aria-live="polite"
-            >
-              <span
-                className="banner-line"
-                title={!isMyTurn && preMove ? no.player.premoveSetTitle : undefined}
-              >
-                {isMyTurn
-                  ? `♟ ${no.player.yourTurn}`
-                  : preMove
-                    ? <><Icon name="fastForward" size={16} /> {no.player.premoveSet}</>
-                    : no.player.opponentTurn}
-              </span>
-            </div>
-          </div>
-
-          <div className="board-frame">
-            <div
-              className="board-shell"
-              data-testid="board-shell"
-              role="group"
-              aria-label={isMyTurn ? `${no.player.yourTurn} – ${no.player.boardLabel}` : no.player.boardLabel}
-            >
-              {/* L5: memo'd wrapper — same board, same handlers, but it only
-                  re-renders when something it DISPLAYS changed. See
-                  lib/client/PlayBoard.tsx for why ignoring the handlers'
-                  identity is safe (they are routed through refs, and every
-                  state they read is a function of the props compared here). */}
-              <PlayBoard
-                id="play-board"
-                fen={fen}
-                orientation={myColor}
-                // Draggable on my turn AND the opponent's (to queue a pre-move).
-                allowDragging={!ended}
-                squareStyles={squareStyles}
-                stylesKey={stylesKey}
-                onDrop={onDrop}
-                onSquareClick={onSquareClick}
-              />
-            </div>
-            <ReactionOverlay ref={reactionRef} />
-          </div>
-
           {/* L3: kept mounted (visibility, not unmount) once reactions are
-              enabled for this round, so its removal at game end — which sits
-              below the board but above the result overlay's fade-in — can't
-              read as a flash beneath the overlay. */}
+              enabled for this round, so its removal at game end can't read as
+              a flash beneath the result overlay. */}
           {reactionsEnabled && (
-            <div style={ended ? { visibility: "hidden" } : undefined}>
+            <div className={ended ? "is-hidden" : undefined}>
               <ReactionBar
                 onSend={(emoji) => {
                   reactionRef.current?.add(emoji); // self-broadcast off → show mine locally
@@ -1166,31 +1027,6 @@ export const GameView = memo(function GameView({
               />
             </div>
           )}
-
-          {/* L3: same reasoning — always mounted, visibility:hidden (not
-              unmounted) at game end. */}
-          <div className="row" style={ended ? { visibility: "hidden" } : undefined}>
-            <button
-              className="btn btn-ghost"
-              disabled={pending || drawSent || acting || ended}
-              onClick={() =>
-                runMeta(
-                  api.draw(gameId, me.playerId, me.resumeCode, "offer"),
-                  () => setDrawSent(true),
-                )
-              }
-            >
-              ½ {no.player.offerDraw}
-            </button>
-            <button
-              className="btn btn-danger"
-              disabled={pending || acting || ended}
-              onClick={() => setConfirmResign(true)}
-            >
-              {no.player.resign}
-            </button>
-          </div>
-
           <NoticeSlot
             clock={clock}
             status={status}
@@ -1202,37 +1038,67 @@ export const GameView = memo(function GameView({
             onClaim={() => runMeta(api.claimTime(gameId, me.playerId, me.resumeCode))}
             onReopenDraw={() => setDrawDialogOpen(true)}
           />
-
-          {/* Always mounted (L2) — MoveList already renders a "–" placeholder
-              for an empty list, and .movelist now has a fixed height, so it's
-              the same block from the very first render, not something that
-              pops in and grows over the first ~6 moves. */}
-          <MoveList sans={sans} />
-        </div>
-
-        {/* me — right on wide, bottom on narrow */}
-        <div className="game-side panel-me">
-          <SidePanel
-            name={me.displayName}
-            color={myColor}
-            colorLabel={`${no.player.youAre} ${myColor === "white" ? no.player.white : no.player.black}`}
-            fen={fen}
-            capSide={myColor}
-            isMe
-            active={!ended && isMyTurn}
-            baselineFen={variantFen}
-            clock={
-              clock
-                ? {
-                    ms: myTurnLetter === "w" ? clock.whiteMs : clock.blackMs,
-                    at: clock.at,
-                    running: clock.running && clock.turn === myTurnLetter && !ended,
-                  }
-                : null
+        </>
+      }
+      // Always mounted (L2) — MoveList renders a "–" placeholder for an empty
+      // list and its slot has a fixed size, so it's the same block from the
+      // very first render.
+      moves={<MoveList sans={sans} />}
+      actions={
+        // L3: always mounted, visibility:hidden (not unmounted) at game end.
+        <>
+          <button
+            className={`btn btn-ghost${ended ? " is-hidden" : ""}`}
+            disabled={pending || drawSent || acting || ended}
+            onClick={() =>
+              runMeta(
+                api.draw(gameId, me.playerId, me.resumeCode, "offer"),
+                () => setDrawSent(true),
+              )
             }
-          />
+          >
+            ½ {no.player.offerDraw}
+          </button>
+          <button
+            className={`btn btn-danger${ended ? " is-hidden" : ""}`}
+            disabled={pending || acting || ended}
+            onClick={() => setConfirmResign(true)}
+          >
+            {no.player.resign}
+          </button>
+        </>
+      }
+      tools={
+        <>
+          <SoundToggle />
+          <FullscreenToggle />
+          <NotifyToggle />
+        </>
+      }
+    >
+      {iWon && <Confetti count={120} />}
+      {syncFailures >= 1 && (
+        // Fixed-position, out of document flow: a background sync hiccup must
+        // never move the board or block a drag-drop in progress. Escalates to
+        // an explicit retry only once it's been failing for a while (>=3) —
+        // one blip shouldn't invite a button-mash.
+        <div className="banner banner-wait sync-badge" role="status" aria-live="polite">
+          {no.player.reconnecting}
+          {syncFailures >= 3 && (
+            <button className="btn btn-ghost" onClick={() => safeLoad()}>
+              {no.player.refreshNow}
+            </button>
+          )}
         </div>
-      </div>
+      )}
+      {/* L3: a true toast — fixed/out of flow (see .toast in globals.css) so a
+          transient error message can never change the layout's height and
+          move the board underneath it. Auto-clears after 2.2s (see `flash`). */}
+      {toast && (
+        <div className="banner banner-error toast" data-testid="toast" role="status" aria-live="polite">
+          {toast}
+        </div>
+      )}
 
       {ended && (
         <div
@@ -1247,7 +1113,7 @@ export const GameView = memo(function GameView({
           }
         >
           {replayPgn !== null ? (
-            <div className="result-card" style={{ maxWidth: 680, width: "100%" }}>
+            <div className="result-card result-card-wide">
               <ReplayBoard
                 pgn={replayPgn}
                 orientation={myColor}
@@ -1260,14 +1126,13 @@ export const GameView = memo(function GameView({
             <ReviewView me={me} gameId={gameId} onClose={() => setShowReview(false)} />
           ) : (
             <div
-              className="result-card stack"
+              className="result-card stack result-stack"
               data-testid="result-card"
-              style={{ alignItems: "center", gap: 12 }}
             >
               <div className="result-emoji">
                 <Icon name={status === "draw" ? "draw" : iWon ? "party" : "sad"} size={84} strokeWidth={1.4} />
               </div>
-              <h1 id={resultHeadingId} style={{ fontSize: "clamp(36px,9vw,64px)" }}>
+              <h1 id={resultHeadingId} className="result-title">
                 {resultText}
               </h1>
               <p className="muted">
@@ -1279,8 +1144,7 @@ export const GameView = memo(function GameView({
               </p>
               <button
                 ref={resultNextBtnRef}
-                className="btn btn-primary btn-lg"
-                style={{ marginTop: 6 }}
+                className="btn btn-primary btn-lg mt-2"
                 onClick={onFinished}
               >
                 {no.common.next} →
@@ -1362,9 +1226,6 @@ export const GameView = memo(function GameView({
         />
       )}
 
-      <SoundToggle />
-      <FullscreenToggle />
-      <NotifyToggle />
-    </main>
+    </GameLayout>
   );
 });

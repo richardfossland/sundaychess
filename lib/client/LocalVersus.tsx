@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { CSSProperties } from "react";
 import dynamic from "next/dynamic";
 import { Chess } from "chess.js";
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
@@ -11,7 +10,10 @@ import { PromotionPicker } from "@/lib/client/PromotionPicker";
 import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { Confetti } from "@/lib/client/Confetti";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
-import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
+import { BOARD_BASE_OPTIONS, highlightStyles } from "@/lib/client/boardOptions";
+import { GameLayout } from "@/lib/client/GameLayout";
+import { MoveList } from "@/lib/client/MoveList";
+import { PlayerBar } from "@/lib/client/PlayerBar";
 import { useReducedMotion } from "@/lib/client/useReducedMotion";
 import { SoundToggle } from "@/lib/client/SoundToggle";
 import { sound } from "@/lib/client/sound";
@@ -38,6 +40,7 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
   // ref during render) so "Angre"/"Nytt parti" can safely gate on it in JSX.
   // Synced everywhere `refresh()` is (see there).
   const [historyLen, setHistoryLen] = useState(0);
+  const [sans, setSans] = useState<string[]>([]); // for the move list (state, not a ref read in render)
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [legal, setLegal] = useState<string[]>([]);
@@ -53,7 +56,9 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
   const turn: Turn = fen.split(" ")[1] === "b" ? "b" : "w";
   const refresh = () => {
     setFen(chess.current.fen());
-    setHistoryLen(chess.current.history().length);
+    const h = chess.current.history();
+    setHistoryLen(h.length);
+    setSans(h);
   };
 
   function settle(): boolean {
@@ -135,19 +140,7 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
     }
   }
 
-  const squareStyles: Record<string, CSSProperties> = {};
-  if (lastMove) {
-    squareStyles[lastMove.from] = { background: "rgba(235,184,75,0.35)" };
-    squareStyles[lastMove.to] = { background: "rgba(235,184,75,0.35)" };
-  }
-  if (selected) squareStyles[selected] = { background: "rgba(86,192,106,0.45)" };
-  for (const sq of legal) {
-    squareStyles[sq] = {
-      ...(squareStyles[sq] ?? {}),
-      backgroundImage:
-        "radial-gradient(circle, rgba(86,192,106,0.7) 22%, transparent 24%)",
-    };
-  }
+  const squareStyles = highlightStyles({ last: lastMove, selected, legal });
 
   const outText =
     outcome === "white"
@@ -156,41 +149,61 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
         ? no.versus.blackWon
         : no.versus.draw;
 
+  // The board rotates to the side to move, so "bottom" is always the player to
+  // move and "top" the one waiting.
+  const mover: "white" | "black" = turn === "w" ? "white" : "black";
+  const waiter: "white" | "black" = turn === "w" ? "black" : "white";
+  const name = (c: "white" | "black") => (c === "white" ? no.versus.whiteName : no.versus.blackName);
+
   return (
-    <main className="center-screen is-game">
-      {outcome && outcome !== "draw" && <Confetti count={120} />}
-      <div className="stack" style={{ alignItems: "center", width: "100%", maxWidth: 600, gap: 16 }}>
-        {!outcome && (
-          <div
-            className="banner banner-turn"
-            style={{ width: "min(92vw,560px)" }}
-            role="status"
-            aria-live="polite"
-          >
+    <GameLayout
+      status={
+        !outcome ? (
+          <div className="banner banner-turn" role="status" aria-live="polite">
             {turn === "w" ? `♔ ${no.versus.whiteTurn}` : `♚ ${no.versus.blackTurn}`}
           </div>
-        )}
-
-        <div className="board-frame">
-          <div className="board-shell">
-            <Chessboard
-              options={{
-                ...BOARD_BASE_OPTIONS,
-                position: fen,
-                // rotate to the side to move — pass the device to that player
-                boardOrientation: turn === "w" ? "white" : "black",
-                allowDragging: !outcome,
-                showAnimations: !reducedMotion,
-                onPieceDrop: onDrop,
-                onSquareClick,
-                squareStyles,
-                id: "versus-board",
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="row">
+        ) : undefined
+      }
+      top={
+        <PlayerBar
+          name={name(waiter)}
+          color={waiter}
+          colorLabel=""
+          avatar={waiter === "white" ? "♔" : "♚"}
+          fen={fen}
+          active={false}
+        />
+      }
+      bottom={
+        <PlayerBar
+          name={name(mover)}
+          color={mover}
+          colorLabel=""
+          avatar={mover === "white" ? "♔" : "♚"}
+          me
+          fen={fen}
+          active={!outcome}
+        />
+      }
+      board={
+        <Chessboard
+          options={{
+            ...BOARD_BASE_OPTIONS,
+            position: fen,
+            // rotate to the side to move — pass the device to that player
+            boardOrientation: mover,
+            allowDragging: !outcome,
+            showAnimations: !reducedMotion,
+            onPieceDrop: onDrop,
+            onSquareClick,
+            squareStyles,
+            id: "versus-board",
+          }}
+        />
+      }
+      moves={<MoveList sans={sans} />}
+      actions={
+        <>
           <button
             className="btn btn-ghost"
             onClick={undo}
@@ -207,13 +220,16 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
           <button className="btn btn-ghost" onClick={onExit}>
             {no.versus.back}
           </button>
-        </div>
-      </div>
+        </>
+      }
+      tools={<SoundToggle />}
+    >
+      {outcome && outcome !== "draw" && <Confetti count={120} />}
 
       {outcome && (
         <div className="result-overlay">
           {replayPgn !== null ? (
-            <div className="result-card" style={{ maxWidth: 680, width: "100%" }}>
+            <div className="result-card result-card-wide">
               <ReplayBoard
                 pgn={replayPgn}
                 orientation="white"
@@ -223,10 +239,10 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
               />
             </div>
           ) : (
-            <div className="result-card stack" style={{ alignItems: "center", gap: 12 }}>
+            <div className="result-card stack result-stack">
               <div className="result-emoji"><Icon name={outcome === "draw" ? "draw" : "party"} size={84} strokeWidth={1.4} /></div>
-              <h1 style={{ fontSize: "clamp(34px,8vw,60px)" }}>{outText}</h1>
-              <div className="row" style={{ marginTop: 6 }}>
+              <h1 className="result-title">{outText}</h1>
+              <div className="row mt-2">
                 <button className="btn btn-primary btn-lg" onClick={newGame}>
                   {no.versus.newGame}
                 </button>
@@ -269,7 +285,6 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
         />
       )}
 
-      <SoundToggle />
-    </main>
+    </GameLayout>
   );
 }

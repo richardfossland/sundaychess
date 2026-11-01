@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Chess } from "chess.js";
-import { BOARD_BASE_OPTIONS } from "@/lib/client/boardOptions";
+import { BOARD_BASE_OPTIONS, highlightStyles } from "@/lib/client/boardOptions";
 import { useReducedMotion } from "@/lib/client/useReducedMotion";
 import { no } from "@/lib/locale/no";
 import { Icon } from "@/lib/client/Icon";
@@ -96,7 +96,7 @@ export function ReplayBoard({
 
   if (!plies) {
     return (
-      <div className="stack text-center" style={{ alignItems: "center", gap: 12 }}>
+      <div className="stack text-center result-stack">
         <p className="muted">{no.replay.empty}</p>
         <button className="btn btn-ghost" onClick={onClose}>
           <Icon name="back" size={16} /> {no.common.back}
@@ -107,22 +107,18 @@ export function ReplayBoard({
 
   const fen = idx === 0 ? parsed!.startFen : plies[idx - 1].fen;
   const last = idx > 0 ? plies[idx - 1] : null;
-  const squareStyles: Record<string, React.CSSProperties> = {};
-  if (last) {
-    squareStyles[last.from] = { background: "rgba(235,184,75,0.35)" };
-    squareStyles[last.to] = { background: "rgba(235,184,75,0.35)" };
-  }
+  const squareStyles = highlightStyles({ last });
 
   return (
-    <div className="stack" style={{ alignItems: "center", gap: 12, width: "100%" }}>
-      <div className="spread" style={{ width: "100%", maxWidth: 560 }}>
+    <div className="stack result-stack replay">
+      <div className="spread replay-head">
         <b>{whiteName}</b>
         <span className="muted">{no.player.vs}</span>
         <b>{blackName}</b>
       </div>
 
       <div className="board-frame">
-        <div className="board-shell" style={{ width: "min(94vw, 62vh, 560px)" }}>
+        <div className="board-shell board-shell-replay">
           <Chessboard
             options={{
               ...BOARD_BASE_OPTIONS,
@@ -138,7 +134,7 @@ export function ReplayBoard({
         </div>
       </div>
 
-      <div className="row" style={{ alignItems: "center", gap: 8 }}>
+      <div className="row gap-2">
         <button className="btn" onClick={() => setIdx(0)} disabled={idx === 0} aria-label="til start">
           <Icon name="skipBack" size={16} />
         </button>
@@ -151,8 +147,7 @@ export function ReplayBoard({
           <Icon name="backStep" size={16} />
         </button>
         <button
-          className="btn btn-primary"
-          style={{ minWidth: 110 }}
+          className="btn btn-primary replay-play"
           onClick={() => {
             if (idx >= total) setIdx(0);
             setPlaying((p) => !p);
@@ -173,12 +168,12 @@ export function ReplayBoard({
         </button>
       </div>
 
-      <p className="muted mono" style={{ fontSize: 14 }}>
+      <p className="muted mono fs-sm">
         {no.replay.move} {idx} / {total}
         {last && (
           <>
             {" · "}
-            <b style={{ color: "var(--gold)" }}>{last.san}</b>
+            <b className="text-gold">{last.san}</b>
           </>
         )}
       </p>

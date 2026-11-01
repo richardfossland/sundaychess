@@ -62,7 +62,15 @@ export const no = {
     updateHint: "Ny versjon er klar. Last inn når ingen runde pågår.",
   },
 
+  board: {
+    theme: "Brettfarger",
+    green: "Grønn",
+    wood: "Tre",
+    gold: "Gull",
+  },
   versus: {
+    whiteName: "Hvit",
+    blackName: "Svart",
     title: "Spill mot hverandre",
     subtitle: "To spillere – uten en hel turnering",
     sameScreen: "Samme skjerm",
@@ -370,7 +378,7 @@ export const no = {
     playoffSizeStep: "Antall i sluttspill",
     playoffSizeHint: "Topp N går videre til utslagsrunder",
     timerStep: "Rundetimer",
-    timerHint: "Nedtellingen vises på tavla og på elevenes skjermer.",
+    timerHint: "Nedtellingen vises på storskjermen og på elevenes skjermer.",
     timerOff: "Av",
     min: "min",
     reactionsStep: "Emoji-reaksjoner?",
@@ -509,7 +517,7 @@ export const no = {
     waitingBye:
       "Du har frirunde denne runden og får 1 poeng gratis. Slapp av til neste runde.",
     outOfTournament:
-      "Du er ute av turneringen — godt spilt! Si fra til læreren hvis dette er feil, så kan hun ta deg inn igjen fra tavla.",
+      "Du er ute av turneringen — godt spilt! Si fra til læreren hvis dette er feil, så kan hun ta deg inn igjen fra storskjermen.",
     tournamentFinished: "Turneringen er ferdig",
     showMyCode: "Vis koden min",
     // Shared classroom device: hand the iPad to the next student without

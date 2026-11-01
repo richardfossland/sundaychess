@@ -44,29 +44,28 @@ export function ReviewView({
   }, [gameId, me.playerId, me.resumeCode, attempt]);
 
   return (
-    <div className="card stack" style={{ padding: 18, width: "100%", maxWidth: 460, gap: 14 }}>
-      <div className="spread" style={{ alignItems: "center" }}>
-        <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}>{no.review.title}</p>
+    <div className="card stack review-card">
+      <div className="spread">
+        <p className="eyebrow fs-xs">{no.review.title}</p>
         {data && (
-          <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>
+          <span className="muted fs-xs">
             {data.aiNarrated && <Icon name="sparkle" size={13} />} {data.aiNarrated ? no.review.aiBadge : no.review.templateBadge}
           </span>
         )}
       </div>
 
       {!data && !error && (
-        <div className="row" style={{ alignItems: "center", gap: 10 }}>
+        <div className="row">
           <span className="spin" />
           <span className="muted">{no.review.loading}</span>
         </div>
       )}
 
       {error && (
-        <div className="banner banner-error stack" style={{ gap: 8 }} role="alert">
+        <div className="banner banner-error stack gap-2" role="alert">
           <span>{no.review.error}</span>
           <button
-            className="btn btn-ghost"
-            style={{ alignSelf: "flex-start" }}
+            className="btn btn-ghost self-start"
             onClick={() => setAttempt((n) => n + 1)}
           >
             {no.common.retry}
@@ -76,12 +75,9 @@ export function ReviewView({
 
       {data && (
         <>
-          <p style={{ fontSize: 15, lineHeight: 1.5 }}>{data.summary}</p>
+          <p className="review-summary">{data.summary}</p>
 
-          <div
-            className="row"
-            style={{ flexWrap: "wrap", gap: 8, justifyContent: "space-between" }}
-          >
+          <div className="row review-stats">
             <Stat label={no.review.accuracy} value={`${data.facts.accuracy}%`} highlight />
             <Stat label={no.review.good} value={data.facts.goodOrBest} />
             <Stat label={no.review.inaccuracies} value={data.facts.inaccuracies} />
@@ -90,9 +86,9 @@ export function ReviewView({
           </div>
 
           {data.facts.worstMove && (
-            <p className="muted" style={{ fontSize: 13 }}>
+            <p className="muted fs-xs">
               {no.review.worstMove}:{" "}
-              <b style={{ color: "var(--gold)" }}>
+              <b className="text-gold">
                 {data.facts.worstMove.moveNumber}. {data.facts.worstMove.san}
               </b>
             </p>
@@ -117,17 +113,11 @@ function Stat({
   highlight?: boolean;
 }) {
   return (
-    <div className="stack text-center" style={{ gap: 2, minWidth: 64 }}>
-      <span
-        style={{
-          fontSize: 20,
-          fontWeight: 700,
-          color: highlight ? "var(--gold)" : undefined,
-        }}
-      >
+    <div className="stack text-center stat">
+      <span className={`stat-value${highlight ? " text-gold" : ""}`}>
         {value}
       </span>
-      <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>
+      <span className="muted fs-xs">
         {label}
       </span>
     </div>

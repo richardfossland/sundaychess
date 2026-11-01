@@ -55,6 +55,7 @@ import {
   Circle,
   Star,
   Flame,
+  Palette,
   type LucideProps,
 } from "lucide-react";
 
@@ -123,6 +124,7 @@ const icons = {
   circle: Circle,
   star: Star,
   flame: Flame,
+  palette: Palette,
 } as const;
 
 export type IconName = keyof typeof icons;
