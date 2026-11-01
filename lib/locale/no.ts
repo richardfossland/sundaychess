@@ -355,6 +355,11 @@ export const no = {
   wizard: {
     step: "Steg",
     of: "av",
+    // Navn på stegene i /arranger-veiviseren (Stepper).
+    stepName: "Navn",
+    stepFormat: "Form",
+    stepRules: "Regler",
+    stepExtras: "Lag og reaksjoner",
     titleStep: "Tittel",
     titleHint: "Valgfritt — f.eks. «7A vårturnering»",
     titlePlaceholder: "Turneringstittel",
