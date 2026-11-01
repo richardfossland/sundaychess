@@ -39,7 +39,7 @@ export const no = {
 
   landing: {
     teacher: "Jeg arrangerer",
-    teacherSub: "Lag en turnering og vis tavla",
+    teacherSub: "Lag en turnering og vis den på storskjermen",
     student: "Jeg spiller",
     studentSub: "Bli med med en PIN",
     versus: "Spill mot hverandre",
@@ -47,7 +47,7 @@ export const no = {
     howTitle: "Slik funker det",
     step1: "Lag turnering",
     step2: "Elevene skanner QR eller taster PIN",
-    step3: "Følg tavla",
+    step3: "Følg storskjermen",
     reassurance:
       "Gratis · ingen elevkontoer · funker på Chromebook og mobil · ~20 min",
   },
@@ -590,7 +590,7 @@ export const no = {
     // one who can actually undo this (app/api/game/reinstate/route.ts).
     removedTitle: "Du ble fjernet fra turneringen",
     removedBody:
-      "Arrangøren har tatt deg ut av denne turneringen. Si fra til læreren — hun kan ta deg inn igjen fra tavla.",
+      "Arrangøren har tatt deg ut av denne turneringen. Si fra til læreren — hun kan ta deg inn igjen.",
     // The button stays: it's the right move for joining a DIFFERENT, still-open
     // tournament — just not a way back into this one.
     rejoinNew: "Bli med i en annen turnering",
@@ -598,7 +598,7 @@ export const no = {
     // blocked (see the reinstate route's doc comment) — but the old copy
     // ("Turneringen har allerede startet.") was a dead end with no next step.
     alreadyStarted:
-      "Turneringen er i gang — si fra til læreren, så kan hun ta deg inn fra tavla.",
+      "Turneringen er i gang — si fra til læreren, så kan hun ta deg inn.",
     oppOutOfTime: "Motstanderens tid er ute!",
     claimWin: "Krev seier på tid",
     myTimeOut: "Tiden din er ute",
