@@ -357,7 +357,7 @@ export const no = {
     of: "av",
     // Navn på stegene i /arranger-veiviseren (Stepper).
     stepName: "Navn",
-    stepFormat: "Form",
+    stepFormat: "Format",
     stepRules: "Regler",
     stepExtras: "Lag og reaksjoner",
     titleStep: "Tittel",
