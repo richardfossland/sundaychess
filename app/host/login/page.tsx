@@ -85,7 +85,7 @@ export default function HostLoginPage() {
           </form>
         )}
 
-        <div className="text-center muted" style={{ fontSize: 12, margin: "4px 0" }}>
+        <div className="text-center muted" style={{ fontSize: "var(--fs-xs)", margin: "4px 0" }}>
           {no.hostAuth.or}
         </div>
 

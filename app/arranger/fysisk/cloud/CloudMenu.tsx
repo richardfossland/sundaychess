@@ -121,7 +121,7 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
                   <input type="radio" name="public-names" checked={names === "full"} onChange={() => setNames("full")} />
                   <span>{L.namesFull}</span>
                 </label>
-                <span className="muted" style={{ fontSize: 12 }}>{L.namesHelp}</span>
+                <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{L.namesHelp}</span>
               </fieldset>
               <button type="button" className="btn btn-primary" disabled={busy} onClick={publish}>
                 {busy ? L.publishing : L.publish}
@@ -150,15 +150,15 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
               </button>
               {showCode && meta && (
                 <div className="stack" style={{ gap: 2 }}>
-                  <span className="muted" style={{ fontSize: 12 }}>{L.codeLabel}</span>
+                  <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{L.codeLabel}</span>
                   <b data-testid="cloud-host-code" style={{ fontSize: 22, letterSpacing: 2 }}>{meta.hostCode}</b>
-                  <span className="muted" style={{ fontSize: 12 }}>{L.codeHelp}</span>
+                  <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{L.codeHelp}</span>
                 </div>
               )}
               <button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={unpublish}>{L.unpublish}</button>
             </>
           )}
-          {msg && <span role="status" className="muted" style={{ fontSize: 12 }}>{msg}</span>}
+          {msg && <span role="status" className="muted" style={{ fontSize: "var(--fs-xs)" }}>{msg}</span>}
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { resultSourceLabel, type BoardState, type PublicGame } from "@/lib/dto";
 import { api } from "@/lib/client/api";
@@ -17,14 +18,14 @@ import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { Icon } from "@/lib/client/Icon";
 import { effectiveHostCode, usePresentasjon } from "@/lib/client/storskjerm/usePresentasjon";
 
-function resultLabel(g: PublicGame, name: (id: string | null) => string): string {
+function resultLabel(g: PublicGame, name: (id: string | null) => string): ReactNode {
   switch (g.status) {
     case "live":
       return no.host.inProgress;
     case "white_win":
-      return `${name(g.whitePlayerId)} ✓`;
+      return <>{name(g.whitePlayerId)} <Icon name="check" size={14} /></>;
     case "black_win":
-      return `${name(g.blackPlayerId)} ✓`;
+      return <>{name(g.blackPlayerId)} <Icon name="check" size={14} /></>;
     case "draw":
       return no.host.draw;
     case "bye":
@@ -328,7 +329,7 @@ export function LeagueView({
                         <span className="team-dot" style={{ background: teamColor(r.team) }} />
                         {r.team}
                       </span>
-                      <span className="faint" style={{ fontSize: 12 }}>
+                      <span className="faint" style={{ fontSize: "var(--fs-xs)" }}>
                         {r.players} {no.teams.members}
                       </span>
                     </span>

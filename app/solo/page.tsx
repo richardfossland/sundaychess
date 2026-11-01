@@ -408,7 +408,7 @@ export default function Solo() {
                 setLevel(COACH[coachLevel].bot);
               }}
             >
-              {no.coach.modeCoach}
+              <Icon name="coach" size={16} /> {no.coach.modeCoach}
             </button>
           </div>
 
@@ -447,7 +447,7 @@ export default function Solo() {
                 ))}
               </div>
               {level === "adaptive" && (
-                <p className="faint" style={{ fontSize: 12, marginTop: 6 }}>
+                <p className="faint" style={{ fontSize: "var(--fs-xs)", marginTop: 6 }}>
                   {no.solo.adaptiveHint}
                   {` · ${no.solo.yourLevel}: ${rating.rating}`}
                 </p>
@@ -480,7 +480,7 @@ export default function Solo() {
                     }}
                   >
                     <b style={{ fontSize: 15 }}>{l.label}</b>
-                    <span className="faint" style={{ fontSize: 12, fontWeight: 400, lineHeight: 1.3 }}>
+                    <span className="faint" style={{ fontSize: "var(--fs-xs)", fontWeight: 400, lineHeight: 1.3 }}>
                       {l.sub}
                     </span>
                   </button>
@@ -493,7 +493,7 @@ export default function Solo() {
             {no.solo.start} →
           </button>
           <button className="btn btn-ghost btn-block" onClick={() => setShowLessons(true)}>
-            {no.coach.lessons}
+            <Icon name="lessons" size={16} /> {no.coach.lessons}
           </button>
           <Link href="/" className="btn btn-ghost btn-block">
             {no.solo.back}
@@ -583,6 +583,7 @@ export default function Solo() {
             role="status"
             aria-live="polite"
           >
+            <Icon name={coachTag === "blunder" ? "warn" : coachTag === "inaccuracy" ? "flag" : "thumbsUp"} size={16} />{" "}
             {coachTag === "blunder"
               ? no.coach.tagBlunder
               : coachTag === "inaccuracy"
@@ -595,7 +596,7 @@ export default function Solo() {
             <p>{no.coach.tagBlunder}</p>
             <div className="row">
               <button className="btn btn-primary grow" onClick={retryBlunder}>
-                {no.coach.retry}
+                <Icon name="retry" size={16} /> {no.coach.retry}
               </button>
               <button className="btn grow" onClick={keepBlunder}>
                 {no.coach.keep}
@@ -646,7 +647,7 @@ export default function Solo() {
           ) : (
             <div className="result-card stack" style={{ alignItems: "center", gap: 12 }}>
               <div className="result-emoji">
-                {outcome === "win" ? "🎉" : outcome === "draw" ? "🤝" : "🤖"}
+                <Icon name={outcome === "win" ? "party" : outcome === "draw" ? "draw" : "bot"} size={84} strokeWidth={1.4} />
               </div>
               <h1 style={{ fontSize: "clamp(34px,8vw,60px)" }}>{outText}</h1>
               <p className="muted">{outSub}</p>
@@ -677,7 +678,7 @@ export default function Solo() {
               </button>
               {coachCfg?.review && (
                 <button className="btn btn-ghost" onClick={() => setReviewPgn(chess.current.pgn())}>
-                  {no.coach.review}
+                  <Icon name="review" size={16} /> {no.coach.review}
                 </button>
               )}
             </div>

@@ -53,7 +53,7 @@ export function PhysicalList() {
         </p>
         {kind === "memory" && <div className="banner banner-error">{t.storageMemoryWarn}</div>}
         {kind === "localStorage" && (
-          <div className="muted text-center" style={{ fontSize: 12 }}>
+          <div className="muted text-center" style={{ fontSize: "var(--fs-xs)" }}>
             {t.storageLocalWarn}
           </div>
         )}
@@ -71,7 +71,7 @@ export function PhysicalList() {
             <div key={it.id} className="spread" style={{ gap: 8 }}>
               <NavLink href={`/arranger/fysisk/${it.id}`} className="grow" style={{ textDecoration: "none" }}>
                 <b>{it.title}</b>
-                <span className="muted" style={{ display: "block", fontSize: 12 }}>
+                <span className="muted" style={{ display: "block", fontSize: "var(--fs-xs)" }}>
                   {t.summary(it.playerCount, it.roundsPlayed)}
                 </span>
               </NavLink>

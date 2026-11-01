@@ -84,7 +84,7 @@ export const no = {
     flip: "Snu brettet",
     newGame: "Nytt parti",
     newGameConfirm: "Starte nytt parti? Det pågående partiet blir borte.",
-    rematch: "⚔︎ Omkamp",
+    rematch: "Omkamp",
     start: "Start",
     back: "Tilbake",
     create2: "Lag parti",
@@ -224,7 +224,7 @@ export const no = {
     addMinute: "+1 min",
     timeUpSuggestion: "Tiden er ute – vil du avslutte runden?",
     endRound: "Avslutt runden",
-    crownChampion: "Kår mester 🏆",
+    crownChampion: "Kår mester",
     // Shared between league and bracket "can't advance yet" hints — kept as
     // one key so the two boards never drift apart. LeagueView still has its
     // own literal copy of this sentence pending a sibling copy-pass PR.
@@ -348,7 +348,7 @@ export const no = {
     formatLeague: "Liga",
     formatLeagueSub: "Alle spiller flere runder (sveitsisk) — ev. sluttspill til slutt",
     formatCup: "Cup",
-    formatCupSub: "Rett på utslagsrunder — vinn eller ryk 🏆",
+    formatCupSub: "Rett på utslagsrunder — vinn eller ryk",
     reviewFormat: "Form",
     roundsStep: "Antall ligarunder",
     roundsHint: "Sveitsisk system — anbefalt 5",
@@ -405,27 +405,27 @@ export const no = {
   },
 
   hype: {
-    blunder: "💥 Bommert!",
-    brilliant: "🌟 Strålende trekk!",
-    swing: "😮 Vending!",
+    blunder: "Bommert!",
+    brilliant: "Strålende trekk!",
+    swing: "Vending!",
     mate: "♔ Sjakkmatt!",
   },
 
   replay: {
     title: "Reprise",
     cta: "Se gjennom partiet",
-    play: "▶ Spill av",
-    pause: "⏸ Pause",
+    play: "Spill av",
+    pause: "Pause",
     move: "Trekk",
     empty: "Ingen trekk å vise for dette partiet.",
   },
 
   review: {
-    cta: "📋 Få trener-tilbakemelding",
+    cta: "Få trener-tilbakemelding",
     title: "Trenerens gjennomgang",
     loading: "Analyserer partiet …",
     error: "Kunne ikke lage gjennomgangen akkurat nå.",
-    aiBadge: "✨ Skrevet av trener-AI",
+    aiBadge: "Skrevet av trener-AI",
     templateBadge: "Motoranalyse",
     accuracy: "Nøyaktighet",
     good: "Gode trekk",
@@ -463,7 +463,7 @@ export const no = {
     prompt: "Sett sjakkmatt i ett trekk",
     toMoveWhite: "Hvit sin tur",
     toMoveBlack: "Svart sin tur",
-    solved: "Riktig! 🎉",
+    solved: "Riktig!",
     wrong: "Ikke matt – prøv igjen!",
     next: "Neste nøtt",
     counter: "løst",
@@ -503,10 +503,10 @@ export const no = {
     waitingStart: "Venter på at arrangøren starter …",
     waitingNext: "Venter på neste motstander …",
     waitingBye:
-      "Du har frirunde denne runden og får 1 poeng gratis 🎉 Slapp av til neste runde.",
+      "Du har frirunde denne runden og får 1 poeng gratis. Slapp av til neste runde.",
     outOfTournament:
-      "Du er ute av turneringen 🏁 — godt spilt! Si fra til læreren hvis dette er feil, så kan hun ta deg inn igjen fra tavla.",
-    tournamentFinished: "Turneringen er ferdig 🏆",
+      "Du er ute av turneringen — godt spilt! Si fra til læreren hvis dette er feil, så kan hun ta deg inn igjen fra tavla.",
+    tournamentFinished: "Turneringen er ferdig",
     showMyCode: "Vis koden min",
     // Shared classroom device: hand the iPad to the next student without
     // wiping any OTHER tournament this device has a session for (R6).
@@ -519,7 +519,7 @@ export const no = {
     // banner): this is a browser tab title / notification title, so it's
     // punchier and carries an exclamation mark.
     turnTitle: "Din tur!",
-    notifyOptIn: "🔔 Varsle meg når det er min tur",
+    notifyOptIn: "Varsle meg når det er min tur",
     notifyBody: "Motstanderen din har trukket – bli med igjen for å spille.",
     boardLabel: "Sjakkbrett",
     otherTabTitle: "Du spiller i en annen fane",
@@ -546,7 +546,7 @@ export const no = {
     // (the offer stays pending) — declining is a separate, explicit button.
     drawOfferDismissHint: "Esc eller klikk utenfor lukker uten å svare — tilbudet står fortsatt til du trykker Avslå eller Godta.",
     checkmate: "Sjakkmatt",
-    youWon: "Du vant! 🎉",
+    youWon: "Du vant!",
     youLost: "Du tapte",
     gameDraw: "Remis",
     invalidPin: "Fant ingen turnering med den PIN-en",
@@ -660,8 +660,8 @@ export const no = {
 
   coach: {
     modeNormal: "♟ Vanlig spill",
-    modeCoach: "🎓 Med coach",
-    lessons: "📚 Lær sjakk – 18 oppgaver",
+    modeCoach: "Med coach",
+    lessons: "Lær sjakk – 18 oppgaver",
     level: "Hva vil du?",
     laer: "Lære å spille",
     ovning: "Bli bedre",
@@ -671,22 +671,22 @@ export const no = {
     mesterSub: "Sterkeste motstander + full analyse etterpå",
     warn: "Pass på – dette trekket ser ut til å tape materiell. Vil du flytte likevel?",
     moveAnyway: "Flytt likevel",
-    tagGood: "👍 Godt trekk!",
-    tagInaccuracy: "🤔 Litt unøyaktig",
-    tagBlunder: "⚠️ Tabbe – du taper noe her",
-    retry: "↶ Angre og prøv igjen",
+    tagGood: "Godt trekk!",
+    tagInaccuracy: "Litt unøyaktig",
+    tagBlunder: "Tabbe – du taper noe her",
+    retry: "Angre og prøv igjen",
     keep: "Spill videre",
-    review: "🎓 Trenerens gjennomgang",
+    review: "Trenerens gjennomgang",
     lessonsTitle: "Lær sjakk",
     lessonsIntro: "18 små oppgaver – fra hvordan brikkene går til matt i ett trekk.",
     hint: "Hint",
-    lessonDone: "Riktig! 🎉",
+    lessonDone: "Riktig!",
     lessonRetry: "Ikke helt – les hintet og prøv igjen.",
     /** {n} = oppgavenummer, {total} = antall oppgaver. */
     lessonProgress: "Oppgave {n} av {total}",
     /** {n} = løste oppgaver, {total} = antall oppgaver. */
     lessonsProgress: "{n} av {total} klart",
-    lessonTryAgain: "↺ Prøv igjen",
+    lessonTryAgain: "Prøv igjen",
     lessonSolvedLabel: "Klart",
     next: "Neste oppgave →",
     backToList: "← Oppgavene",
@@ -892,7 +892,7 @@ export const no = {
     completeBlocked: (n: number) => `Fullfør runde (${n === 1 ? "1 mangler" : `${n} mangler`})`,
     completeHint: "Fullfør runden når alle resultater er ført. Fullførte runder er låst.",
     saveSaving: "Lagrer…",
-    saveSaved: "Lagret ✓",
+    saveSaved: "Lagret",
     saveFailedShort: "Ikke lagret!",
     toastUndo: "Angre",
     toastClose: "Lukk",

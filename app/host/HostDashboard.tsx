@@ -94,12 +94,12 @@ export function HostDashboard({ initial }: { initial: Item[] }) {
             >
               <div className="stack" style={{ gap: 2, minWidth: 0 }}>
                 <b style={{ fontSize: 16 }}>{t.title || no.hostAuth.untitled}</b>
-                <span className="faint" style={{ fontSize: 12 }}>
+                <span className="faint" style={{ fontSize: "var(--fs-xs)" }}>
                   {STATUS_LABEL[t.status]} · PIN {t.joinPin} ·{" "}
                   {no.hostAuth.created} {new Date(t.createdAt).toLocaleDateString("no")}
                 </span>
                 {t.notes && (
-                  <span className="muted" style={{ fontSize: 12 }}>
+                  <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>
                     {no.hostAuth.notesLabel}: {t.notes}
                   </span>
                 )}

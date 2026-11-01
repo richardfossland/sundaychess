@@ -46,10 +46,10 @@ export function ReviewView({
   return (
     <div className="card stack" style={{ padding: 18, width: "100%", maxWidth: 460, gap: 14 }}>
       <div className="spread" style={{ alignItems: "center" }}>
-        <p className="eyebrow" style={{ fontSize: 12 }}>{no.review.title}</p>
+        <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}>{no.review.title}</p>
         {data && (
-          <span className="muted" style={{ fontSize: 11 }}>
-            {data.aiNarrated ? no.review.aiBadge : no.review.templateBadge}
+          <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>
+            {data.aiNarrated && <Icon name="sparkle" size={13} />} {data.aiNarrated ? no.review.aiBadge : no.review.templateBadge}
           </span>
         )}
       </div>
@@ -127,7 +127,7 @@ function Stat({
       >
         {value}
       </span>
-      <span className="muted" style={{ fontSize: 11 }}>
+      <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>
         {label}
       </span>
     </div>

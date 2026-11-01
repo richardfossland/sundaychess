@@ -49,7 +49,7 @@ export function HostFileButton({ state }: { state: BoardState }) {
         {L.download}
       </button>
       {msg && (
-        <span role="alert" className="banner banner-error" data-testid="host-download-error" style={{ position: "absolute", right: 0, top: "100%", width: 260, fontSize: 12 }}>
+        <span role="alert" className="banner banner-error" data-testid="host-download-error" style={{ position: "absolute", right: 0, top: "100%", width: 260, fontSize: "var(--fs-xs)" }}>
           {msg}
         </span>
       )}

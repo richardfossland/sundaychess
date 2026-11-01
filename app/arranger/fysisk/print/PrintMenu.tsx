@@ -5,6 +5,7 @@ import { no } from "@/lib/locale/no";
 import { PRINT_KINDS } from "@/lib/physical/print/data";
 import { navigate } from "../nav";
 import { openStorskjerm, printPath, storskjermPath } from "./openStorskjerm";
+import { Icon } from "@/lib/client/Icon";
 
 const L = no.physicalPrint;
 
@@ -31,7 +32,7 @@ export function PrintMenu({ id }: { id: string }) {
   return (
     <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
       <button type="button" className="btn btn-sm btn-ghost" aria-haspopup="menu" aria-expanded={open} aria-label={L.menuAria} onClick={() => setOpen((o) => !o)}>
-        {L.menu} ▾
+        {L.menu} <Icon name="chevronDown" size={14} />
       </button>
       {open && (
         <div role="menu" className="card stack" style={{ position: "absolute", right: 0, top: "100%", zIndex: 30, minWidth: 210, gap: 2, padding: 6 }}>

@@ -236,7 +236,7 @@ function BoardRow({ g, names, knockout, resultsEnabled, showResults, editing, pi
         <span>
           <span className="sr-only">{side === "white" ? p.white : p.black}: </span>
           {id === null ? <i className="muted">{p.bye}</i> : names(id)}
-          {side === "black" && g.rematch ? <span className="muted" title={p.rematchNote}> ⚠</span> : null}
+          {side === "black" && g.rematch ? <span className="muted" title={p.rematchNote}> <Icon name="warn" size={14} /></span> : null}
         </span>
       </>
     );

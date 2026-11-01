@@ -87,6 +87,9 @@
   --k-30: rgba(0, 0, 0, 0.35);
   --k-40: rgba(0, 0, 0, 0.4);
   --tap: 44px;
+  --medal-1: #ebb84b;
+  --medal-2: #b9c0cc;
+  --medal-3: #d08a52;
   --sp-1: 4px;
   --sp-2: 8px;
   --sp-3: 12px;
@@ -114,6 +117,9 @@
 }
 
 :root[data-theme="light"] {
+  --medal-1: #8a6508;
+  --medal-2: #5d6676;
+  --medal-3: #8f5524;
   --gold-ink: #7a5c0a; /* deep gold — readable on light surfaces (>= 5:1) */
   --gold-light-ink: #7a5c0a;
 
@@ -1205,8 +1211,16 @@ a:focus-visible,
   text-align: center;
   animation: popIn 0.5s var(--spring) both;
 }
+.medal-1 { color: var(--medal-1); }
+.medal-2 { color: var(--medal-2); }
+.medal-3 { color: var(--medal-3); }
+.dot-white { fill: #f6f1e4; stroke: var(--txt-dim); vertical-align: -2px; }
+.dot-black { fill: #20242c; stroke: var(--txt-dim); vertical-align: -2px; }
 .result-emoji {
   font-size: 84px;
+  color: var(--gold-ink);
+  display: grid;
+  place-items: center;
   line-height: 1;
   animation: dropIn 0.6s var(--spring) both;
 }
@@ -1711,6 +1725,7 @@ a:focus-visible,
   text-align: center;
 }
 .award-emoji {
+  color: var(--gold-ink);
   font-size: 34px;
   line-height: 1;
   filter: drop-shadow(0 6px 16px rgba(235, 184, 75, 0.35));

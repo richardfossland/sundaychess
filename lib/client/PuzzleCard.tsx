@@ -123,7 +123,7 @@ export function PuzzleCard() {
   return (
     <div className="card stack" style={{ padding: 18, width: "100%", maxWidth: 420, alignItems: "center", gap: 10 }}>
       <div className="spread" style={{ width: "100%" }}>
-        <p className="eyebrow" style={{ fontSize: 11 }}><Icon name="puzzle" size={14} /> {no.puzzle.title}</p>
+        <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}><Icon name="puzzle" size={14} /> {no.puzzle.title}</p>
         {solvedCount > 0 && (
           <span className="badge">
             {solvedCount} {no.puzzle.counter}

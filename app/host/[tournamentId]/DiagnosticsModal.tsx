@@ -81,7 +81,7 @@ export function DiagnosticsModal({
       ) : (
         <div className="stack" style={{ gap: 14 }}>
           <div className="stack" style={{ gap: 6 }}>
-            <p className="eyebrow" style={{ fontSize: 11 }}>{no.diag.countsTitle}</p>
+            <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}>{no.diag.countsTitle}</p>
             <table className="table">
               <tbody>
                 {kindRows.map(([kind, n]) => (
@@ -95,7 +95,7 @@ export function DiagnosticsModal({
           </div>
 
           <div className="stack" style={{ gap: 6 }}>
-            <p className="eyebrow" style={{ fontSize: 11 }}>{no.diag.eventsTitle}</p>
+            <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}>{no.diag.eventsTitle}</p>
             <table className="table" style={{ fontSize: 13 }}>
               <thead>
                 <tr>
@@ -115,7 +115,7 @@ export function DiagnosticsModal({
                     <td>{nameById(e.playerId)}</td>
                     <td
                       className="mono muted"
-                      style={{ fontSize: 12, wordBreak: "break-word" }}
+                      style={{ fontSize: "var(--fs-xs)", wordBreak: "break-word" }}
                     >
                       {compactDetail(e.detail, e.uaClass)}
                     </td>

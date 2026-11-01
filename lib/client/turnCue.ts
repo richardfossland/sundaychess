@@ -58,7 +58,7 @@ export function setNotifyOptIn(on: boolean): void {
  * distinct from every other title in the app so it reads as urgent even
  * clipped in a tab strip. */
 export function turnFlashTitle(): string {
-  return `▶ ${no.player.turnTitle} – ${no.appName}`;
+  return `${no.player.turnTitle} – ${no.appName}`;
 }
 
 /** Pure: one alternation tick. Flips between `original` and `flash`; treats

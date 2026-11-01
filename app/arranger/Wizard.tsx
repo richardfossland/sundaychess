@@ -212,7 +212,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
-          <span className="muted" style={{ fontSize: 12 }}>
+          <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>
             {no.wizard.titleHint}
           </span>
 
@@ -231,7 +231,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
             onChange={(e) => setNotes(e.target.value)}
             style={{ resize: "vertical", minHeight: 60 }}
           />
-          <span className="faint" style={{ fontSize: 12, alignSelf: "flex-end" }}>
+          <span className="faint" style={{ fontSize: "var(--fs-xs)", alignSelf: "flex-end" }}>
             {notes.length} / {MAX_NOTES}
           </span>
         </div>
@@ -250,7 +250,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
               onClick={() => selectAndAdvance(setFormat, "league")}
             >
               <b><Icon name="league" size={16} /> {no.wizard.formatLeague}</b>
-              <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
+              <span style={{ display: "block", fontSize: "var(--fs-xs)", opacity: 0.75, fontWeight: 400 }}>
                 {no.wizard.formatLeagueSub}
               </span>
             </button>
@@ -261,7 +261,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
               onClick={() => selectAndAdvance(setFormat, "cup")}
             >
               <b><Icon name="cup" size={16} /> {no.wizard.formatCup}</b>
-              <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
+              <span style={{ display: "block", fontSize: "var(--fs-xs)", opacity: 0.75, fontWeight: 400 }}>
                 {no.wizard.formatCupSub}
               </span>
             </button>
@@ -288,7 +288,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
           <span className="muted text-center" style={{ fontSize: 13 }}>
             {no.wizard.roundsHint}
           </span>
-          <span className="muted text-center" style={{ fontSize: 12 }}>
+          <span className="muted text-center" style={{ fontSize: "var(--fs-xs)" }}>
             {no.wizard.roundsRuleOfThumb}
           </span>
         </div>
@@ -310,7 +310,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
               >
                 <b>{no.wizard.variants[v]}</b>
                 <span
-                  style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}
+                  style={{ display: "block", fontSize: "var(--fs-xs)", opacity: 0.75, fontWeight: 400 }}
                 >
                   {no.wizard.variants[`${v}Sub`]}
                 </span>
@@ -462,7 +462,7 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
               aria-pressed={reactions}
               onClick={() => selectAndAdvance(setReactions, true)}
             >
-              👍😄🔥 {no.wizard.reactionsOn}
+              <Icon name="thumbsUp" size={16} /> {no.wizard.reactionsOn}
             </button>
           </div>
           <span className="muted text-center" style={{ fontSize: 13 }}>

@@ -103,7 +103,7 @@ export default function HostEntry() {
             </button>
             <Link href="/arranger/fysisk" className="btn btn-block btn-lg">
               <b>{no.physical.entryTitle}</b>
-              <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
+              <span style={{ display: "block", fontSize: "var(--fs-xs)", opacity: 0.75, fontWeight: 400 }}>
                 {no.physical.entrySub}
               </span>
             </Link>

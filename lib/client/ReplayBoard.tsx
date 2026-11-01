@@ -158,7 +158,7 @@ export function ReplayBoard({
             setPlaying((p) => !p);
           }}
         >
-          {playing ? no.replay.pause : no.replay.play}
+          <Icon name={playing ? "pause" : "play"} size={16} /> {playing ? no.replay.pause : no.replay.play}
         </button>
         <button
           className="btn"

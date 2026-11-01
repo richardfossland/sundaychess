@@ -19,19 +19,19 @@ import { RoundTimer } from "@/lib/client/RoundTimer";
 import { resumeTroubleFromStatus } from "@/lib/client/resumeCopy";
 import { no } from "@/lib/locale/no";
 import { GameView } from "./GameView";
-import { Icon } from "@/lib/client/Icon";
+import { Icon, MedalIcon } from "@/lib/client/Icon";
 
 /** The player's own end-of-tournament card: placement, top 3, winning team. */
 function FinalResults({ state, playerId }: { state: BoardState; playerId: string }) {
   const { standings, tournament, players } = state;
   const mine = standings.find((s) => s.playerId === playerId);
   const top = standings.slice(0, 3);
-  const medals = ["🥇", "🥈", "🥉"];
+  const medals = [1, 2, 3].map((r) => <MedalIcon key={r} rank={r} />);
   const teamRows = computeTeamStandings(tournament.config.teams ?? [], players);
 
   return (
     <div className="card stack" style={{ padding: 18, width: "100%", maxWidth: 420, gap: 10 }}>
-      <p className="eyebrow" style={{ fontSize: 11 }}><Icon name="flag" size={14} /> {no.player.finalTitle}</p>
+      <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}><Icon name="flag" size={14} /> {no.player.finalTitle}</p>
       {mine && (
         <p style={{ fontSize: 17 }}>
           {no.player.youPlaced} <b style={{ color: "var(--gold)", fontSize: 22 }}>{mine.rank}</b>{" "}
@@ -285,7 +285,7 @@ export function WaitingRoom({
           <div className="brandmark" style={{ justifyContent: "center" }}>
             <span className="knight">♞</span> Sunday<b>Chess</b>
           </div>
-          <div style={{ fontSize: 40 }}>👋</div>
+          <div><Icon name="wave" size={40} strokeWidth={1.5} /></div>
           <h2 style={{ fontSize: 22 }}>{no.player.removedLobbyTitle}</h2>
           <p className="muted">{no.player.removedLobbyBody}</p>
           <button
@@ -422,7 +422,7 @@ export function WaitingRoom({
             {no.player.showMyCode}
           </button>
         )}
-        <p className="muted" style={{ fontSize: 12 }}>
+        <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>
           {no.player.resumeHint}
         </p>
 
@@ -441,7 +441,7 @@ export function WaitingRoom({
       {/* the cup ladder — how it's going / how it went (knockout only) */}
       {state && state.rounds.some((r) => r.phase === "playoff") && (
         <div className="card stack" style={{ padding: 14, width: "100%", gap: 8 }}>
-          <p className="eyebrow" style={{ fontSize: 11 }}>{no.player.cupProgress}</p>
+          <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}>{no.player.cupProgress}</p>
           <BracketBoard games={state.games} rounds={state.rounds} players={state.players} />
         </div>
       )}
@@ -462,7 +462,7 @@ export function WaitingRoom({
           screen (and, mid-game, the presence heartbeat). */}
       {showSoloWhileWaiting && (
         <div className="card stack" style={{ padding: 14, width: "100%", gap: 8 }}>
-          <p className="eyebrow" style={{ fontSize: 11 }}>{no.player.soloWhileWaitingTitle}</p>
+          <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}>{no.player.soloWhileWaitingTitle}</p>
           <p className="muted" style={{ fontSize: 13 }}>{no.player.soloWhileWaitingBody}</p>
           <a href="/solo" target="_blank" rel="noopener" className="btn btn-ghost btn-block">
             {no.player.soloWhileWaitingCta}

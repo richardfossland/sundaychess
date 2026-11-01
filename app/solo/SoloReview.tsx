@@ -85,10 +85,10 @@ export function SoloReview({
   return (
     <div className="card stack" style={{ padding: 18, width: "100%", maxWidth: 460, gap: 14 }}>
       <div className="spread" style={{ alignItems: "center" }}>
-        <p className="eyebrow" style={{ fontSize: 12 }}>{no.review.title}</p>
+        <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}>{no.review.title}</p>
         {facts && (
-          <span className="muted" style={{ fontSize: 11 }}>
-            {aiNarrated ? no.review.aiBadge : no.review.templateBadge}
+          <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>
+            {aiNarrated && <Icon name="sparkle" size={13} />} {aiNarrated ? no.review.aiBadge : no.review.templateBadge}
           </span>
         )}
       </div>
@@ -151,7 +151,7 @@ function Stat({
       <span style={{ fontSize: 20, fontWeight: 700, color: highlight ? "var(--gold)" : undefined }}>
         {value}
       </span>
-      <span className="muted" style={{ fontSize: 11 }}>{label}</span>
+      <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{label}</span>
     </div>
   );
 }

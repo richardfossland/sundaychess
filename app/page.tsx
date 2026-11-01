@@ -79,7 +79,7 @@ export default function Landing() {
             <span className="muted">→</span>
             <span className="faint">3. {no.landing.step3}</span>
           </div>
-          <p className="faint" style={{ marginTop: 10, fontSize: 12 }}>
+          <p className="faint" style={{ marginTop: 10, fontSize: "var(--fs-xs)" }}>
             {no.landing.reassurance}
           </p>
         </div>
@@ -90,7 +90,7 @@ export default function Landing() {
         <Link
           href="/host"
           className="faint reveal"
-          style={r(8, { fontSize: 12, textDecoration: "none", marginTop: 6 })}
+          style={r(8, { fontSize: "var(--fs-xs)", textDecoration: "none", marginTop: 6 })}
         >
           {no.hostAuth.landingLink}
         </Link>

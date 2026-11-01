@@ -61,7 +61,7 @@ export function Lessons({ onExit }: { onExit: () => void }) {
           <div className="text-center stack" style={{ gap: 4 }}>
             <p className="eyebrow">{no.coach.lessonsTitle}</p>
             <p className="faint" style={{ fontSize: 13 }}>{no.coach.lessonsIntro}</p>
-            <p className="faint" style={{ fontSize: 12 }}>
+            <p className="faint" style={{ fontSize: "var(--fs-xs)" }}>
               {fill(no.coach.lessonsProgress, { n: done.length, total: LESSONS.length })}
             </p>
           </div>
@@ -206,7 +206,7 @@ function LessonRunner({
       {status === "done" && <Confetti count={110} />}
       <div className="stack" style={{ alignItems: "center", width: "100%", maxWidth: 560, gap: 14 }}>
         <div className="text-center stack" style={{ gap: 2 }}>
-          <p className="faint" style={{ fontSize: 12 }}>
+          <p className="faint" style={{ fontSize: "var(--fs-xs)" }}>
             {fill(no.coach.lessonProgress, { n: index + 1, total })}
           </p>
           <p className="eyebrow">{lesson.title}</p>
@@ -248,7 +248,7 @@ function LessonRunner({
         <div className="row">
           {status === "retry" && (
             <button className="btn btn-primary" onClick={retry}>
-              {no.coach.lessonTryAgain}
+              <Icon name="retry" size={16} /> {no.coach.lessonTryAgain}
             </button>
           )}
           {status === "done" && hasNext && (

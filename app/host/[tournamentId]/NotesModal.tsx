@@ -92,7 +92,7 @@ export function NotesModal({
             onChange={(e) => setValue(e.target.value)}
             style={{ resize: "vertical", minHeight: 80 }}
           />
-          <span className="faint" style={{ fontSize: 12, alignSelf: "flex-end" }}>
+          <span className="faint" style={{ fontSize: "var(--fs-xs)", alignSelf: "flex-end" }}>
             {value.length} / {MAX_NOTES}
           </span>
         </>

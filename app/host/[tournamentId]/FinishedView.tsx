@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { BoardState, PublicGame } from "@/lib/dto";
 import { api } from "@/lib/client/api";
 import { identity } from "@/lib/client/identity";
@@ -14,14 +14,14 @@ import { computeAwards, type Award } from "@/lib/tournament/awards";
 import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
 import { BracketBoard } from "@/lib/client/BracketBoard";
 import { no } from "@/lib/locale/no";
-import { Icon } from "@/lib/client/Icon";
+import { Icon, MedalIcon, type IconName } from "@/lib/client/Icon";
 import { usePresentasjon } from "@/lib/client/storskjerm/usePresentasjon";
 
-const AWARD_EMOJI: Record<Award["key"], string> = {
-  fastest_mate: "⚡",
-  most_captures: "⚔️",
-  longest_game: "⏳",
-  comeback: "💪",
+const AWARD_ICON: Record<Award["key"], IconName> = {
+  fastest_mate: "quick",
+  most_captures: "versus",
+  longest_game: "hourglass",
+  comeback: "comeback",
 };
 
 function awardDetail(a: Award): string {
@@ -176,7 +176,7 @@ export function FinishedView({ state }: { state: BoardState }) {
   const top = standings.slice(0, 3);
   const order = [top[1], top[0], top[2]].filter(Boolean);
   const heights: Record<number, number> = { 1: 150, 2: 112, 3: 84 };
-  const medals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
+  const medals: Record<number, ReactNode> = { 1: <MedalIcon rank={1} size={30} />, 2: <MedalIcon rank={2} size={30} />, 3: <MedalIcon rank={3} size={30} /> };
 
   return (
     <main className="center-screen">
@@ -211,7 +211,7 @@ export function FinishedView({ state }: { state: BoardState }) {
         {champion && (
           <div className="stack" style={{ alignItems: "center", gap: 6 }}>
             <div className="float" style={{ fontSize: 80, lineHeight: 1, filter: "drop-shadow(0 12px 30px rgba(235,184,75,.45))" }}>
-              🏆
+              <Icon name="cup" size={80} strokeWidth={1.3} />
             </div>
             <h1
               className="scale-in gold-text"
@@ -287,11 +287,11 @@ export function FinishedView({ state }: { state: BoardState }) {
               </tbody>
             </table>
           </div>
-          <p className="faint" style={{ fontSize: 12, textAlign: "center" }}>
+          <p className="faint" style={{ fontSize: "var(--fs-xs)", textAlign: "center" }}>
             {no.host.tiebreakHelp}
           </p>
           {nonPlayCount > 0 && (
-            <p className="faint" style={{ fontSize: 12, textAlign: "center" }}>
+            <p className="faint" style={{ fontSize: "var(--fs-xs)", textAlign: "center" }}>
               {no.host.resultSourceLegend(nonPlayCount)}
             </p>
           )}
@@ -317,7 +317,7 @@ export function FinishedView({ state }: { state: BoardState }) {
                   }}
                 >
                   <span className="team-dot" style={{ background: teamColor(r.team) }} />
-                  {i === 0 && "🏆 "}
+                  {i === 0 && <Icon name="cup" size={16} />} 
                   {r.team} · <b>{r.score}</b>
                 </span>
               ))}
@@ -335,12 +335,12 @@ export function FinishedView({ state }: { state: BoardState }) {
                   className="card award-card reveal"
                   style={{ ["--i" as string]: 3 + i } as CSSProperties}
                 >
-                  <span className="award-emoji">{AWARD_EMOJI[a.key]}</span>
+                  <span className="award-emoji"><Icon name={AWARD_ICON[a.key]} size={26} /></span>
                   <b style={{ fontSize: 15 }}>{no.awards[a.key]}</b>
                   <span style={{ fontSize: 14, color: "var(--gold)" }}>
                     {a.playerIds.map(nameById).join(" & ")}
                   </span>
-                  <span className="faint" style={{ fontSize: 12 }}>
+                  <span className="faint" style={{ fontSize: "var(--fs-xs)" }}>
                     {awardDetail(a)}
                   </span>
                 </div>

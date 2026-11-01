@@ -1265,7 +1265,7 @@ export const GameView = memo(function GameView({
               style={{ alignItems: "center", gap: 12 }}
             >
               <div className="result-emoji">
-                {status === "draw" ? "🤝" : iWon ? "🎉" : "😔"}
+                <Icon name={status === "draw" ? "draw" : iWon ? "party" : "sad"} size={84} strokeWidth={1.4} />
               </div>
               <h1 id={resultHeadingId} style={{ fontSize: "clamp(36px,9vw,64px)" }}>
                 {resultText}
@@ -1298,7 +1298,7 @@ export const GameView = memo(function GameView({
                 ♟ {no.replay.cta}
               </button>
               <button className="btn btn-ghost" onClick={() => setShowReview(true)}>
-                {no.review.cta}
+                <Icon name="review" size={16} /> {no.review.cta}
               </button>
             </div>
           )}

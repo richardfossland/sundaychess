@@ -19,6 +19,7 @@ import { SpectateGame } from "./SpectateGame";
 import { FullscreenToggle } from "@/lib/client/FullscreenToggle";
 import { Confetti } from "@/lib/client/Confetti";
 import { usePresentasjon } from "@/lib/client/storskjerm/usePresentasjon";
+import { Icon } from "@/lib/client/Icon";
 
 // L8: the grid never highlights squares (that's the single-game spectate
 // view's job) — a stable empty object + constant key so every mini/big board
@@ -375,7 +376,7 @@ export function LiveGamesView({
           <div className="result-overlay">
             <Confetti count={120} />
             <div className="result-card stack" style={{ alignItems: "center", gap: 14 }}>
-              <div className="result-emoji">🏁</div>
+              <div className="result-emoji"><Icon name="flag" size={84} strokeWidth={1.4} /></div>
               <h2 style={{ fontSize: "clamp(28px,5vw,46px)", textAlign: "center" }}>
                 {no.host.roundOver}
               </h2>
@@ -449,7 +450,7 @@ export function LiveGamesView({
         >
           <Confetti count={90} />
           <div className="result-card stack" style={{ alignItems: "center", gap: 8 }}>
-            <div className="result-emoji">🎉</div>
+            <div className="result-emoji"><Icon name="party" size={84} strokeWidth={1.4} /></div>
             <h2 style={{ fontSize: "clamp(24px,4.5vw,40px)", textAlign: "center" }}>
               {winFlash}
             </h2>
