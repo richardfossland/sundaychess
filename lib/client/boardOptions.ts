@@ -79,10 +79,10 @@ export const BOARD_PALETTES: Record<
     selected: "rgba(30, 140, 70, 0.55)",
   },
   gold: {
-    light: "#f1e2b8",
-    dark: "#5a678a",
-    last: "rgba(255, 190, 40, 0.7)",
-    selected: "rgba(30, 190, 130, 0.62)",
+    light: "#f3e6bf",
+    dark: "#a77b2e",
+    last: "rgba(30, 120, 210, 0.5)",
+    selected: "rgba(30, 150, 90, 0.6)",
   },
 };
 

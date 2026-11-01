@@ -1176,11 +1176,30 @@ a:focus-visible,
   white-space: nowrap;
 }
 .gl-moves {
-  height: 64px;
+  height: 44px;
 }
 .gl-moves .movelist {
   max-width: none;
   height: 100%;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 var(--sp-3);
+}
+/* Smal skjerm: én horisontal rulleliste (1. e4 e5 2. Nf3 …), alltid én hel linje. */
+.gl-moves .movelist-rows {
+  flex-direction: row;
+  gap: var(--sp-3);
+  width: max-content;
+}
+.gl-moves .movelist-row {
+  display: flex;
+  gap: var(--sp-1);
+  white-space: nowrap;
+}
+.gl-moves .movelist-no {
+  text-align: left;
 }
 .gl-tools {
   position: relative;
@@ -1250,11 +1269,11 @@ a:focus-visible,
   --board-dot: rgba(30, 18, 8, 0.42);
 }
 [data-board-theme="gold"] {
-  --board-light: #f1e2b8;
-  --board-dark: #5a678a;
-  --board-last: rgba(255, 190, 40, 0.7);
-  --board-selected: rgba(30, 190, 130, 0.62);
-  --board-dot: rgba(14, 18, 30, 0.45);
+  --board-light: #f3e6bf;
+  --board-dark: #a77b2e;
+  --board-last: rgba(30, 120, 210, 0.5);
+  --board-selected: rgba(30, 150, 90, 0.6);
+  --board-dot: rgba(30, 20, 5, 0.45);
 }
 
 /* bred skjerm: brett + sidepanel */
@@ -1299,6 +1318,24 @@ a:focus-visible,
     flex: 1 1 0;
     height: auto;
     min-height: 120px;
+  }
+  .gl-moves .movelist {
+    display: block;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: var(--sp-2) var(--sp-3);
+  }
+  .gl-moves .movelist-rows {
+    flex-direction: column;
+    gap: 1px;
+    width: auto;
+  }
+  .gl-moves .movelist-row {
+    display: grid;
+    gap: 10px;
+  }
+  .gl-moves .movelist-no {
+    text-align: right;
   }
   .gl-tools {
     margin-top: 0;
@@ -1346,6 +1383,24 @@ a:focus-visible,
     flex: 1 1 0;
     height: auto;
     min-height: 60px;
+  }
+  .gl-moves .movelist {
+    display: block;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: var(--sp-2) var(--sp-3);
+  }
+  .gl-moves .movelist-rows {
+    flex-direction: column;
+    gap: 1px;
+    width: auto;
+  }
+  .gl-moves .movelist-row {
+    display: grid;
+    gap: 10px;
+  }
+  .gl-moves .movelist-no {
+    text-align: right;
   }
   .pbar .avatar-lg {
     width: 28px;

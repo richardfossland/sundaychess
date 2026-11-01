@@ -25,6 +25,7 @@ export function MoveList({ sans, title }: { sans: string[]; title?: string }) {
     const el = containerRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
+    el.scrollLeft = el.scrollWidth; // horizontal list on narrow screens
   }, [sans.length]);
 
   const rows: { no: number; white?: string; black?: string }[] = [];
