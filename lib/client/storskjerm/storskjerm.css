@@ -66,10 +66,14 @@
 .hide-cursor * {
   cursor: none !important;
 }
-/* Luft mot overscan på TV/projektor (16:9-trygg ramme) og større skrift på
- * store skjermer. `zoom` skalerer hele tavla likt, også px-baserte størrelser. */
-/* min-height deles på zoom-faktoren, ellers blir siden høyere enn skjermen. */
-.presentasjon {
+/* To varianter av tavla:
+ *  - `presentasjon-fit` (lobby, liga, resultat): passer alltid i én skjermhøyde
+ *    (100dvh, ingen scroll). Skalering via `--tv` = 1 % av den minste av bredde
+ *    og 16:9-høyde, så 1280×720 gir 12,8 px og 1920×1080 gir 19,2 px.
+ *  - `presentasjon-flow` (live-rutenett, sluttspilltre): scrollbare flater som
+ *    beholder den gamle `zoom`-skaleringen. min-height deles på zoom-faktoren,
+ *    ellers blir siden høyere enn skjermen. */
+.presentasjon-flow {
   --sz: 1;
   padding: 2vh 2.5vw;
   min-height: calc(100dvh / var(--sz));
@@ -77,14 +81,326 @@
   zoom: var(--sz);
 }
 @media (min-width: 1280px) {
-  .presentasjon {
+  .presentasjon-flow {
     --sz: 1.1;
   }
 }
 @media (min-width: 1800px) {
-  .presentasjon {
+  .presentasjon-flow {
     --sz: 1.3;
   }
+}
+
+.presentasjon-fit {
+  --tv: min(1vw, 1.7778vh);
+  height: 100dvh;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 2.4vh 2.5vw;
+  display: flex;
+  flex-direction: column;
+}
+.presentasjon-fit .tv-screen {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.presentasjon-fit .center-screen.tv-screen {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+.presentasjon-fit .host-head-tv {
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  gap: calc(var(--tv) * 1.6);
+  margin-bottom: 2vh;
+}
+.presentasjon-fit .brandmark {
+  font-size: calc(var(--tv) * 2.3);
+}
+.presentasjon-fit .host-head-tv .muted {
+  font-size: calc(var(--tv) * 1.6);
+}
+.presentasjon-fit .host-head-tv .badge {
+  font-size: max(13px, calc(var(--tv) * 1.25));
+  padding: 0.35em 0.9em;
+}
+.presentasjon-fit .join-chip {
+  font-size: max(13px, calc(var(--tv) * 1.5));
+  padding: 0.4em 1em;
+  gap: 0.8em;
+  flex-wrap: nowrap;
+}
+.presentasjon-fit .join-chip-pin {
+  font-size: calc(var(--tv) * 2.4);
+}
+.presentasjon-fit .timer {
+  font-size: calc(var(--tv) * 3.4);
+}
+
+/* Kort som deler skjermhøyden. Skriften følger antall rader (`--rows`), med
+ * 13 px som gulv; `--chrome` er høyden som går til topp, polstring, tittel og
+ * forklaring rundt radene. */
+.presentasjon-fit .tv-grid {
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+  gap: calc(var(--tv) * 2);
+}
+.presentasjon-fit .tv-card {
+  --chrome: 34vh;
+  --fit: max(
+    13px,
+    min(calc(var(--tv) * 1.7), calc((100dvh - var(--chrome)) / (var(--rows, 8) + 1.6) / 1.95))
+  );
+  min-height: 0;
+  overflow: hidden;
+  padding: calc(var(--tv) * 1.8);
+  font-size: var(--fit);
+}
+.presentasjon-fit .tv-card .card-title {
+  font-size: calc(var(--tv) * 2.3);
+  margin-bottom: calc(var(--tv) * 1);
+}
+.presentasjon-fit .tv-card .table th {
+  font-size: max(13px, 0.62em);
+  padding: 0.3em 0.6em;
+}
+.presentasjon-fit .tv-card .table td {
+  font-size: 1em;
+  padding: 0.32em 0.6em;
+}
+.presentasjon-fit .tv-card .rankpill {
+  width: 1.5em;
+  height: 1.5em;
+  font-size: max(13px, 0.7em);
+  border-radius: 0.35em;
+}
+.presentasjon-fit .tv-card .tiebreak-note {
+  font-size: max(13px, 0.62em);
+}
+.presentasjon-fit .tv-card .game-row {
+  min-height: 0;
+  padding: 0.45em 0.8em;
+  font-size: 1em;
+}
+.presentasjon-fit .tv-card .game-row .badge {
+  font-size: max(13px, 0.65em);
+}
+.presentasjon-fit .tv-games .stack {
+  gap: 0.5em;
+}
+
+/* Lobby */
+.presentasjon-fit .tv-lobby .split-lobby {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+}
+.presentasjon-fit .tv-lobby .join-card {
+  --chrome: 0px;
+  font-size: calc(var(--tv) * 1.4);
+  justify-content: center;
+  gap: calc(var(--tv) * 1.3);
+  padding: calc(var(--tv) * 2);
+}
+.presentasjon-fit .tv-lobby .join-card .eyebrow {
+  font-size: calc(var(--tv) * 1.4);
+}
+.presentasjon-fit .pin-hero {
+  font-size: min(calc(var(--tv) * 9.5), 14vw);
+}
+.presentasjon-fit .join-url {
+  font-size: calc(var(--tv) * 2.2);
+}
+.presentasjon-fit .qr-frame {
+  padding: calc(var(--tv) * 0.9);
+}
+.presentasjon-fit .qr-frame img {
+  width: calc(var(--tv) * 16);
+  height: auto;
+}
+.presentasjon-fit .tv-lobby .tv-card:not(.join-card) {
+  --chrome: 0px;
+  font-size: 1em;
+}
+.presentasjon-fit .roster-chips {
+  --chipfs: calc(var(--tv) * 1.9);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--chipfs) * 9), 1fr));
+  gap: calc(var(--chipfs) * 0.4);
+}
+.presentasjon-fit .roster-chips[data-density="m"] {
+  --chipfs: calc(var(--tv) * 1.5);
+}
+.presentasjon-fit .roster-chips[data-density="s"] {
+  --chipfs: calc(var(--tv) * 1.15);
+}
+.presentasjon-fit .roster-chips .chip {
+  font-size: max(13px, var(--chipfs));
+  padding: 0.4em 0.9em 0.4em 0.5em;
+  gap: 0.5em;
+  min-width: 0;
+}
+.presentasjon-fit .roster-chips .chip .avatar {
+  width: 1.9em;
+  height: 1.9em;
+  font-size: max(13px, 0.6em);
+}
+.presentasjon-fit .roster-chips .chip-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.presentasjon-fit .tv-lobby .card-title-lg {
+  font-size: calc(var(--tv) * 2.6);
+}
+
+/* Resultat: champion + pall til venstre, tabell til høyre. */
+.presentasjon-fit .tv-finish .finish-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  column-gap: calc(var(--tv) * 3);
+  row-gap: calc(var(--tv) * 0.8);
+  align-items: stretch;
+  max-width: none;
+  min-width: 0;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+.presentasjon-fit .tv-finish .finish-wrap > .brandmark {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: calc(var(--tv) * 1.8);
+  justify-self: center;
+}
+.presentasjon-fit .tv-finish .finish-wrap > .eyebrow {
+  display: none;
+}
+.presentasjon-fit .tv-finish .finish-champion {
+  grid-column: 1;
+  grid-row: 2;
+  gap: 0;
+  min-width: 0;
+}
+.presentasjon-fit .tv-finish .champion-cup svg {
+  width: calc(var(--tv) * 5.5);
+  height: auto;
+}
+.presentasjon-fit .tv-finish .champion-name {
+  font-size: min(calc(var(--tv) * 6.5), 8vw);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.presentasjon-fit .tv-finish .champion-name[data-len="m"] {
+  font-size: min(calc(var(--tv) * 4.6), 6vw);
+}
+.presentasjon-fit .tv-finish .champion-name[data-len="s"] {
+  font-size: min(calc(var(--tv) * 3.4), 4.6vw);
+}
+.presentasjon-fit .tv-finish .finish-champion .muted {
+  font-size: calc(var(--tv) * 1.6);
+}
+.presentasjon-fit .tv-finish .finish-grid {
+  display: contents;
+}
+.presentasjon-fit .tv-finish .finish-main {
+  grid-column: 1;
+  grid-row: 3;
+  justify-content: flex-end;
+  min-height: 0;
+}
+.presentasjon-fit .tv-finish .finish-results {
+  --chrome: 24vh;
+  --fit: max(
+    13px,
+    min(calc(var(--tv) * 1.8), calc((100dvh - var(--chrome)) / (var(--rows, 8) + 1.6) / 1.95))
+  );
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  min-height: 0;
+  justify-content: center;
+  font-size: var(--fit);
+}
+.presentasjon-fit .tv-finish .finish-table-card {
+  padding: calc(var(--tv) * 1.4) calc(var(--tv) * 1.8);
+}
+.presentasjon-fit .tv-finish .finish-eyebrow {
+  font-size: max(13px, 0.7em);
+}
+.presentasjon-fit .tv-finish .finish-results .tiebreak-note {
+  font-size: max(13px, 0.62em);
+}
+.presentasjon-fit .tv-finish .finish-block {
+  grid-column: 1;
+  grid-row: 4;
+}
+.presentasjon-fit .tv-finish .podium {
+  gap: calc(var(--tv) * 1.2);
+  margin-top: 0;
+}
+.presentasjon-fit .tv-finish .podium-col {
+  width: calc(var(--tv) * 12);
+  gap: calc(var(--tv) * 0.5);
+}
+.presentasjon-fit .tv-finish .podium-avatar {
+  width: calc(var(--tv) * 3.6);
+  height: calc(var(--tv) * 3.6);
+  font-size: max(13px, calc(var(--tv) * 1.3));
+}
+.presentasjon-fit .tv-finish .podium-name {
+  font-size: max(13px, calc(var(--tv) * 1.7));
+  line-height: 1.15;
+}
+.presentasjon-fit .tv-finish .podium-bar[data-rank="1"] {
+  height: calc(var(--tv) * 16);
+}
+.presentasjon-fit .tv-finish .podium-bar[data-rank="2"] {
+  height: calc(var(--tv) * 12);
+}
+.presentasjon-fit .tv-finish .podium-bar[data-rank="3"] {
+  height: calc(var(--tv) * 9);
+}
+.presentasjon-fit .tv-finish .podium-bar {
+  align-content: start;
+  gap: calc(var(--tv) * 0.2);
+  place-items: center;
+  padding-top: calc(var(--tv) * 0.8);
+}
+.presentasjon-fit .tv-finish .podium-medal svg {
+  width: calc(var(--tv) * 2.6);
+  height: calc(var(--tv) * 2.6);
+}
+.presentasjon-fit .tv-finish .podium-points {
+  display: block;
+  font-family: var(--display);
+  font-size: calc(var(--tv) * 3.8);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--txt);
+}
+.presentasjon-fit .tv-finish .podium-bar.p1 .podium-points {
+  color: var(--gold-light-ink, var(--gold));
+}
+.presentasjon-fit .tv-finish .team-chip {
+  font-size: max(13px, calc(var(--tv) * 1.3));
+}
+
+/* Veksleren Storskjerm/Live vises bare mens musa beveges (samme klasse som
+ * skjuler pekeren), nederst midt så den aldri dekker toppfeltet. */
+.presentasjon-veksler {
+  transition: opacity 0.25s ease;
+}
+:root.hide-cursor .presentasjon-veksler {
+  opacity: 0;
+  pointer-events: none;
 }
 /* Hjørneknapper er for hånden, ikke for publikum: nesten usynlige til hover. */
 .presentasjon .fullscreen-toggle,

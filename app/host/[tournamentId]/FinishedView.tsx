@@ -18,6 +18,9 @@ import { Icon, MedalIcon, type IconName } from "@/lib/client/Icon";
 import { StandingsTable } from "./StandingsTable";
 import { usePresentasjon } from "@/lib/client/storskjerm/usePresentasjon";
 
+/** Tavlevisning: høyeste antall tabellrader før «+N til». */
+const TV_RESULT_MAX = 10;
+
 const AWARD_ICON: Record<Award["key"], IconName> = {
   fastest_mate: "quick",
   most_captures: "versus",
@@ -176,11 +179,10 @@ export function FinishedView({ state }: { state: BoardState }) {
   // podium order: 2nd, 1st, 3rd  (champion centre, tallest)
   const top = standings.slice(0, 3);
   const order = [top[1], top[0], top[2]].filter(Boolean);
-  const heights: Record<number, number> = { 1: 170, 2: 128, 3: 96 };
-  const medals: Record<number, ReactNode> = { 1: <MedalIcon rank={1} size={30} />, 2: <MedalIcon rank={2} size={30} />, 3: <MedalIcon rank={3} size={30} /> };
+    const medals: Record<number, ReactNode> = { 1: <MedalIcon rank={1} size={30} />, 2: <MedalIcon rank={2} size={30} />, 3: <MedalIcon rank={3} size={30} /> };
 
   return (
-    <main className="center-screen">
+    <main className={`center-screen${presentasjon ? " tv-screen tv-finish" : ""}`}>
       {/* Confetti is a fixed, pointer-events-none canvas with no class of its
           own — wrap it so @media print can hide it (it would otherwise just
           render blank, but it's still dead weight on the page). */}
@@ -216,7 +218,10 @@ export function FinishedView({ state }: { state: BoardState }) {
             <div className="float champion-cup">
               <Icon name="cup" size={80} strokeWidth={1.3} />
             </div>
-            <h1 className="scale-in gold-text champion-name">{champion.displayName}</h1>
+            <h1
+              className="scale-in gold-text champion-name"
+              data-len={champion.displayName.length <= 12 ? "l" : champion.displayName.length <= 20 ? "m" : "s"}
+            >{champion.displayName}</h1>
             <p className="muted">{no.host.champion}</p>
           </div>
         )}
@@ -229,12 +234,14 @@ export function FinishedView({ state }: { state: BoardState }) {
                 <div className="podium-col" key={s.playerId}>
                   <div className="avatar-lg podium-avatar">{initials(s.displayName)}</div>
                   <b className="podium-name">{s.displayName}</b>
-                  <span className="badge podium-score">{s.score}</span>
+                  {!presentasjon && <span className="badge podium-score">{s.score}</span>}
                   <div
                     className={`podium-bar ${s.rank === 1 ? "p1" : ""}`}
-                    style={{ height: heights[s.rank], animationDelay: `${0.2 + s.rank * 0.12}s` }}
+                    data-rank={s.rank}
+                    style={{ animationDelay: `${0.2 + s.rank * 0.12}s` }}
                   >
                     <span className="podium-medal">{medals[s.rank]}</span>
+                    {presentasjon && <span className="podium-points">{s.score}</span>}
                   </div>
                 </div>
               ))}
@@ -243,10 +250,21 @@ export function FinishedView({ state }: { state: BoardState }) {
 
           {/* Full results — the podium only shows the top 3; ranks 4+ still
               matter to a class projecting this on the wall. */}
-          <div className="stack gap-3 finish-results">
+          <div
+            className="stack gap-3 finish-results"
+            style={
+              presentasjon
+                ? ({ ["--rows"]: Math.min(standings.length, TV_RESULT_MAX) + (standings.length > TV_RESULT_MAX ? 1 : 0) } as CSSProperties)
+                : undefined
+            }
+          >
             <div className="card finish-table-card">
               <p className="eyebrow finish-eyebrow">{no.host.standings}</p>
-              <StandingsTable standings={standings} teamById={teamById} />
+              <StandingsTable
+                standings={standings}
+                teamById={teamById}
+                limit={presentasjon ? TV_RESULT_MAX : undefined}
+              />
             </div>
             {nonPlayCount > 0 && (
               <p className="tiebreak-note">{no.host.resultSourceLegend(nonPlayCount)}</p>
@@ -280,7 +298,7 @@ export function FinishedView({ state }: { state: BoardState }) {
           </div>
         )}
 
-        {awards.length > 0 && (
+        {!presentasjon && awards.length > 0 && (
           <div className="stack gap-3 finish-block">
             <p className="eyebrow">{no.awards.title}</p>
             <div className="award-grid">
@@ -305,7 +323,7 @@ export function FinishedView({ state }: { state: BoardState }) {
         )}
 
         {/* how the knockout went — the full bracket path (cup / playoff only) */}
-        {rounds.some((r) => r.phase === "playoff") && (
+        {!presentasjon && rounds.some((r) => r.phase === "playoff") && (
           <div className="stack gap-3 finish-block no-print">
             <p className="eyebrow">{no.host.bracketRecap}</p>
             <BracketBoard games={games} rounds={rounds} players={players} />

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { resultSourceLabel, type BoardState, type PublicGame } from "@/lib/dto";
 import { api } from "@/lib/client/api";
@@ -18,6 +18,10 @@ import { NotesModal } from "./NotesModal";
 import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { Icon } from "@/lib/client/Icon";
 import { effectiveHostCode, usePresentasjon } from "@/lib/client/storskjerm/usePresentasjon";
+
+/** Tavlevisning: høyeste antall rader som vises før «+N til». */
+const TV_STANDINGS_MAX = 12;
+const TV_GAMES_MAX = 8;
 
 function resultLabel(g: PublicGame, name: (id: string | null) => string): ReactNode {
   switch (g.status) {
@@ -221,8 +225,19 @@ export function LeagueView({
     }
   }
 
+  // Tavlevisning: maks antall rader som får plass i én skjermhøyde — resten
+  // blir «+N til». Skriften skaleres etter radantallet (se storskjerm.css).
+  const shownGames = presentasjon ? roundGames.slice(0, TV_GAMES_MAX) : roundGames;
+  const tvTipping = Math.min(tipping?.length ?? 0, 3);
+  const tvStandingRows =
+    Math.min(standings.length, TV_STANDINGS_MAX) +
+    (standings.length > TV_STANDINGS_MAX ? 1 : 0) +
+    (teamRows.length > 0 ? teamRows.length + 1 : 0) +
+    (tvTipping > 0 ? tvTipping + 1 : 0);
+  const tvGameRows = shownGames.length + (roundGames.length > shownGames.length ? 1 : 0);
+
   return (
-    <main className="wrap host-main">
+    <main className={`wrap host-main${presentasjon ? " tv-screen" : ""}`}>
       <header className={presentasjon ? "spread host-head-tv" : "host-sub"}>
         {presentasjon && (
           <>
@@ -263,11 +278,18 @@ export function LeagueView({
         )}
       </header>
 
-      <div className="board-grid split-league">
+      <div className="board-grid split-league tv-grid">
         {/* Standings */}
-        <section className="card">
+        <section
+          className="card tv-card"
+          style={presentasjon ? ({ ["--rows"]: tvStandingRows } as CSSProperties) : undefined}
+        >
           <h2 className="card-title">{no.host.standings}</h2>
-          <StandingsTable standings={standings} teamById={teamById} />
+          <StandingsTable
+            standings={standings}
+            teamById={teamById}
+            limit={presentasjon ? TV_STANDINGS_MAX : undefined}
+          />
 
           {/* lagstilling — sum of each team's player scores */}
           {teamRows.length > 0 && (
@@ -298,7 +320,7 @@ export function LeagueView({
             <div className="stack gap-2 mt-5">
               <p className="eyebrow"><Icon name="target" size={14} /> {no.predict.leaderboard}</p>
               <div className="stack gap-1">
-                {(tipping ?? []).slice(0, 5).map((t, i) => (
+                {(tipping ?? []).slice(0, presentasjon ? 3 : 5).map((t, i) => (
                   <div className="spread side-row" key={t.playerId}>
                     <span>
                       <span className="muted">{i + 1}.</span>{" "}
@@ -339,7 +361,10 @@ export function LeagueView({
         </section>
 
         {/* Games grid */}
-        <section className="card">
+        <section
+          className="card tv-card tv-games"
+          style={presentasjon ? ({ ["--rows"]: tvGameRows } as CSSProperties) : undefined}
+        >
           <div className="spread mb-3">
             <h2 className="card-title">{no.host.games}</h2>
             <span className="badge">
@@ -348,7 +373,7 @@ export function LeagueView({
           </div>
 
           <div className="stack gap-3">
-            {roundGames.map((g) => (
+            {shownGames.map((g) => (
               <GameRow
                 key={g.id}
                 className={`spread game-row${
@@ -388,6 +413,12 @@ export function LeagueView({
               </GameRow>
             ))}
           </div>
+
+          {presentasjon && roundGames.length > shownGames.length && (
+            <p className="tiebreak-note">
+              +{roundGames.length - shownGames.length} {no.host.moreRows}
+            </p>
+          )}
 
           {!presentasjon && timeUp && liveCount > 0 && (
             <div className="banner timeup-banner">
