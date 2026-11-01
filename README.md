@@ -2,7 +2,7 @@
 
 A big-screen classroom chess tournament for ungdomsskole. A live Swiss league
 (3–7 rounds) with an optional knockout playoff, plus a knockout-only "cup"
-format. Students join with a PIN; the teacher runs a projector "board" —
+format. Students join with a PIN; the organiser runs a projector "storskjerm" (big screen) —
 lobby, live standings, bracket, podium, full results with print/PDF export,
 and a private note-to-self. Outside a tournament, `/solo` has an 18-lesson
 "Lær sjakk" coach curriculum plus a bot to practice against, and `/versus` is
@@ -18,7 +18,7 @@ never negotiated between clients.
 
 - **Next.js 16** (App Router, TypeScript) — UI + Route Handlers (`/api/*`)
 - **Supabase** — Postgres (authoritative store) + Realtime Broadcast (position
-  nudges / lobby) + Auth (optional teacher accounts)
+  nudges / lobby) + Auth (optional organiser accounts)
 - **chess.js** — rules authority (server) + optimistic hints (client)
 - **react-chessboard v5** — the board UI
 
@@ -45,7 +45,7 @@ npm run build      # next build
 - `lib/tournament/` — `pair` (Swiss), `score` (Buchholz/standings), `bracket`
 - `lib/server/` — `store` (DB), `league` / `playoff` (engines), `auth`,
   `broadcast`, `gameEvents`, `http`
-- `app/host/` — teacher: wizard, lobby, league board, bracket, podium
+- `app/host/` — organiser: wizard, lobby, league board, bracket, podium
 - `app/play/` — student: join/resume, waiting room, playable board
 - `supabase/migrations/` — `0001_schema` (tables + RLS), `0002_move_apply`
   (atomic `apply_move` / `resolve_game` RPCs)

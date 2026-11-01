@@ -26,7 +26,7 @@ export const viewport: Viewport = { themeColor: "#11141b" };
 export const metadata: Metadata = {
   title: "SundayChess — sjakkturnering for hele gruppa",
   description:
-    "Sjakkturnering på storskjerm med liga, sluttspill, lag og lynsjakk. Arrangøren styrer tavla, spillerne blir med med en PIN.",
+    "Sjakkturnering på storskjerm med liga, sluttspill, lag og lynsjakk. Arrangøren styrer storskjermen, og spillerne blir med med en PIN.",
 };
 
 export default function RootLayout({

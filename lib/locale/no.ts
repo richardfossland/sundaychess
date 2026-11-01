@@ -107,7 +107,7 @@ export const no = {
     createTitle: "Ny turnering",
     quickStart: "Rask start",
     customize: "Tilpass turnering",
-    // Én linje under hvert valg på /arranger: hva det betyr for en ny lærer.
+    // Én linje under hvert valg på /arranger: hva det betyr for en ny arrangør.
     quickStartSub: "Lager turneringen med en gang, med vanlige valg (liga, 5 runder)",
     customizeSub: "Velg selv format, runder, tid og lag, steg for steg",
     enterSub: "Gå tilbake til en turnering du har laget, med arrangørkoden",
@@ -279,7 +279,7 @@ export const no = {
       `${n} ${n === 1 ? "parti" : "partier"} avgjort uten spill (walkover/fravær/overstyring).`,
   },
 
-  // Lærerens avlesning av klient-telemetrien (T5). Se docs/TELEMETRY.md.
+  // Arrangørens avlesning av klient-telemetrien (T5). Se docs/TELEMETRY.md.
   diag: {
     open: "Diagnostikk",
     title: "Diagnostikk",
@@ -535,7 +535,7 @@ export const no = {
     waitingBye:
       "Du har frirunde denne runden og får 1 poeng gratis. Slapp av til neste runde.",
     outOfTournament:
-      "Du er ute av turneringen — godt spilt! Si fra til læreren hvis dette er feil, så kan hun ta deg inn igjen fra storskjermen.",
+      "Du er ute av turneringen — godt spilt! Si fra til arrangøren hvis dette er feil, så kan arrangøren ta deg inn igjen.",
     tournamentFinished: "Turneringen er ferdig",
     showMyCode: "Vis koden min",
     // Shared classroom device: hand the iPad to the next student without
@@ -620,7 +620,7 @@ export const no = {
     // one who can actually undo this (app/api/game/reinstate/route.ts).
     removedTitle: "Du ble fjernet fra turneringen",
     removedBody:
-      "Arrangøren har tatt deg ut av denne turneringen. Si fra til læreren — hun kan ta deg inn igjen.",
+      "Arrangøren har tatt deg ut av denne turneringen. Si fra til arrangøren, så kan arrangøren ta deg inn igjen.",
     // The button stays: it's the right move for joining a DIFFERENT, still-open
     // tournament — just not a way back into this one.
     rejoinNew: "Bli med i en annen turnering",
@@ -628,7 +628,7 @@ export const no = {
     // blocked (see the reinstate route's doc comment) — but the old copy
     // ("Turneringen har allerede startet.") was a dead end with no next step.
     alreadyStarted:
-      "Turneringen er i gang — si fra til læreren, så kan hun ta deg inn.",
+      "Turneringen er i gang — si fra til arrangøren, så kan arrangøren ta deg inn.",
     oppOutOfTime: "Motstanderens tid er ute!",
     claimWin: "Krev seier på tid",
     myTimeOut: "Tiden din er ute",
@@ -1335,7 +1335,7 @@ export const no = {
     pickTitle: "Velg navnet ditt",
     pickHint: "Trykk på ditt eget navn. Hvert navn kan bare velges én gang.",
     pickNotListed: "Navnet mitt står ikke her",
-    pickTaken: "Dette navnet er allerede tatt. Be læreren om hjelp hvis det er ditt.",
+    pickTaken: "Dette navnet er allerede tatt. Be arrangøren om hjelp hvis det er ditt.",
     pickBack: "Tilbake",
     pickNoFresh: "Bare navnene i lista kan bli med i denne turneringen.",
     // Arrangør
