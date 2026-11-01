@@ -100,7 +100,10 @@ export function FinishedView({ state }: { state: BoardState }) {
   // resolves (or if it fails) `pgnGames` stays null and the award grid below
   // simply doesn't render — a quiet loading/empty state, not an error.
   const [pgnGames, setPgnGames] = useState<PublicGame[] | null>(null);
+  // Tavlevisningen (presentasjon) viser ingen utmerkelser: hopp over den tunge
+  // PGN-hentingen og beregningen helt.
   useEffect(() => {
+    if (presentasjon) return;
     let cancelled = false;
     api
       .board(tournament.id, { full: true })
@@ -114,7 +117,7 @@ export function FinishedView({ state }: { state: BoardState }) {
     return () => {
       cancelled = true;
     };
-  }, [tournament.id]);
+  }, [tournament.id, presentasjon]);
 
   // Teacher's private note-to-self (config.notes) — NEVER rides on the public
   // board poll (lib/dto.ts's toBoardTournament strips it), so it's fetched

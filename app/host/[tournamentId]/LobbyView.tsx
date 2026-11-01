@@ -22,8 +22,10 @@ import { effectiveHostCode, usePresentasjon } from "@/lib/client/storskjerm/useP
 /** A player who has been continuously disconnected for this long while still in
  * the lobby is auto-removed (they left the app). Conservative so a brief wifi
  * blip on a Chromebook never evicts a real student. */
-/** Tavlevisning: høyeste antall spillerbrikker før «+N til». */
-const TV_ROSTER_MAX = 30;
+/** Tavlevisning: høyeste antall spillerbrikker før «+N til». Høyt nok til en
+ * hel klasse (skaleringen under går ned til minste leselige skrift); bare en
+ * uvanlig stor sal kuttes, og da er det de ELDSTE påmeldte som blir «+N til». */
+const TV_ROSTER_MAX = 60;
 
 const AUTO_KICK_MS = 3 * 60 * 1000;
 
@@ -119,10 +121,12 @@ export function LobbyView({
   // comment — the arranger wizard runs before that, so it can't check this).
   // The lobby is the first place with a real player count, and the last
   // chance to change the round count before it's baked into every pairing.
-  // Tavlevisning: skriften krymper når mange har blitt med, og over 30 vises
-  // resten som «+N til» så listen alltid passer i skjermhøyden.
-  const shown = presentasjon ? active.slice(0, TV_ROSTER_MAX) : active;
-  const density = active.length <= 12 ? "l" : active.length <= 20 ? "m" : "s";
+  // Tavlevisning: skriften krymper når mange har blitt med. Ingen skjules så
+  // lenge tettheten tillater det; over TV_ROSTER_MAX vises de nyeste, og de
+  // eldste samles i «+N til» så listen alltid passer i skjermhøyden.
+  const shown = presentasjon ? active.slice(-TV_ROSTER_MAX) : active;
+  const density =
+    active.length <= 12 ? "l" : active.length <= 20 ? "m" : active.length <= 30 ? "s" : "xs";
   const roundsHint = roundsWarning(active.length, tournament.config.leagueRounds);
 
   // Presence bookkeeping for the conservative auto-kick: a player must have

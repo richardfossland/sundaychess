@@ -20,6 +20,10 @@ export interface WaitingProgress {
    * waiting room then says "Venter på runde n+1" once instead of two lines. */
   round: number;
   live: number;
+  /** Every game of the LAST round is done and nothing follows (no playoff
+   * left to start): the host only has to finish the tournament, so the
+   * waiting room must not promise a "round n+1" that will never come. */
+  awaitingFinish: boolean;
   /** The current round's timer, ready for a compact <RoundTimer>. Null when no
    * timer is configured for the tournament, or the round hasn't started yet. */
   timer: { startedAt: string | null; durationSec: number; extendedMs: number } | null;
@@ -86,10 +90,19 @@ export function waitingProgress(
     (g) => g.roundId === round.id && g.status === "live",
   ).length;
 
+  // A league followed by a playoff still has a "next round"; otherwise the
+  // last round is the end.
+  const awaitingFinish =
+    live === 0 &&
+    tournament.currentRound >= total &&
+    !(tournament.status === "league" && tournament.config.playoff);
+
   const label =
     live > 0
       ? `Runde ${tournament.currentRound} av ${total} · ${live} partier igjen`
-      : `Venter på at arrangøren starter runde ${tournament.currentRound + 1}`;
+      : awaitingFinish
+        ? "Venter på at arrangøren avslutter turneringen"
+        : `Venter på at arrangøren starter runde ${tournament.currentRound + 1}`;
 
   const timerSec = tournament.config.roundTimerSec;
   const timer =
@@ -101,7 +114,7 @@ export function waitingProgress(
         }
       : null;
 
-  return { label, round: tournament.currentRound, live, timer };
+  return { label, round: tournament.currentRound, live, awaitingFinish, timer };
 }
 
 /** Should the waiting room offer "play solo while you wait" (linking out to

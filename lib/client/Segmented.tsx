@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 
 export interface SegmentedOption<T extends string | number> {
   value: T;
@@ -28,10 +28,16 @@ export function Segmented<T extends string | number>({
   ...aria
 }: Props<T>) {
   const enabled = options.filter((o) => !o.disabled);
+  const refs = useRef(new Map<string, HTMLButtonElement>());
   const move = (dir: 1 | -1) => {
     const i = enabled.findIndex((o) => o.value === value);
     const next = enabled[(i + dir + enabled.length) % enabled.length];
-    if (next) onChange(next.value);
+    if (next) {
+      onChange(next.value);
+      // Fokus følger valget (som native radioknapper); ellers blir fokus stående
+      // på det forrige valget, som nå har tabIndex -1.
+      refs.current.get(String(next.value))?.focus();
+    }
   };
   return (
     <div
@@ -53,6 +59,10 @@ export function Segmented<T extends string | number>({
         return (
           <button
             key={String(o.value)}
+            ref={(el) => {
+              if (el) refs.current.set(String(o.value), el);
+              else refs.current.delete(String(o.value));
+            }}
             type="button"
             role="radio"
             aria-checked={checked}

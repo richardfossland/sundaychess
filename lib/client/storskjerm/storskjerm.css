@@ -250,9 +250,15 @@
   --chipfs: calc(var(--tv) * 1.3);
   --colmin: 11;
 }
+/* Over 30: tettest. Skriften stopper på 13 px-gulvet (.chip under). */
+.presentasjon-fit .roster-chips[data-density="xs"] {
+  --chipfs: calc(var(--tv) * 1.1);
+  --colmin: 11;
+}
 /* Mange spillere: navnet viktigst, så initialene utgår. */
 .presentasjon-fit .roster-chips[data-density="m"] .avatar,
-.presentasjon-fit .roster-chips[data-density="s"] .avatar {
+.presentasjon-fit .roster-chips[data-density="s"] .avatar,
+.presentasjon-fit .roster-chips[data-density="xs"] .avatar {
   display: none;
 }
 .presentasjon-fit .roster-chips .chip {
@@ -423,7 +429,7 @@
   font-size: max(13px, calc(var(--tv) * 1.3));
 }
 
-/* Veksleren Storskjerm/Live vises bare mens musa beveges (samme klasse som
+/* Veksleren Oversikt/Live vises bare mens musa beveges (samme klasse som
  * skjuler pekeren), nederst midt så den aldri dekker toppfeltet. */
 .presentasjon-veksler {
   transition: opacity 0.25s ease;

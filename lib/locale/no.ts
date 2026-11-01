@@ -198,7 +198,7 @@ export const no = {
     join: "Bli med",
     more: "Mer",
     liveToggle: "Live",
-    boardToggle: "Storskjerm",
+    boardToggle: "Oversikt",
     // SpectateGame's own back button — distinct from `liveToggle` above (that
     // one SWITCHES a mode; this one LEAVES the single-game view for the grid),
     // even though they used to share the same copy.
@@ -357,7 +357,7 @@ export const no = {
     of: "av",
     // Navn på stegene i /arranger-veiviseren (Stepper).
     stepName: "Navn",
-    stepFormat: "Form",
+    stepFormat: "Format",
     stepRules: "Regler",
     stepExtras: "Lag og reaksjoner",
     titleStep: "Tittel",
@@ -530,7 +530,8 @@ export const no = {
     // (replaces "Venter på neste motstander" + "Venter på at arrangøren starter
     // runde n" saying the same thing twice).
     waitingRound: (n: number) => `Venter på runde ${n}`,
-    waitingRoundHint: "Arrangøren starter den når alle partiene er ferdig.",
+    waitingRoundHint: "Arrangøren starter neste runde snart.",
+    waitingFinish: "Venter på at arrangøren avslutter turneringen",
     pointsOf: (total: number, score: number) => `av ${total} · ${score} poeng`,
     waitingBye:
       "Du har frirunde denne runden og får 1 poeng gratis. Slapp av til neste runde.",

@@ -66,6 +66,8 @@ test("utskrifter: 3 runder gir parringsliste, kort, lapper, tabell, krysstabell 
   await expect(page.getByRole("heading", { name: L.finalTitle })).toBeVisible();
 
   await go("diplomer");
+  // count() venter ikke: vent på at minst tre diplomer er tegnet før vi teller.
+  await expect(page.locator(".pp-cert").nth(2)).toBeVisible();
   const top = await page.locator(".pp-cert").count();
   expect(top).toBeGreaterThanOrEqual(3);
   await page.getByLabel(L.participants).check();

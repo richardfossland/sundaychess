@@ -347,6 +347,8 @@ export function WaitingRoom({
     else if (game?.status === "bye") {
       headline = no.player.waitingBye;
       sub = progress?.label ?? null;
+    } else if (progress && progress.awaitingFinish) {
+      headline = no.player.waitingFinish;
     } else if (progress && progress.live === 0) {
       headline = no.player.waitingRound(progress.round + 1);
       sub = no.player.waitingRoundHint;

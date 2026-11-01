@@ -100,6 +100,50 @@ describe("waitingProgress", () => {
     expect(p!.label).toBe("Venter på at arrangøren starter runde 3");
   });
 
+  it("league — siste runde ferdig uten sluttspill: venter på avslutning, ikke «runde n+1»", () => {
+    const s = state({
+      status: "league",
+      currentRound: 3,
+      config: { leagueRounds: 3, playoff: false },
+      rounds: [
+        { id: "r3", number: 3, phase: "league", status: "live", startedAt: null, extendedMs: 0 },
+      ],
+      games: [game({ id: "g1", roundId: "r3", status: "white_win" })],
+    });
+    const p = waitingProgress(s, { playerId: ME });
+    expect(p!.awaitingFinish).toBe(true);
+    expect(p!.label).toBe("Venter på at arrangøren avslutter turneringen");
+    expect(p!.label).not.toContain("runde 4");
+  });
+
+  it("league — siste ligarunde ferdig med sluttspill i vente: fortsatt «neste runde»", () => {
+    const s = state({
+      status: "league",
+      currentRound: 3,
+      config: { leagueRounds: 3, playoff: true, playoffSize: 4 },
+      rounds: [
+        { id: "r3", number: 3, phase: "league", status: "live", startedAt: null, extendedMs: 0 },
+      ],
+      games: [game({ id: "g1", roundId: "r3", status: "draw" })],
+    });
+    const p = waitingProgress(s, { playerId: ME });
+    expect(p!.awaitingFinish).toBe(false);
+    expect(p!.label).toBe("Venter på at arrangøren starter runde 4");
+  });
+
+  it("awaitingFinish er aldri sann mens partier pågår", () => {
+    const s = state({
+      status: "league",
+      currentRound: 3,
+      config: { leagueRounds: 3 },
+      rounds: [
+        { id: "r3", number: 3, phase: "league", status: "live", startedAt: null, extendedMs: 0 },
+      ],
+      games: [game({ id: "g1", roundId: "r3", status: "live" })],
+    });
+    expect(waitingProgress(s, { playerId: ME })!.awaitingFinish).toBe(false);
+  });
+
   it("league — includes the compact timer's fields when a round timer is configured and running", () => {
     const s = state({
       status: "league",
