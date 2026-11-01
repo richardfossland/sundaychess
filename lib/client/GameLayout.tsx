@@ -11,7 +11,7 @@ export interface GameLayoutProps {
   top: ReactNode;
   /** Din spillerlinje (under brettet). */
   bottom: ReactNode;
-  /** Selve brettet (`<PlayBoard>` / `<Chessboard>`). Legges i `.board-shell`. */
+  /** Selve brettet (PlayBoard eller et sjakkbrett). Legges i `.board-shell`. */
   board: ReactNode;
   boardLabel?: string;
   /** Lagt oppå brettrammen (reaksjoner). */
