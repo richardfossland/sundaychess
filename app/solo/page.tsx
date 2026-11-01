@@ -36,6 +36,8 @@ import { no } from "@/lib/locale/no";
 import { SoloReview } from "./SoloReview";
 import { Lessons } from "./Lessons";
 import { Icon } from "@/lib/client/Icon";
+import { PageHeader } from "@/lib/client/PageHeader";
+import { Segmented } from "@/lib/client/Segmented";
 
 /** Audible cue for the move just played on `c`. */
 function playMoveCue(c: Chess, captured: boolean) {
@@ -382,106 +384,84 @@ export default function Solo() {
   if (phase === "setup") {
     return (
       <main className="center-screen">
-        <div className="card card-narrow stack scale-in" style={{ alignItems: "stretch" }}>
-          <div className="brandmark" style={{ justifyContent: "center" }}>
-            <span className="knight">♞</span> Sunday<b>Chess</b>
-          </div>
-          <div className="text-center stack" style={{ gap: 4 }}>
+        <div className="card card-narrow stack scale-in">
+          <PageHeader backHref="/" />
+          <div className="card-head">
             <p className="eyebrow">{no.solo.title}</p>
-            <p className="faint" style={{ fontSize: 13 }}>{no.solo.subtitle}</p>
+            <p className="faint fs-xs">{no.solo.subtitle}</p>
           </div>
 
           {/* play with or without a coach */}
-          <div className="row">
-            <button
-              className={`btn grow ${mode === "normal" ? "btn-primary" : "btn-ghost"}`}
-              aria-pressed={mode === "normal"}
-              onClick={() => setMode("normal")}
-            >
-              {no.coach.modeNormal}
-            </button>
-            <button
-              className={`btn grow ${mode === "coach" ? "btn-primary" : "btn-ghost"}`}
-              aria-pressed={mode === "coach"}
-              onClick={() => {
-                setMode("coach");
-                setLevel(COACH[coachLevel].bot);
-              }}
-            >
-              <Icon name="coach" size={16} /> {no.coach.modeCoach}
-            </button>
-          </div>
+          <Segmented<Mode>
+            aria-label={no.solo.title}
+            className="seg-thirds"
+            value={mode}
+            onChange={(m) => {
+              setMode(m);
+              if (m === "coach") setLevel(COACH[coachLevel].bot);
+            }}
+            options={[
+              { value: "normal", label: no.coach.modeNormal },
+              {
+                value: "coach",
+                label: (
+                  <>
+                    <Icon name="coach" size={16} /> {no.coach.modeCoach}
+                  </>
+                ),
+              },
+            ]}
+          />
 
-          <div className="field">
-            <label>{no.solo.chooseColor}</label>
-            <div className="row">
-              {(["white", "black", "random"] as const).map((c) => (
-                <button
-                  key={c}
-                  className={`btn grow ${colorPref === c ? "btn-primary" : "btn-ghost"}`}
-                  aria-pressed={colorPref === c}
-                  onClick={() => setColorPref(c)}
-                >
-                  {c === "white" ? `♔ ${no.solo.white}` : c === "black" ? `♚ ${no.solo.black}` : no.solo.random}
-                </button>
-              ))}
-            </div>
+          <div className="sect">
+            <span className="sect-title" id="solo-color">{no.solo.chooseColor}</span>
+            <Segmented<"white" | "black" | "random">
+              aria-labelledby="solo-color"
+              className="seg-thirds"
+              value={colorPref}
+              onChange={setColorPref}
+              options={[
+                { value: "white", label: <>♔ {no.solo.white}</> },
+                { value: "black", label: <>♚ {no.solo.black}</> },
+                { value: "random", label: no.solo.random },
+              ]}
+            />
           </div>
 
           {mode === "normal" ? (
-            <div className="field">
-              <label>{no.solo.difficulty}</label>
-              {/* grid (not a row) so 5 levels wrap cleanly on mobile and labels
-                  never clip against .btn's overflow:hidden */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(92px, 1fr))", gap: 8 }}>
-                {LEVELS.map((l) => (
-                  <button
-                    key={l.key}
-                    className={`btn ${level === l.key ? "btn-primary" : "btn-ghost"}`}
-                    style={{ padding: "10px 8px" }}
-                    aria-pressed={level === l.key}
-                    onClick={() => setLevel(l.key)}
-                  >
-                    {l.label}
-                  </button>
-                ))}
-              </div>
+            <div className="sect">
+              <span className="sect-title" id="solo-level">{no.solo.difficulty}</span>
+              <Segmented<Difficulty>
+                aria-labelledby="solo-level"
+                className="seg-levels"
+                value={level}
+                onChange={setLevel}
+                options={LEVELS.map((l) => ({ value: l.key, label: l.label }))}
+              />
               {level === "adaptive" && (
-                <p className="faint" style={{ fontSize: "var(--fs-xs)", marginTop: 6 }}>
+                <p className="faint fs-xs">
                   {no.solo.adaptiveHint}
                   {` · ${no.solo.yourLevel}: ${rating.rating}`}
                 </p>
               )}
             </div>
           ) : (
-            <div className="field">
-              <label>{no.coach.level}</label>
-              <div className="stack" style={{ gap: 8 }}>
+            <div className="sect">
+              <span className="sect-title">{no.coach.level}</span>
+              <div className="btn-stack">
                 {COACH_LEVELS.map((l) => (
                   <button
                     key={l.key}
-                    className={`btn ${coachLevel === l.key ? "btn-primary" : "btn-ghost"}`}
-                    // .btn is inline-block, so set display:flex explicitly to make
-                    // the label + sub-text stack (instead of running together).
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "flex-start",
-                      gap: 3,
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      whiteSpace: "normal",
-                      width: "100%",
-                    }}
+                    className={`btn choice ${coachLevel === l.key ? "btn-primary" : "btn-ghost"}`}
                     aria-pressed={coachLevel === l.key}
                     onClick={() => {
                       setCoachLevel(l.key);
                       setLevel(COACH[l.key].bot);
                     }}
                   >
-                    <b style={{ fontSize: 15 }}>{l.label}</b>
-                    <span className="faint" style={{ fontSize: "var(--fs-xs)", fontWeight: 400, lineHeight: 1.3 }}>
-                      {l.sub}
+                    <span className="choice-text">
+                      <span className="choice-title">{l.label}</span>
+                      <span className="choice-sub">{l.sub}</span>
                     </span>
                   </button>
                 ))}
@@ -489,15 +469,14 @@ export default function Solo() {
             </div>
           )}
 
-          <button className="btn btn-primary btn-block btn-lg" onClick={start}>
-            {no.solo.start} →
-          </button>
-          <button className="btn btn-ghost btn-block" onClick={() => setShowLessons(true)}>
-            <Icon name="lessons" size={16} /> {no.coach.lessons}
-          </button>
-          <Link href="/" className="btn btn-ghost btn-block">
-            {no.solo.back}
-          </Link>
+          <div className="btn-stack mt-5">
+            <button className="btn btn-primary btn-block btn-lg" onClick={start}>
+              {no.solo.start} →
+            </button>
+            <button className="btn btn-ghost btn-block" onClick={() => setShowLessons(true)}>
+              <Icon name="lessons" size={16} /> {no.coach.lessons}
+            </button>
+          </div>
         </div>
       </main>
     );

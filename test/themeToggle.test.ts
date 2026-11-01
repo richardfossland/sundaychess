@@ -18,10 +18,10 @@ describe("ThemeToggle placement", () => {
   });
 
   it("is hidden on game, host-board and projector screens, kept on home/dashboard/login", () => {
-    for (const p of ["/play", "/play/x", "/solo", "/versus", "/arranger", "/host/11111111-1111-4111-8111-111111111111", "/host/abc/projector"]) {
+    for (const p of ["/play", "/play/x", "/solo", "/versus", "/arranger", "/host/11111111-1111-4111-8111-111111111111", "/host/abc/projector", "/host/login"]) {
       expect(themeToggleHiddenOn(p), p).toBe(true);
     }
-    for (const p of ["/", "/host", "/host/login", "/host/login/x", "/auth/login", null]) {
+    for (const p of ["/", "/host", "/auth/login", null]) {
       expect(themeToggleHiddenOn(p), String(p)).toBe(false);
     }
   });

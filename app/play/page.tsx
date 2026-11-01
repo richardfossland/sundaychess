@@ -10,6 +10,7 @@ import { isValidPin } from "@/lib/codes";
 import { resumeTrouble } from "@/lib/client/resumeCopy";
 import { WaitingRoom } from "./WaitingRoom";
 import { Icon } from "@/lib/client/Icon";
+import { PageHeader } from "@/lib/client/PageHeader";
 
 type Screen =
   | "init"
@@ -236,15 +237,12 @@ export default function Play() {
           className="card card-narrow stack text-center scale-in"
           style={{ alignItems: "center" }}
         >
-          <div className="brandmark" style={{ justifyContent: "center" }}>
-            <span className="knight">♞</span> Sunday<b>Chess</b>
-          </div>
+          <PageHeader />
           <div><Icon name="wave" size={40} strokeWidth={1.5} /></div>
-          <h2 style={{ fontSize: 22 }}>{no.player.removedTitle}</h2>
+          <h2 className="fs-xl">{no.player.removedTitle}</h2>
           <p className="muted">{no.player.removedBody}</p>
           <button
             className="btn btn-primary btn-lg"
-            style={{ marginTop: 6 }}
             onClick={() => {
               report("kick", { reason: "removed" });
               // Only THIS tournament: a session for another one is still valid.
@@ -283,21 +281,28 @@ export default function Play() {
   return (
     <main className="center-screen">
       <div className="card card-narrow stack">
-        <div className="brandmark" style={{ justifyContent: "center", marginBottom: 2 }}>
-          <span className="knight">♞</span> Sunday<b>Chess</b>
-        </div>
+        <PageHeader
+          backHref={screen === "join" ? "/" : undefined}
+          onBack={
+            screen === "name" || screen === "pick" || screen === "resume"
+              ? () => {
+                  setError(null);
+                  setScreen("join");
+                }
+              : undefined
+          }
+        />
 
         <div
           key={screen}
           className="stack scale-in"
           data-testid={screen === "join" ? "join-screen" : undefined}
-          style={{ gap: 16 }}
         >
         {screen === "join" && (
           <>
-            <div className="text-center stack" style={{ gap: 4 }}>
+            <div className="card-head">
               <p className="eyebrow">{no.player.joinTitle}</p>
-              <p className="faint" style={{ fontSize: 13 }}>Skriv inn PIN-en fra tavla</p>
+              <p className="faint fs-xs">Skriv inn PIN-en fra storskjermen</p>
             </div>
             <div className="field">
               <input
@@ -329,9 +334,9 @@ export default function Play() {
             >
               {no.player.haveCode}
             </button>
-            <div className="row" style={{ gap: 12, margin: "2px 0" }}>
+            <div className="row gap-3">
               <hr className="thread grow" />
-              <span className="faint" style={{ fontSize: "var(--fs-xs)" }}>eller</span>
+              <span className="faint fs-xs">eller</span>
               <hr className="thread grow" />
             </div>
             <Link href="/solo" className="btn btn-block">
@@ -371,22 +376,19 @@ export default function Play() {
             >
               {busy ? <span className="spin" /> : no.player.join}
             </button>
-            <button className="btn btn-ghost btn-block" onClick={() => setScreen("join")}>
-              {no.common.back}
-            </button>
           </>
         )}
 
         {screen === "pick" && (
           <>
             <p className="eyebrow">{no.continueDigital.pickTitle}</p>
-            <p className="muted" style={{ fontSize: 13 }}>{no.continueDigital.pickHint}</p>
+            <p className="muted fs-xs">{no.continueDigital.pickHint}</p>
             {error && (
               <div className="banner banner-error" role="alert">
                 {error}
               </div>
             )}
-            <div className="stack" style={{ gap: 8 }} data-testid="claim-list">
+            <div className="stack gap-2" data-testid="claim-list">
               {pickNames.map((n) => (
                 <button
                   key={n.id}
@@ -407,9 +409,6 @@ export default function Play() {
             ) : (
               <p className="faint" style={{ fontSize: "var(--fs-xs)" }}>{no.continueDigital.pickNoFresh}</p>
             )}
-            <button className="btn btn-ghost btn-block" onClick={() => setScreen("join")}>
-              {no.continueDigital.pickBack}
-            </button>
           </>
         )}
 
@@ -477,9 +476,6 @@ export default function Play() {
               onClick={doResume}
             >
               {busy ? <span className="spin" /> : no.player.resume}
-            </button>
-            <button className="btn btn-ghost btn-block" onClick={() => setScreen("join")}>
-              {no.common.back}
             </button>
           </>
         )}

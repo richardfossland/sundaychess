@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 
 import { no } from "@/lib/locale/no";
 import { createAuthBrowserClient } from "@/lib/supabase/auth-browser";
-import { Icon } from "@/lib/client/Icon";
+import { PageHeader } from "@/lib/client/PageHeader";
 
 // Sunday Account host login. Magic-link + OAuth ("Logg inn med Sunday-konto" /
 // Google) go through the AUTH (issuer) project; on success the shared `sb-*`
@@ -52,19 +51,17 @@ export default function HostLoginPage() {
   return (
     <main className="center-screen">
       <div className="card card-narrow stack scale-in">
-        <div className="brandmark" style={{ justifyContent: "center" }}>
-          <span className="knight">♞</span> Sunday<b>Chess</b>
-        </div>
+        <PageHeader backHref="/arranger" />
 
-        <p className="eyebrow text-center">{no.hostAuth.loginTitle}</p>
-        <p className="muted text-center" style={{ fontSize: 14 }}>
-          {no.hostAuth.loginLede}
-        </p>
+        <div className="card-head">
+          <p className="eyebrow">{no.hostAuth.loginTitle}</p>
+          <p className="muted fs-sm">{no.hostAuth.loginLede}</p>
+        </div>
 
         {sent ? (
           <div className="banner banner-ok">{no.hostAuth.linkSent}</div>
         ) : (
-          <form onSubmit={sendMagicLink} className="stack" style={{ gap: 12 }}>
+          <form onSubmit={sendMagicLink} className="stack gap-3">
             <div className="field">
               <label htmlFor="email">{no.hostAuth.emailLabel}</label>
               <input
@@ -85,17 +82,13 @@ export default function HostLoginPage() {
           </form>
         )}
 
-        <div className="text-center muted" style={{ fontSize: "var(--fs-xs)", margin: "4px 0" }}>
+        <div className="text-center muted fs-xs">
           {no.hostAuth.or}
         </div>
 
         <button className="btn btn-block btn-lg" onClick={signInWithGoogle}>
           {no.hostAuth.google}
         </button>
-
-        <Link href="/arranger" className="btn btn-ghost btn-block">
-          <Icon name="back" size={16} /> {no.common.back}
-        </Link>
       </div>
     </main>
   );

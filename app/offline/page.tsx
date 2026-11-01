@@ -6,10 +6,13 @@ import { OfflineRetry } from "./OfflineRetry";
 export default function OfflinePage() {
   return (
     <main className="center-screen">
-      <div className="card card-narrow stack text-center" style={{ alignItems: "center" }}>
-        <div style={{ fontSize: 40 }}>♟️</div>
-        <h2 style={{ fontSize: 24 }}>{no.pwa.offlineTitle}</h2>
-        <p className="muted" style={{ maxWidth: 380 }}>{no.pwa.offlineBody}</p>
+      <div className="card card-narrow stack text-center align-center">
+        <div className="brandmark">
+          <span className="knight">♞</span> Sunday<b>Chess</b>
+        </div>
+        <div className="status-glyph">♟️</div>
+        <h2 className="fs-xl">{no.pwa.offlineTitle}</h2>
+        <p className="muted status-copy">{no.pwa.offlineBody}</p>
         <OfflineRetry label={no.pwa.offlineRetry} />
       </div>
     </main>

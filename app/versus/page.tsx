@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { api, ApiError } from "@/lib/client/api";
 import type { StoredPlayer } from "@/lib/client/identity";
 import { isValidPin } from "@/lib/codes";
@@ -9,6 +8,7 @@ import { LocalVersus } from "@/lib/client/LocalVersus";
 import { GameView } from "@/app/play/GameView";
 import { no } from "@/lib/locale/no";
 import { Icon } from "@/lib/client/Icon";
+import { PageHeader } from "@/lib/client/PageHeader";
 
 type Screen = "choose" | "local" | "online" | "create" | "waiting" | "join" | "playing" | "done";
 
@@ -232,36 +232,42 @@ export default function Versus() {
   // ---------- card-based screens ----------
   return (
     <main className="center-screen">
-      <div className="card card-narrow stack scale-in" style={{ alignItems: "stretch" }}>
-        <div className="brandmark" style={{ justifyContent: "center" }}>
-          <span className="knight">♞</span> Sunday<b>Chess</b>
-        </div>
+      <div className="card card-narrow stack scale-in">
+        <PageHeader
+          backHref={screen === "choose" || screen === "done" ? "/" : undefined}
+          onBack={
+            screen === "online"
+              ? () => setScreen("choose")
+              : screen === "create" || screen === "join"
+                ? () => setScreen("online")
+                : screen === "waiting"
+                  ? () => leave("choose")
+                  : undefined
+          }
+        />
 
         {screen === "choose" && (
           <>
-            <div className="text-center stack" style={{ gap: 4 }}>
+            <div className="card-head">
               <p className="eyebrow">{no.versus.title}</p>
-              <p className="faint" style={{ fontSize: 13 }}>{no.versus.subtitle}</p>
+              <p className="faint fs-xs">{no.versus.subtitle}</p>
             </div>
             <button
-              className="card stack entrance"
-              style={{ padding: 20, alignItems: "center", gap: 6, cursor: "pointer" }}
+              className="card entrance entrance-card entrance-btn"
               onClick={() => setScreen("local")}
             >
               <span className="entrance-glyph"><Icon name="versus" size={56} /></span>
-              <b style={{ fontSize: 17 }}>{no.versus.sameScreen}</b>
-              <span className="faint" style={{ fontSize: 13 }}>{no.versus.sameScreenSub}</span>
+              <b className="entrance-title">{no.versus.sameScreen}</b>
+              <span className="entrance-sub">{no.versus.sameScreenSub}</span>
             </button>
             <button
-              className="card stack entrance"
-              style={{ padding: 20, alignItems: "center", gap: 6, cursor: "pointer" }}
+              className="card entrance entrance-card entrance-btn"
               onClick={() => setScreen("online")}
             >
               <span className="entrance-glyph">⧉</span>
-              <b style={{ fontSize: 17 }}>{no.versus.online}</b>
-              <span className="faint" style={{ fontSize: 13 }}>{no.versus.onlineSub}</span>
+              <b className="entrance-title">{no.versus.online}</b>
+              <span className="entrance-sub">{no.versus.onlineSub}</span>
             </button>
-            <Link href="/" className="btn btn-ghost btn-block">{no.versus.back}</Link>
           </>
         )}
 
@@ -274,7 +280,6 @@ export default function Versus() {
             <button className="btn btn-block" onClick={() => { setError(null); setScreen("join"); }}>
               {no.versus.join}
             </button>
-            <button className="btn btn-ghost btn-block" onClick={() => setScreen("choose")}>{no.versus.back}</button>
           </>
         )}
 
@@ -297,13 +302,12 @@ export default function Versus() {
             <button className="btn btn-primary btn-block btn-lg" disabled={busy || !name.trim()} onClick={doCreate}>
               {busy ? <span className="spin" /> : no.versus.create2}
             </button>
-            <button className="btn btn-ghost btn-block" onClick={() => setScreen("online")}>{no.versus.back}</button>
           </>
         )}
 
         {screen === "waiting" && (
           <>
-            <div className="text-center stack" style={{ gap: 4 }}>
+            <div className="text-center stack gap-1">
               <div><Icon name="key" size={32} /></div>
               <p className="eyebrow">{no.versus.shareCode}</p>
             </div>
@@ -324,7 +328,6 @@ export default function Versus() {
               <span className="spin" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 10 }} />
               {no.versus.waiting}
             </div>
-            <button className="btn btn-ghost btn-block" onClick={() => leave("choose")}>{no.versus.back}</button>
           </>
         )}
 
@@ -363,13 +366,12 @@ export default function Versus() {
             >
               {busy ? <span className="spin" /> : no.versus.joinGame}
             </button>
-            <button className="btn btn-ghost btn-block" onClick={() => setScreen("online")}>{no.versus.back}</button>
           </>
         )}
 
         {screen === "done" && (
           <>
-            <div className="text-center stack" style={{ gap: 6 }}>
+            <div className="text-center stack gap-2">
               <div><Icon name="flag" size={36} /></div>
               <p className="eyebrow">{no.versus.done}</p>
             </div>
@@ -383,7 +385,6 @@ export default function Versus() {
             <button className="btn btn-block" onClick={() => leave("online")}>
               {no.versus.newGame}
             </button>
-            <Link href="/" className="btn btn-ghost btn-block">{no.versus.back}</Link>
           </>
         )}
 

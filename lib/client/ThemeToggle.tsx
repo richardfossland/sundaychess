@@ -14,17 +14,19 @@ function current(): Theme {
 
 /** Screens where the toggle must never appear: it would sit on top of the board
  * (play, solo, versus, arranger) or the host board / projector view
- * (/host/<tournamentId>). The host dashboard (/host) and login keep it. */
+ * (/host/<tournamentId>). The host dashboard (/host) keeps it. /host/login has
+ * its own inline switch in PageHeader. */
 export function themeToggleHiddenOn(pathname: string | null): boolean {
   if (!pathname) return false;
   if (/^\/(play|solo|versus|arranger)(\/|$)/.test(pathname)) return true;
+  if (/^\/host\/login(\/|$)/.test(pathname)) return true;
   return /^\/host\/(?!login(\/|$))[^/]+/.test(pathname);
 }
 
 /** Floating dark/light switch. The initial theme is set before paint by the
  * inline script in layout.tsx (reads localStorage, falls back to system); this
  * only flips + persists it. */
-export function ThemeToggle() {
+export function ThemeToggle({ inline = false }: { inline?: boolean } = {}) {
   const [theme, setTheme] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
@@ -46,10 +48,11 @@ export function ThemeToggle() {
 
   // Avoid a hydration mismatch on the icon: render a neutral button until mounted.
   const isDark = theme === "dark";
-  if (themeToggleHiddenOn(pathname)) return null;
+  // `inline`: bryteren i PageHeader. Den står i toppfeltet og dekker aldri et brett.
+  if (!inline && themeToggleHiddenOn(pathname)) return null;
   return (
     <button
-      className="theme-toggle"
+      className={inline ? "theme-toggle theme-toggle-inline" : "theme-toggle"}
       onClick={toggle}
       aria-label={isDark ? no.common.themeToLight : no.common.themeToDark}
       title={isDark ? no.common.themeLight : no.common.themeDark}

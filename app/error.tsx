@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { report } from "@/lib/client/telemetry";
 import { no } from "@/lib/locale/no";
+import { PageHeader } from "@/lib/client/PageHeader";
 
 // Route-level error boundary — a transient render/runtime error shows a
 // friendly recovery screen instead of a blank, unrecoverable page.
@@ -29,14 +30,12 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
 
   return (
     <main className="center-screen">
-      <div className="card card-narrow stack text-center" style={{ alignItems: "center" }}>
-        <div className="brandmark" style={{ justifyContent: "center" }}>
-          <span className="knight">♞</span> Sunday<b>Chess</b>
-        </div>
-        <div style={{ fontSize: 40 }}>♟️</div>
-        <h2 style={{ fontSize: 24 }}>{no.common.error}</h2>
-        <p className="muted">{no.common.errorRetryBody}</p>
-        <div className="row" style={{ marginTop: 6 }}>
+      <div className="card card-narrow stack text-center align-center">
+        <PageHeader />
+        <div className="status-glyph">♟️</div>
+        <h2 className="fs-xl">{no.common.error}</h2>
+        <p className="muted status-copy">{no.common.errorRetryBody}</p>
+        <div className="row status-actions">
           <button className="btn btn-primary btn-lg" onClick={() => reset()}>
             {no.common.retry}
           </button>

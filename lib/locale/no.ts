@@ -39,7 +39,7 @@ export const no = {
 
   landing: {
     teacher: "Jeg arrangerer",
-    teacherSub: "Lag en turnering og vis tavla",
+    teacherSub: "Lag en turnering og vis den på storskjermen",
     student: "Jeg spiller",
     studentSub: "Bli med med en PIN",
     versus: "Spill mot hverandre",
@@ -47,7 +47,7 @@ export const no = {
     howTitle: "Slik funker det",
     step1: "Lag turnering",
     step2: "Elevene skanner QR eller taster PIN",
-    step3: "Følg tavla",
+    step3: "Følg storskjermen",
     reassurance:
       "Gratis · ingen elevkontoer · funker på Chromebook og mobil · ~20 min",
   },
@@ -98,13 +98,17 @@ export const no = {
   host: {
     createTitle: "Ny turnering",
     quickStart: "Rask start",
-    customize: "Tilpass turnering …",
+    customize: "Tilpass turnering",
+    // Én linje under hvert valg på /arranger: hva det betyr for en ny lærer.
+    quickStartSub: "Lager turneringen med en gang, med vanlige valg (liga, 5 runder)",
+    customizeSub: "Velg selv format, runder, tid og lag, steg for steg",
+    enterSub: "Gå tilbake til en turnering du har laget, med vertskoden",
     // Auto-title for "Rask start" — becomes "Turnering DD.MM" (see
     // app/arranger/page.tsx). Kept as a plain prefix so the date formatting
     // (which isn't language content) stays out of the locale file.
     quickStartTitlePrefix: "Turnering",
     enterTitle: "Åpne turnering",
-    enterPrompt: "Skriv vertskoden for å åpne tavla igjen",
+    enterPrompt: "Skriv vertskoden for å åpne turneringen igjen",
     hostCodeLabel: "Vertskode",
     missingHostCode:
       "Vertskoden mangler på denne enheten. Gå til forsiden og åpne turneringen på nytt med vertskoden din.",
@@ -590,7 +594,7 @@ export const no = {
     // one who can actually undo this (app/api/game/reinstate/route.ts).
     removedTitle: "Du ble fjernet fra turneringen",
     removedBody:
-      "Arrangøren har tatt deg ut av denne turneringen. Si fra til læreren — hun kan ta deg inn igjen fra tavla.",
+      "Arrangøren har tatt deg ut av denne turneringen. Si fra til læreren — hun kan ta deg inn igjen.",
     // The button stays: it's the right move for joining a DIFFERENT, still-open
     // tournament — just not a way back into this one.
     rejoinNew: "Bli med i en annen turnering",
@@ -598,7 +602,7 @@ export const no = {
     // blocked (see the reinstate route's doc comment) — but the old copy
     // ("Turneringen har allerede startet.") was a dead end with no next step.
     alreadyStarted:
-      "Turneringen er i gang — si fra til læreren, så kan hun ta deg inn fra tavla.",
+      "Turneringen er i gang — si fra til læreren, så kan hun ta deg inn.",
     oppOutOfTime: "Motstanderens tid er ute!",
     claimWin: "Krev seier på tid",
     myTimeOut: "Tiden din er ute",
@@ -701,7 +705,7 @@ export const no = {
   /** Fysisk turneringsmodus (lokal-først, uten nett). */
   physical: {
     entryTitle: "Fysisk turnering",
-    entrySub: "Spill over brettet, uten nett",
+    entrySub: "Brett og brikker i klasserommet, uten nett. Du fører resultatene selv",
     pageTitle: "Fysiske turneringer",
     pageIntro: "Lagres i denne nettleseren og virker uten nett. Ingenting sendes til en server.",
     newTournament: "Ny fysisk turnering",

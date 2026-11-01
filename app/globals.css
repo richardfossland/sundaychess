@@ -2264,3 +2264,312 @@ input[type="radio"] {
   height: 20px;
   vertical-align: middle;
 }
+
+/* ============ D1: inngang og navigasjon ============ */
+
+/* ---- avstandsklasser (tokens, ikke inline style) ---- */
+.gap-1 { gap: var(--sp-1); }
+.gap-2 { gap: var(--sp-2); }
+.gap-3 { gap: var(--sp-3); }
+.gap-4 { gap: var(--sp-4); }
+.gap-5 { gap: var(--sp-5); }
+.mt-5 { margin-top: var(--sp-5); }
+.align-stretch { align-items: stretch; }
+.align-center { align-items: center; }
+.fs-xs { font-size: var(--fs-xs); }
+.fs-sm { font-size: var(--fs-sm); }
+
+/* Kortoverskrift: eyebrow + én linje forklaring. */
+.card-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  text-align: center;
+}
+.card-head .eyebrow {
+  margin: 0;
+}
+/* Seksjon i et skjema: tittel --sp-2 over innholdet, --sp-5 over seksjonen. */
+.sect {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2); /* + .stack-gap (16) = ca. --sp-5 over */
+}
+.sect-title {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--txt-dim);
+}
+/* Knapper i stabel. */
+.btn-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+/* ---- felles toppfelt ---- */
+.page-header {
+  display: grid;
+  grid-template-columns: var(--tap) 1fr var(--tap);
+  align-items: center;
+  gap: var(--sp-2);
+  align-self: stretch;
+  margin: calc(var(--sp-2) * -1) calc(var(--sp-2) * -1) 0;
+}
+.page-header-side {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+}
+.page-header-side-end {
+  justify-content: flex-end;
+}
+.page-header-brand {
+  justify-self: center;
+  min-height: var(--tap);
+  font-size: var(--fs-lg);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--sp-2);
+}
+.page-header-btn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--txt-dim);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.page-header-btn:hover {
+  background: var(--s-05);
+  color: var(--txt);
+  border-color: var(--ink-line);
+}
+.page-header-btn:focus-visible,
+.page-header-brand:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 50%, transparent);
+}
+.theme-toggle.theme-toggle-inline {
+  position: static;
+  margin: 0;
+  background: transparent;
+  box-shadow: none;
+  border-color: transparent;
+  color: var(--txt-dim);
+}
+.theme-toggle.theme-toggle-inline:hover {
+  transform: none;
+  background: var(--s-05);
+  color: var(--txt);
+  border-color: var(--ink-line);
+}
+
+/* ---- forsiden ---- */
+.landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-5);
+  width: 100%;
+  max-width: 620px;
+  text-align: center;
+}
+.landing-glyph {
+  font-size: 64px;
+  line-height: 1;
+  color: var(--gold-ink);
+  filter: drop-shadow(0 8px 26px rgba(235, 184, 75, 0.4));
+}
+.landing-title {
+  font-size: clamp(48px, 10vw, 96px);
+  letter-spacing: -0.03em;
+}
+/* «Chess» i overskriften: gull på mørkt, dypgull på lyst (>= 3:1 som stor tekst). */
+.title-gold {
+  color: var(--gold-ink);
+}
+.landing-thread {
+  width: 120px;
+}
+.landing-lede {
+  max-width: 440px;
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+}
+.entrances {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--sp-4);
+  width: 100%;
+  margin-top: var(--sp-2);
+}
+.entrance-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-5);
+  text-align: center;
+}
+.entrance-title {
+  font-size: var(--fs-lg);
+}
+.entrance-sub {
+  font-size: var(--fs-sm);
+  color: var(--txt-faint);
+}
+.landing-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-3);
+}
+.how {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.how-steps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+.how-note {
+  font-size: var(--fs-xs);
+  margin-top: var(--sp-1);
+}
+/* Sekundær tekstlenke med full trykkflate og tydelig fokus. */
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  min-height: var(--tap);
+  padding: 0 var(--sp-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--txt-dim);
+  text-decoration: underline;
+  text-decoration-color: var(--ink-line-strong);
+  text-underline-offset: 4px;
+  transition: color 0.15s, text-decoration-color 0.15s;
+}
+.text-link:hover {
+  color: var(--gold-ink);
+  text-decoration-color: currentColor;
+}
+.text-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 50%, transparent);
+}
+
+/* ---- valg: tittel + én linje forklaring (som rollekortene på forsiden) ---- */
+.choice {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  text-align: left;
+  white-space: normal;
+}
+.choice-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+}
+.choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.choice-title {
+  font-weight: 700;
+}
+.choice-sub {
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  line-height: var(--lh-snug);
+  opacity: 0.78;
+}
+.choice[aria-pressed="true"],
+.choice.is-on {
+  background: var(--gold-grad);
+  color: var(--on-gold);
+  border-color: transparent;
+}
+
+/* ---- segmentert valg: ikke bryt linjen i en knapp ---- */
+.seg-btn {
+  white-space: nowrap;
+}
+/* Nivåvalget: 2 + 3 på telefon, 5 like brede fra 520 px. */
+.seg.seg-levels {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+}
+.seg-levels .seg-btn {
+  grid-column: span 2;
+  padding-inline: var(--sp-2);
+}
+.seg-levels .seg-btn:nth-child(-n + 2) {
+  grid-column: span 3;
+}
+@media (min-width: 520px) {
+  .seg.seg-levels {
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--sp-1);
+  }
+  .seg-levels .seg-btn,
+  .seg-levels .seg-btn:nth-child(-n + 2) {
+    grid-column: span 1;
+    padding-inline: var(--sp-1);
+  }
+}
+.seg.seg-thirds .seg-btn {
+  flex: 1 1 0;
+}
+
+/* ---- lyst tema: gull som tekst/glyf ---- */
+:root[data-theme="light"] .landing-glyph {
+  filter: drop-shadow(0 6px 16px rgba(110, 82, 8, 0.25));
+}
+:root[data-theme="light"] .entrance-glyph:not(:has(svg)) {
+  background: linear-gradient(135deg, #8f6a0c 0%, #6e5208 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 6px 14px rgba(110, 82, 8, 0.25));
+}
+.entrance-btn {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ---- statussider (404, feil, offline) ---- */
+.status-glyph {
+  font-size: 40px;
+  line-height: 1;
+}
+.status-copy {
+  max-width: 380px;
+}
+.status-actions {
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: var(--sp-2);
+}
