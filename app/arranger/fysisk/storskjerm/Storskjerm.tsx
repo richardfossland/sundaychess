@@ -102,8 +102,9 @@ export function Storskjerm({ id }: { id: string }) {
   const saveTimer = (s: TimerState | null) => setTimer(s, s ? JSON.stringify(s) : null);
 
   // Radhøyde følger høyden; sidestørrelse = hvor mange rader som faktisk får plass.
-  const rowH = Math.round(Math.min(96, Math.max(40, vh * 0.075)));
-  const areaH = vh * (1 - 0.14) - vh * 0.05 - vh * 0.05; // under toppfeltet, minus kolonnetittel og luft
+  // Fordelingen av høyden følger storskjerm.css: topp 12vh, luft 2vh+2vh, kolonnetittel 5vh, kolonneetiketter 4vh.
+  const rowH = Math.round(Math.min(96, Math.max(40, vh * 0.07)));
+  const areaH = vh * (1 - 0.12 - 0.04 - 0.05 - 0.04);
   const perPage = Math.max(3, Math.floor(areaH / (rowH + vh * 0.005)));
 
   const view = useMemo(() => {
@@ -115,11 +116,11 @@ export function Storskjerm({ id }: { id: string }) {
     return { round, names, games, st, hasStandings: t.rounds.some((r) => r.status === "completed") };
   }, [t]);
 
-  if (status === "loading") return <div className="ss-root"><div className="ss-empty" style={{ gridRow: "1 / -1" }}><span className="spin" /></div></div>;
+  if (status === "loading") return <div className="ss-root"><div className="ss-empty ss-empty-full"><span className="spin" /></div></div>;
   if (status !== "ready" || !t || !view) {
     return (
       <div className="ss-root">
-        <div className="ss-empty" style={{ gridRow: "1 / -1" }}>
+        <div className="ss-empty ss-empty-full">
           {no.physical.notFound}
           <div><NavLink href="/arranger/fysisk" className="btn">{no.physical.backToList}</NavLink></div>
         </div>
@@ -162,6 +163,12 @@ export function Storskjerm({ id }: { id: string }) {
             <span>{round ? no.physical.roundN(round.number) : L.bigNoRound}</span>
             {pairPages.length > 1 && <span>{pairPage + 1}/{pairPages.length}</span>}
           </div>
+          <div className="ss-labels ss-row-pair" aria-hidden="true">
+            <span title={no.physical.board}>{L.bigColBoard}</span>
+            <span>{no.physical.white}</span>
+            <span>{no.physical.black}</span>
+            <span className="ss-res">{L.bigColResult}</span>
+          </div>
           <div className="ss-rows">
             {round && games.length > 0 ? (
               (pairPages[pairPage] ?? []).map((g) => (
@@ -184,6 +191,11 @@ export function Storskjerm({ id }: { id: string }) {
               <span>{finished ? L.finalTitle : no.physical.standings}</span>
               {standPages.length > 1 && <span>{standPage + 1}/{standPages.length}</span>}
             </div>
+            <div className="ss-labels ss-row-stand" aria-hidden="true">
+              <span title={no.physical.rankTitle}>{no.physical.rank}</span>
+              <span>{no.physical.name}</span>
+              <span className="ss-pts" title={L.bigPointsHelp}>{no.physical.points}</span>
+            </div>
             <div className="ss-rows">
               {(standPages[standPage] ?? []).map((r) => (
                 <div key={r.playerId} className="ss-row ss-row-stand" style={rowStyle}>
@@ -197,7 +209,7 @@ export function Storskjerm({ id }: { id: string }) {
         )}
       </div>
 
-      {kind === "memory" && <div className="ss-tools" role="alert" style={{ left: "1vw", right: "auto", bottom: "auto", top: "15vh" }}>{L.bigNoStorage}</div>}
+      {kind === "memory" && <div className="ss-tools ss-tools-warn" role="alert">{L.bigNoStorage}</div>}
       <div className="ss-tools" aria-label={L.timer}>
         <button type="button" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.())}>
           {full ? L.bigExitFullscreen : L.bigFullscreen}

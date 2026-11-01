@@ -55,17 +55,17 @@ export function ContinueDigital({ t }: { t: PhysicalTournament }) {
       {open && (
         <Modal open onClose={() => setOpen(false)} labelledBy={titleId} size="md">
           <div className="stack">
-            <h3 id={titleId} style={{ margin: 0 }}>{L.title}</h3>
+            <h3 id={titleId} className="m-0">{L.title}</h3>
             {refusal ? (
               <div className="banner banner-error" role="alert" data-testid="continue-refusal">{L.errors[refusal]}</div>
             ) : (
               <>
                 <p>{L.intro}</p>
-                <p className="muted" style={{ fontSize: 13 }}>{L.onlineNote}</p>
+                <p className="muted fs-xs">{L.onlineNote}</p>
               </>
             )}
             {error && <div className="banner banner-error" role="alert">{error}</div>}
-            <div className="row" style={{ justifyContent: "flex-end" }}>
+            <div className="row justify-end">
               <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>{L.cancel}</button>
               {!refusal && (
                 <button type="button" className="btn btn-primary" disabled={busy} data-testid="continue-confirm" onClick={() => void go()}>

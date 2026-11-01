@@ -35,7 +35,7 @@ function ExportReminder({ t }: { t: PhysicalTournament }) {
   }, []);
   if (hidden || !shouldRemindExport(t)) return null;
   return (
-    <div className={`banner ${weak ? "banner-error" : ""} spread`} role="status" data-testid="export-reminder">
+    <div className={`banner ${weak ? "banner-error" : ""} spread gap-3 pr-reminder`} role="status" data-testid="export-reminder">
       <span>{weak ? L.exportReminderIos : L.exportReminder(done)}</span>
       <button type="button" className="btn btn-sm btn-ghost" onClick={() => { dismissReminder(t); setHidden(true); }}>{L.exportReminderDismiss}</button>
     </div>
@@ -96,12 +96,12 @@ export function PhysicalBoard({ id }: { id: string }) {
   const saveLabel = saveState === "saving" ? p.saveSaving : saveState === "failed" ? p.saveFailedShort : p.saveSaved;
 
   return (
-    <main className="center-screen" style={{ alignItems: "flex-start" }}>
+    <main className="center-screen center-top">
       <div className="card stack scale-in pr-wrap">
-        <div className="spread" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
-          <div>
+        <div className="pr-top">
+          <div className="pr-title">
             <p className="eyebrow">{p.entryTitle} · {p.systems[t.settings.system].label}</p>
-            <h1 style={{ margin: 0, fontSize: 24 }}>{t.title}</h1>
+            <h1 className="pr-h1">{t.title}</h1>
             {t.status === "finished" && <span className="badge badge-done">{p.finishedNote}</span>}
           </div>
           <div className="pr-header-actions" aria-label={p.actionsSlotLabel}>
@@ -119,9 +119,9 @@ export function PhysicalBoard({ id }: { id: string }) {
         </div>
 
         {readOnly && (
-          <div className="banner banner-error stack" role="alert" data-testid="readonly-banner" style={{ gap: 6 }}>
+          <div className="banner banner-error stack gap-2" role="alert" data-testid="readonly-banner">
             <b>{no.physicalCloud.lockedTitle}</b>
-            <span style={{ fontSize: 13 }}>{no.physicalCloud.lockedBody}</span>
+            <span className="fs-xs">{no.physicalCloud.lockedBody}</span>
             <button
               type="button"
               className="btn btn-sm"
@@ -132,7 +132,7 @@ export function PhysicalBoard({ id }: { id: string }) {
           </div>
         )}
         {digital && (
-          <div className="banner stack" role="status" data-testid="continued-digital-banner" style={{ gap: 6 }}>
+          <div className="banner stack gap-2" role="status" data-testid="continued-digital-banner">
             <b>{no.continueDigital.continuedBanner}</b>
             <a className="btn btn-sm" href={`/host/${digital.digitalId}`}>
               {no.continueDigital.continuedLink} ({no.continueDigital.continuedPin(digital.joinPin)})
@@ -152,7 +152,7 @@ export function PhysicalBoard({ id }: { id: string }) {
           ))}
         </div>
 
-        <fieldset disabled={readOnly || !!digital} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+        <fieldset disabled={readOnly || !!digital} className="pr-fieldset">
         <div id="tab-panel" role="tabpanel" aria-labelledby={`tab-${active}`} className="stack">
           {active === "round" && <RoundPanel t={t} apply={apply} run={run} />}
           {active === "standings" && <StandingsPanel t={t} />}

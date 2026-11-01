@@ -13,7 +13,6 @@ test("publiser → spiller melder via QR-side → arrangør godkjenner → offen
   await page.getByLabel(no.physical.nameLabel).fill("Skytest");
   for (let i = 0; i < 4; i++) await page.getByRole("button", { name: no.common.next }).click();
   await page.getByLabel(no.physical.pasteLabel).fill("Anna; 1500; A\nBjørn; 1400; A\nCecilie; 1300; B\nDavid; 1200; B");
-  await page.getByRole("button", { name: no.physical.pasteImport }).click();
   await page.getByRole("button", { name: no.common.next }).click();
   await page.getByRole("button", { name: no.physical.confirmCreate }).click();
   await expect(page.getByRole("heading", { name: "Skytest" })).toBeVisible();
@@ -95,7 +94,6 @@ test("to telefoner er samstemte, én telefon er det aldri, bytte etter publiseri
   await page.getByLabel(p.nameLabel).fill("Reviewtest");
   for (let i = 0; i < 4; i++) await page.getByRole("button", { name: no.common.next }).click();
   await page.getByLabel(p.pasteLabel).fill("Anna Hansen; 1500; Klubb A\nBjørn Berg; 1400; Klubb A\nCecilie Dahl; 1300; Klubb B\nDavid Moe; 1200; Klubb B");
-  await page.getByRole("button", { name: p.pasteImport }).click();
   await page.getByRole("button", { name: no.common.next }).click();
   await page.getByRole("button", { name: p.confirmCreate }).click();
   await expect(page.getByRole("heading", { name: "Reviewtest" })).toBeVisible();
@@ -179,7 +177,6 @@ test("andre fane er skrivebeskyttet og kan ta over", async ({ page, context }) =
   await page.getByLabel(no.physical.nameLabel).fill("Låstest");
   for (let i = 0; i < 4; i++) await page.getByRole("button", { name: no.common.next }).click();
   await page.getByLabel(no.physical.pasteLabel).fill("Anna\nBjørn\nCecilie\nDavid");
-  await page.getByRole("button", { name: no.physical.pasteImport }).click();
   await page.getByRole("button", { name: no.common.next }).click();
   await page.getByRole("button", { name: no.physical.confirmCreate }).click();
   await expect(page.getByRole("heading", { name: "Låstest" })).toBeVisible();

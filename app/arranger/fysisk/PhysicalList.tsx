@@ -43,42 +43,42 @@ export function PhysicalList() {
 
   return (
     <main className="center-screen">
-      <div className="card card-narrow stack scale-in">
+      <div className="card card-form stack scale-in">
         <PageHeader backHref="/arranger" />
         <div className="card-head">
           <p className="eyebrow">{t.pageTitle}</p>
           <p className="muted fs-xs">{t.pageIntro}</p>
         </div>
         {kind === "memory" && <div className="banner banner-error">{t.storageMemoryWarn}</div>}
-        {kind === "localStorage" && (
-          <div className="muted text-center fs-xs">
-            {t.storageLocalWarn}
-          </div>
-        )}
+        {kind === "localStorage" && <div className="muted text-center fs-xs">{t.storageLocalWarn}</div>}
 
         <NavLink href="/arranger/fysisk/ny" className="btn btn-primary btn-block btn-lg">
           <Icon name="more" size={16} /> {t.newTournament}
         </NavLink>
 
-        <ImportFile />
-        <OpenPublished />
+        <section className="sect" aria-label={t.openExisting}>
+          <h2 className="sect-title">{t.openExisting}</h2>
+          <ImportFile />
+          <OpenPublished />
+        </section>
 
-        {items && items.length === 0 && <p className="muted text-center">{t.emptyList}</p>}
-        <div className="stack gap-2">
-          {items?.map((it) => (
-            <div key={it.id} className="spread gap-2">
-              <NavLink href={`/arranger/fysisk/${it.id}`} className="grow" style={{ textDecoration: "none" }}>
-                <b>{it.title}</b>
-                <span className="muted fs-xs" style={{ display: "block" }}>
-                  {t.summary(it.playerCount, it.roundsPlayed)}
-                </span>
-              </NavLink>
-              <button type="button" className="btn btn-sm btn-ghost" onClick={() => remove(it)}>
-                {t.remove}
-              </button>
-            </div>
-          ))}
-        </div>
+        <section className="sect" aria-label={t.listTitle}>
+          <h2 className="sect-title">{t.listTitle}</h2>
+          {items && items.length === 0 && <p className="muted fs-xs m-0">{t.emptyList}</p>}
+          <ul className="pl-list">
+            {items?.map((it) => (
+              <li key={it.id} className="pl-item">
+                <NavLink href={`/arranger/fysisk/${it.id}`} className="pl-link no-underline">
+                  <b>{it.title}</b>
+                  <span className="muted fs-xs block">{t.summary(it.playerCount, it.roundsPlayed)}</span>
+                </NavLink>
+                <button type="button" className="btn btn-sm btn-ghost" onClick={() => remove(it)}>
+                  {t.remove}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       </div>
     </main>
   );

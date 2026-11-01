@@ -130,20 +130,20 @@ export function BoardReports({ t, board, apply }: { t: PhysicalTournament; board
   const disagree = list.length >= 2 && !sameResult(list);
   const devices = [...new Set(list.map((x) => x.deviceId))];
   return (
-    <div role="row" className="card" style={{ padding: 8, margin: "0 0 4px" }} data-testid={`report-board-${board}`}>
-      <div role="cell" className="stack" style={{ gap: 6 }}>
-        <div className="spread" style={{ gap: 8 }}>
+    <div role="row" className="card rp-card" data-testid={`report-board-${board}`}>
+      <div role="cell" className="stack gap-2">
+        <div className="spread gap-2">
           <span className="badge badge-live">{L.reportsTitle}</span>
           {agree && <span className="badge badge-done">{L.reportAgree}</span>}
           {disagree && <span className="badge badge-error" role="alert">{L.reportDisagree}</span>}
           {!agree && !disagree && list.length >= 2 && <span className="badge">{L.reportNeedsBoth}</span>}
         </div>
         {list.map((rep) => (
-          <div key={rep.id} className="spread" style={{ gap: 8 }}>
+          <div key={rep.id} className="spread gap-2">
             <span>
-              <b>{resultText(rep.result)}</b> <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>({L.reportFrom[rep.reporter]}, {L.reportFromDevice(devices.indexOf(rep.deviceId) + 1)})</span>
+              <b>{resultText(rep.result)}</b> <span className="muted fs-xs">({L.reportFrom[rep.reporter]}, {L.reportFromDevice(devices.indexOf(rep.deviceId) + 1)})</span>
             </span>
-            <span className="row" style={{ gap: 4 }}>
+            <span className="row gap-1">
               <button type="button" className="btn btn-sm btn-primary" onClick={() => approveReport(t, apply, list, rep, refresh)}>{L.approve}</button>
               <button type="button" className="btn btn-sm btn-ghost" onClick={async () => { await getCloud(t.id).decideReport(rep.id, "reject"); refresh(); }}>{L.reject}</button>
             </span>

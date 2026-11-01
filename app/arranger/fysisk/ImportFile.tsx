@@ -109,7 +109,7 @@ export function ImportFile() {
       {pending && p && c && (
         <Modal open onClose={() => setPending(null)} labelledBy={titleId} size="md">
           <div className="stack">
-            <h3 id={titleId} style={{ margin: 0 }}>{f.importTitle}</h3>
+            <h3 id={titleId} className="m-0">{f.importTitle}</h3>
             <p>{f.importSummary(p.tournament.title, p.tournament.players.length, p.tournament.rounds.filter((r) => r.status === "completed").length)}</p>
             {!p.hashOk && <div className="banner banner-error" role="alert">{f.tamperedWarn}</div>}
             {p.hashOk && !p.snapshotOk && <div className="banner banner-error" role="alert">{f.snapshotWarn}</div>}
@@ -117,12 +117,12 @@ export function ImportFile() {
               <div key={`${r.a}|${r.b}`} className="banner">{f.rematchWarn(r.a, r.b, r.rounds.join(", "))}</div>
             ))}
             {p.needsConfirm && (
-              <label>
+              <label className="pp-check">
                 <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} /> {f.tamperedConfirm}
               </label>
             )}
             {c.kind !== "none" && (
-              <div className="stack" style={{ gap: 6 }}>
+              <div className="stack gap-2">
                 <b>{f.conflictTitle}</b>
                 <span>
                   {c.kind === "same" && f.conflictSame}
@@ -135,7 +135,7 @@ export function ImportFile() {
             {pending && continueRefusal(pending.parsed.tournament) && (
               <div className="banner" data-testid="import-continue-refusal">{no.continueDigital.errors[continueRefusal(pending.parsed.tournament)!]}</div>
             )}
-            <div className="row" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
+            <div className="row justify-end flex-wrap">
               <button type="button" className="btn btn-ghost" onClick={() => setPending(null)}>{f.cancel}</button>
               {pending && !continueRefusal(pending.parsed.tournament) && (
                 <button type="button" className="btn" data-testid="import-continue-digital" disabled={blocked || busy} onClick={() => void commitAndContinue()}>

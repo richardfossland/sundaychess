@@ -100,7 +100,7 @@ export function RoundPanel({ t, apply, run }: { t: PhysicalTournament; apply: Ap
   const statusLabel = (r: PhysicalRound) => (r.status === "draft" ? p.statusDraft : r.status === "published" ? p.statusPublished : p.statusCompleted);
 
   return (
-    <section className="stack" aria-label={p.tabs.round} style={{ gap: 14 }}>
+    <section className="stack gap-4" aria-label={p.tabs.round}>
       {t.rounds.length > 1 && (
         <nav className="pr-roundnav" aria-label={p.roundsNav}>
           {t.rounds.map((r) => (
@@ -112,9 +112,9 @@ export function RoundPanel({ t, apply, run }: { t: PhysicalTournament; apply: Ap
       )}
 
       {round && progress && (
-        <div className="stack" style={{ gap: 12 }}>
-          <div className="spread" style={{ flexWrap: "wrap" }}>
-            <b style={{ fontSize: 18 }}>{p.roundN(round.number)} / {total}</b>
+        <div className="stack gap-3">
+          <div className="spread flex-wrap">
+            <b className="pr-roundtitle">{p.roundN(round.number)} / {total}</b>
             <span className={`badge ${round.status === "completed" ? "badge-done" : "badge-live"}`}>{statusLabel(round)}</span>
           </div>
 
@@ -122,7 +122,7 @@ export function RoundPanel({ t, apply, run }: { t: PhysicalTournament; apply: Ap
             <div className="pr-progress" aria-live="polite">
               <div className="spread">
                 <b data-testid="progress">{p.progress(progress.done, progress.total)}</b>
-                <span className="muted" style={{ fontSize: 13 }}>{progress.missing.length === 0 ? p.allResultsIn : p.missingResults(progress.missing.length)}</span>
+                <span className="muted fs-xs">{progress.missing.length === 0 ? p.allResultsIn : p.missingResults(progress.missing.length)}</span>
               </div>
               <div className="pr-bar" role="progressbar" aria-valuemin={0} aria-valuemax={progress.total} aria-valuenow={progress.done}>
                 <span style={{ width: `${progress.total ? (100 * progress.done) / progress.total : 100}%` }} />
@@ -130,11 +130,11 @@ export function RoundPanel({ t, apply, run }: { t: PhysicalTournament; apply: Ap
             </div>
           )}
 
-          {isCurrent && round.status === "draft" && <div className="banner banner-warn" style={{ textAlign: "left" }}>{p.draftLockNote}</div>}
+          {isCurrent && round.status === "draft" && <div className="banner banner-warn text-left">{p.draftLockNote}</div>}
           {isCurrent && round.status === "published" && !editing && (
-            <span className="muted" style={{ fontSize: 13 }}><Icon name="lock" size={13} /> {p.publishedLockNote}</span>
+            <span className="muted fs-xs"><Icon name="lock" size={13} /> {p.publishedLockNote}</span>
           )}
-          {editing && <div className="banner banner-warn" style={{ textAlign: "left" }} role="status">{picked ? p.editPairingPicked(names(picked.side === "white" ? round.pairings.find((g) => g.board === picked.board)!.white : round.pairings.find((g) => g.board === picked.board)!.black)) : p.editPairingHelp}</div>}
+          {editing && <div className="banner banner-warn text-left" role="status">{picked ? p.editPairingPicked(names(picked.side === "white" ? round.pairings.find((g) => g.board === picked.board)!.white : round.pairings.find((g) => g.board === picked.board)!.black)) : p.editPairingHelp}</div>}
 
           <ReportsPanel t={t} apply={apply} />
           <div className="pr-table" role="table" aria-label={p.roundN(round.number)}>
@@ -167,7 +167,7 @@ export function RoundPanel({ t, apply, run }: { t: PhysicalTournament; apply: Ap
           {canEditResults && <span className="pr-hint">{p.keyboardHint}</span>}
 
           {running && isCurrent && (
-            <div className="row" style={{ flexWrap: "wrap" }}>
+            <div className="row flex-wrap">
               {round.status === "draft" && !editing && (
                 <button type="button" className="btn btn-primary grow" onClick={() => apply({ type: "publishRound", round: round.number, autoForfeit: true })}>{p.publishRound}</button>
               )}
@@ -259,7 +259,7 @@ function BoardRow({ g, names, knockout, resultsEnabled, showResults, editing, pi
       disabled={!resultsEnabled || (knockout && code === "½-½")}
       // Å trykke på det valgte resultatet skal aldri nullstille det (feiltrykk): fjerning skjer via «mer»-menyen.
       onClick={() => g.result !== code && onResult(code)}
-      style={knockout && code === "½-½" ? { visibility: "hidden" } : undefined}
+      data-hidden={knockout && code === "½-½" ? "true" : undefined}
     >
       {p.results[code]}
     </button>
@@ -283,7 +283,7 @@ function BoardRow({ g, names, knockout, resultsEnabled, showResults, editing, pi
       </div>
       <div className="pr-actions" role="cell">
         {!showResults ? null : bye ? (
-          <span className="pr-tag" style={{ gridColumn: "1 / -1" }}>{p.byeScore(g.byeType === "half" ? "½" : g.byeType === "zero" ? "0" : "1")}</span>
+          <span className="pr-tag pr-tag-wide">{p.byeScore(g.byeType === "half" ? "½" : g.byeType === "zero" ? "0" : "1")}</span>
         ) : (
           <>
             {res("1-0")}
@@ -293,7 +293,7 @@ function BoardRow({ g, names, knockout, resultsEnabled, showResults, editing, pi
               <Icon name="ellipsis" size={20} />
             </button>
             {g.result && (g.result === "+-" || g.result === "-+" || g.result === "=") && (
-              <span className="pr-tag" style={{ gridColumn: "1 / -1" }}>{p.results[g.result]}</span>
+              <span className="pr-tag pr-tag-wide">{p.results[g.result]}</span>
             )}
           </>
         )}

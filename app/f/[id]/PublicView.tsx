@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { no } from "@/lib/locale/no";
 import type { PublicSnapshot } from "@/lib/physical/snapshot";
 import { useTabHidden } from "@/lib/client/useTabHidden";
+import "../../arranger/fysisk/physical.css";
 
 const L = no.physicalCloud;
 const POLL_MS = 15_000;
@@ -54,22 +55,22 @@ export function PublicView({ id }: { id: string }) {
   const round = snap.rounds.find((r) => r.number === picked) ?? snap.rounds[snap.rounds.length - 1] ?? null;
 
   return (
-    <main className="center-screen" style={{ alignItems: "flex-start" }}>
-      <div className="card stack" style={{ width: "min(100%, 760px)" }} data-testid="public-view">
-        <div>
+    <main className="center-screen center-top">
+      <div className="card card-form stack" data-testid="public-view">
+        <div className="pr-title">
           <p className="eyebrow">SundayChess</p>
-          <h1 style={{ margin: 0, fontSize: 26 }}>{snap.title}</h1>
+          <h1 className="pr-h1">{snap.title}</h1>
           {snap.status === "finished" && <span className="badge badge-done">{L.pubFinished}</span>}
         </div>
         {stale && <div className="banner" role="status">{L.pubOffline}</div>}
 
         {!round && <p className="muted">{L.pubNoRounds}</p>}
         {round && (
-          <section className="stack" style={{ gap: 8 }} aria-label={L.pubPairings}>
-            <div className="spread">
-              <b>{L.pubRound(round.number, snap.totalRounds)}</b>
+          <section className="stack gap-3" aria-label={L.pubPairings}>
+            <div className="spread flex-wrap gap-3">
+              <b className="pr-roundtitle">{L.pubRound(round.number, snap.totalRounds)}</b>
               {snap.rounds.length > 1 && (
-                <span className="row" style={{ gap: 4, flexWrap: "wrap" }}>
+                <span className="row flex-wrap gap-2">
                   {snap.rounds.map((r) => (
                     <button key={r.number} type="button" className={`btn btn-sm ${r.number === round.number ? "" : "btn-ghost"}`} aria-pressed={r.number === round.number} onClick={() => setPicked(r.number)}>
                       {r.number}
@@ -78,7 +79,7 @@ export function PublicView({ id }: { id: string }) {
                 </span>
               )}
             </div>
-            <div style={{ overflowX: "auto" }}>
+            <div className="px-scroll">
               <table className="table" data-testid="public-pairings">
                 <thead>
                   <tr><th>{L.pubBoard}</th><th>{L.pubWhite}</th><th>{L.pubBlack}</th><th>{L.pubResult}</th></tr>
@@ -98,9 +99,9 @@ export function PublicView({ id }: { id: string }) {
           </section>
         )}
 
-        <section className="stack" style={{ gap: 8 }} aria-label={L.pubStandings}>
-          <b>{L.pubStandings}</b>
-          <div style={{ overflowX: "auto" }}>
+        <section className="stack gap-3" aria-label={L.pubStandings}>
+          <b className="pr-roundtitle">{L.pubStandings}</b>
+          <div className="px-scroll">
             <table className="table" data-testid="public-standings">
               <thead>
                 <tr><th>{L.pubPlace}</th><th>{L.pubName}</th>{snap.groupLabel && <th>{snap.groupLabel}</th>}<th>{L.pubPoints}</th></tr>
@@ -118,7 +119,7 @@ export function PublicView({ id }: { id: string }) {
             </table>
           </div>
         </section>
-        <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: 0 }}>{L.pubUpdated}</p>
+        <p className="muted fs-xs m-0">{L.pubUpdated}</p>
       </div>
     </main>
   );
