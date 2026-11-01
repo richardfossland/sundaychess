@@ -23,7 +23,7 @@ import { effectiveHostCode, usePresentasjon } from "@/lib/client/storskjerm/useP
  * the lobby is auto-removed (they left the app). Conservative so a brief wifi
  * blip on a Chromebook never evicts a real student. */
 /** Tavlevisning: høyeste antall spillerbrikker før «+N til». */
-const TV_ROSTER_MAX = 40;
+const TV_ROSTER_MAX = 30;
 
 const AUTO_KICK_MS = 3 * 60 * 1000;
 
@@ -119,10 +119,10 @@ export function LobbyView({
   // comment — the arranger wizard runs before that, so it can't check this).
   // The lobby is the first place with a real player count, and the last
   // chance to change the round count before it's baked into every pairing.
-  // Tavlevisning: skriften krymper når mange har blitt med, og over 40 vises
+  // Tavlevisning: skriften krymper når mange har blitt med, og over 30 vises
   // resten som «+N til» så listen alltid passer i skjermhøyden.
   const shown = presentasjon ? active.slice(0, TV_ROSTER_MAX) : active;
-  const density = active.length <= 12 ? "l" : active.length <= 24 ? "m" : "s";
+  const density = active.length <= 12 ? "l" : active.length <= 20 ? "m" : "s";
   const roundsHint = roundsWarning(active.length, tournament.config.leagueRounds);
 
   // Presence bookkeeping for the conservative auto-kick: a player must have
