@@ -250,9 +250,15 @@
   --chipfs: calc(var(--tv) * 1.3);
   --colmin: 11;
 }
+/* Over 30: tettest. Skriften stopper på 13 px-gulvet (.chip under). */
+.presentasjon-fit .roster-chips[data-density="xs"] {
+  --chipfs: calc(var(--tv) * 1.1);
+  --colmin: 11;
+}
 /* Mange spillere: navnet viktigst, så initialene utgår. */
 .presentasjon-fit .roster-chips[data-density="m"] .avatar,
-.presentasjon-fit .roster-chips[data-density="s"] .avatar {
+.presentasjon-fit .roster-chips[data-density="s"] .avatar,
+.presentasjon-fit .roster-chips[data-density="xs"] .avatar {
   display: none;
 }
 .presentasjon-fit .roster-chips .chip {
