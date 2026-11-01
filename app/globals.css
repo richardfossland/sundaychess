@@ -1651,6 +1651,7 @@ a:focus-visible,
 }
 .result-title {
   font-size: clamp(34px, 8vw, 60px);
+  text-align: center;
 }
 .gl-retry {
   padding: var(--sp-3);
@@ -3569,11 +3570,11 @@ input[type="radio"] {
 .live-empty {
   padding: 40px;
 }
-.result-title {
+.live-result-title {
   font-size: clamp(28px, 5vw, 46px);
   text-align: center;
 }
-.result-title-sm {
+.live-result-title-sm {
   font-size: clamp(24px, 4.5vw, 40px);
 }
 .win-flash {

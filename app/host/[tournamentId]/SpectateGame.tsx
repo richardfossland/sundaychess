@@ -235,7 +235,7 @@ export function SpectateGame({
               <div className="result-overlay result-overlay-in">
                 <div className="result-card stack align-center gap-2">
                   <div className="result-emoji"><Icon name={result === "draw" ? "draw" : "cup"} size={84} strokeWidth={1.4} /></div>
-                  <h2 className="result-title">
+                  <h2 className="live-result-title">
                     {winnerText}
                   </h2>
                 </div>

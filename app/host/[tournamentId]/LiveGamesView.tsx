@@ -376,7 +376,7 @@ export function LiveGamesView({
             <Confetti count={120} />
             <div className="result-card stack align-center gap-3">
               <div className="result-emoji"><Icon name="flag" size={84} strokeWidth={1.4} /></div>
-              <h2 className="result-title">
+              <h2 className="live-result-title">
                 {no.host.roundOver}
               </h2>
               <button className="btn btn-primary btn-lg" onClick={onExitLive}>
@@ -438,7 +438,7 @@ export function LiveGamesView({
           <Confetti count={90} />
           <div className="result-card stack align-center gap-2">
             <div className="result-emoji"><Icon name="party" size={84} strokeWidth={1.4} /></div>
-            <h2 className="result-title result-title-sm">
+            <h2 className="live-result-title live-result-title-sm">
               {winFlash}
             </h2>
           </div>
