@@ -1,5 +1,5 @@
 import { addPlayer, getTournamentByPin } from "@/lib/server/store";
-import { isCodeBlocked, registerCodeFailure } from "@/lib/server/attempts";
+import { isGuessBlocked, registerGuessFailure, withDeviceCookie } from "@/lib/server/deviceGuard";
 import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { broadcast } from "@/lib/server/broadcast";
 import { defer } from "@/lib/server/defer";
@@ -8,9 +8,9 @@ import { isValidPin } from "@/lib/codes";
 
 // POST /api/join — student joins a tournament by PIN with a display name.
 // Returns the resume code (a bearer token) in the body ONLY (never a URL).
-export const POST = withApi(handlePost);
+export const POST = withApi((req: Request) => withDeviceCookie(req, "/api/join", (device) => handlePost(req, device)));
 
-async function handlePost(req: Request): Promise<Response> {
+async function handlePost(req: Request, device: string): Promise<Response> {
   // Generous per-IP cap: an entire class joins from ONE school NAT IP,
   // often inside the same minute (plus typo retries).
   if (!rateLimit(`join:${clientIp(req)}`, 120, 60_000)) {
@@ -24,12 +24,14 @@ async function handlePost(req: Request): Promise<Response> {
   if (displayName.length < 1) return fail(400, "missing_name");
 
   // Wrong-PIN guessing is counted per IP (migration 0015 machinery, scope `pin`).
-  if (await isCodeBlocked("pin", req)) return fail(429, "rate_limited");
+  if (await isGuessBlocked("pin", device, req)) return fail(429, "rate_limited");
   const t = await getTournamentByPin(pin);
   if (!t) {
-    if (await registerCodeFailure("pin", req)) return fail(429, "rate_limited");
+    if (await registerGuessFailure("pin", device, req)) return fail(429, "rate_limited");
     return fail(404, "invalid_pin");
   }
+  // Correct PIN: confirm the block against the DB, not the per-isolate cache (no 200-vs-429 oracle).
+  if (await isGuessBlocked("pin", device, req, true)) return fail(429, "rate_limited");
   if (t.status !== "lobby") return fail(409, "already_started");
   // Continued from a physical tournament: only the pre-registered names may play,
   // unless the physical tournament allowed late entry (M5b).
