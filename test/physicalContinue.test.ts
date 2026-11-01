@@ -24,6 +24,7 @@ import { POST as fromPhysical } from "@/app/api/tournament/from-physical/route";
 import { POST as joinNames } from "@/app/api/join/names/route";
 import { POST as joinClaim } from "@/app/api/join/claim/route";
 import { POST as joinFresh } from "@/app/api/join/route";
+import { POST as overrideRoute } from "@/app/api/game/override/route";
 import { POST as resetClaimRoute } from "@/app/api/lobby/reset-claim/route";
 import { __mem, __resetMem, resolveGameRpc } from "./helpers/memoryStore";
 import { advanceRound, currentRoundResolved, enginePairings, startLeague } from "@/lib/server/league";
@@ -31,7 +32,7 @@ import { __resetRateLimiter } from "@/lib/server/http";
 import { buildDigitalPlan, continueRefusal } from "@/lib/physical/toDigital";
 import { buildPhysicalFromDigital } from "@/lib/physical/fromDigital";
 import { createTournament, dispatch, replay } from "@/lib/physical/reducer";
-import { nextRoundPairing, pairNextRound, standings } from "@/lib/physical/selectors";
+import { historyOf, nextRoundPairing, pairNextRound, standings } from "@/lib/physical/selectors";
 import { tournamentFileText } from "@/lib/export/json";
 import { parseTournamentFile } from "@/lib/import/parse";
 import { computeStandings, gamesToHistory, metBeforeSet, standingsOptions } from "@/lib/tournament/score";
@@ -386,5 +387,54 @@ describe("claiming names", () => {
     expect((await list(out.joinPin)).canJoinFresh).toBe(false);
     const r = await joinFresh(post("http://x/j", { pin: out.joinPin, displayName: "Ny" }));
     expect(r.status).toBe(403);
+  });
+});
+
+describe("review fixes", () => {
+  it("override refuses every bye (½ and 0 byes are black=null draw/aborted), allows normal games", async () => {
+    let t = roster({ byePoints: 0.5 }, 5);
+    t = dispatch(t, { type: "requestBye", playerId: "p-Eva", round: 1, byeType: "zero" });
+    t = playRound(t);
+    t = dispatch(t, { type: "requestBye", playerId: "p-Anna", round: 2, byeType: "half" });
+    t = playRound(t, 2);
+    const { dt, out } = await continueDigitally(t);
+    const games = __mem.games.filter((g) => g.tournament_id === dt.id);
+    const byes = games.filter((g) => g.black_player_id === null);
+    expect(byes.map((g) => g.status)).toEqual(expect.arrayContaining(["aborted", "draw"]));
+    for (const g of byes) {
+      const r = await overrideRoute(post("http://x/o", { gameId: g.id, hostCode: out.hostCode, result: "white_win" }));
+      expect(r.status).toBe(409);
+      expect(g.status === "draw" || g.status === "aborted").toBe(true);
+    }
+    const normal = games.find((g) => g.black_player_id)!;
+    expect((await overrideRoute(post("http://x/o", { gameId: normal.id, hostCode: out.hostCode, result: "draw" }))).status).toBe(200);
+  });
+
+  it("played 0-0 (aborted by teacher) round-trips as a PLAYED 0-0 meeting; walkover abort stays a forfeit", () => {
+    const base = { id: "t", title: "x", status: "finished" as const, config: { leagueRounds: 2, playoff: false, playoffSize: 0 as const, roundTimerSec: null } };
+    const players = ["a", "b", "c", "d"].map((id, i) => ({ id, displayName: id.toUpperCase(), status: "active" as const, startNo: i + 1 }));
+    const rounds = [{ id: "r1", number: 1, phase: "league" }];
+    const mk = (src: "teacher_override" | "walkover") =>
+      buildPhysicalFromDigital({
+        tournament: base,
+        players,
+        rounds,
+        games: [
+          { roundId: "r1", whitePlayerId: "a", blackPlayerId: "b", status: "aborted", slot: 0, resultSource: src },
+          { roundId: "r1", whitePlayerId: "c", blackPlayerId: "d", status: "white_win", slot: 1, resultSource: "play" },
+        ],
+      });
+    const played = mk("teacher_override");
+    const forfeit = mk("walkover");
+    expect(played.ok && forfeit.ok).toBe(true);
+    if (!played.ok || !forfeit.ok) return;
+    expect(played.tournament.rounds[0].pairings[0].result).toBe("0-0");
+    expect(forfeit.tournament.rounds[0].pairings[0].result).toBe("=");
+    const h = (t: PhysicalTournament) => historyOf(t).find((g) => g.white === "a")!;
+    expect(h(played.tournament).forfeit).toBeUndefined(); // counts as met + colours
+    expect(h(forfeit.tournament).forfeit).toBe(true);
+    // and the other way: physical 0-0 -> digital aborted/physical -> not a forfeit
+    const plan = buildDigitalPlan(played.tournament);
+    expect(plan.rounds[0].games[0]).toMatchObject({ status: "aborted", resultSource: "physical" });
   });
 });

@@ -39,7 +39,8 @@ function resultOf(status: GameStatus, source?: ResultSource): ResultCode {
   if (status === "white_win") return forfeit ? "+-" : "1-0";
   if (status === "black_win") return forfeit ? "-+" : "0-1";
   if (status === "draw") return "½-½";
-  return "=";
+  // Avbrutt parti: walkover/fravær = ikke spilt (begge uteble); ellers ble det spilt (teller som møte og farge).
+  return forfeit ? "=" : "0-0";
 }
 
 export function buildPhysicalFromDigital(input: DigitalExportInput, now = new Date().toISOString()): DigitalExportResult {

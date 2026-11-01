@@ -1,4 +1,5 @@
 import { addPlayer, getTournamentByPin } from "@/lib/server/store";
+import { isCodeBlocked, registerCodeFailure } from "@/lib/server/attempts";
 import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { broadcast } from "@/lib/server/broadcast";
 import { defer } from "@/lib/server/defer";
@@ -22,8 +23,13 @@ async function handlePost(req: Request): Promise<Response> {
   if (!isValidPin(pin)) return fail(400, "invalid_pin");
   if (displayName.length < 1) return fail(400, "missing_name");
 
+  // Wrong-PIN guessing is counted per IP (migration 0015 machinery, scope `pin`).
+  if (await isCodeBlocked("pin", req)) return fail(429, "rate_limited");
   const t = await getTournamentByPin(pin);
-  if (!t) return fail(404, "invalid_pin");
+  if (!t) {
+    if (await registerCodeFailure("pin", req)) return fail(429, "rate_limited");
+    return fail(404, "invalid_pin");
+  }
   if (t.status !== "lobby") return fail(409, "already_started");
   // Continued from a physical tournament: only the pre-registered names may play,
   // unless the physical tournament allowed late entry (M5b).

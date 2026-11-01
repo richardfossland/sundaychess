@@ -76,6 +76,8 @@ function gameOf(p: PhysicalPairing, slot: number): PlanGame {
       return { ...base, status: "white_win", resultSource: "walkover" };
     case "-+":
       return { ...base, status: "black_win", resultSource: "walkover" };
+    case "0-0":
+      return { ...base, status: "aborted", resultSource: "physical" };
     default:
       return { ...base, status: "aborted", resultSource: "walkover" };
   }

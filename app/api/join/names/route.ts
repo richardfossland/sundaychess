@@ -1,4 +1,5 @@
 import { getTournamentByPin, listPlayers } from "@/lib/server/store";
+import { isCodeBlocked, registerCodeFailure } from "@/lib/server/attempts";
 import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
 import { isValidPin } from "@/lib/codes";
 
@@ -12,8 +13,13 @@ async function handlePost(req: Request): Promise<Response> {
   const body = await readJson<{ pin?: string }>(req);
   const pin = (body?.pin ?? "").toString().trim();
   if (!isValidPin(pin)) return fail(400, "invalid_pin");
+  // Wrong-PIN guessing is counted per IP (migration 0015 machinery, scope `pin`).
+  if (await isCodeBlocked("pin", req)) return fail(429, "rate_limited");
   const t = await getTournamentByPin(pin);
-  if (!t) return fail(404, "invalid_pin");
+  if (!t) {
+    if (await registerCodeFailure("pin", req)) return fail(429, "rate_limited");
+    return fail(404, "invalid_pin");
+  }
   if (t.status === "finished") return fail(409, "finished");
   const players = await listPlayers(t.id);
   const names = players

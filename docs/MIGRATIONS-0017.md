@@ -21,3 +21,26 @@ select column_name from information_schema.columns where table_name = 'players' 
 select has_function_privilege('anon', 'public.claim_player(uuid,uuid)', 'execute');  -- false
 ```
 - [ ] Alle sjekkene stemmer.
+
+## Før migrasjonen er kjørt (gammel DB, ny kode)
+- `POST /api/tournament/from-physical`, `POST /api/join/claim` og `POST /api/lobby/reset-claim` svarer 503 (manglende kolonner/funksjon).
+- `POST /api/join/names` svarer 200 med **tom liste** (`pre_registered` finnes ikke i radene) og eleven faller tilbake til vanlig navneinntasting. Ingen tournaments fra `from-physical` kan finnes uten migrasjonen.
+- Resten av appen er upåvirket.
+
+## Tilbakerulling
+Bare trygt når ingen turnering er opprettet via «Fortsett digitalt» (ellers mister de rating/klubb/startnummer og får ulovlige `physical`-kilder). Kjør i SQL-editoren:
+
+```sql
+drop function if exists public.claim_player(uuid, uuid);
+drop index if exists public.players_tournament_start_no_idx;
+alter table public.players drop column if exists claimed_at;
+alter table public.players drop column if exists pre_registered;
+alter table public.players drop column if exists start_no;
+alter table public.players drop column if exists club;
+alter table public.players drop column if exists rating;
+update public.games set result_source = 'teacher_override' where result_source = 'physical';
+alter table public.games drop constraint if exists games_result_source_check;
+alter table public.games add constraint games_result_source_check
+  check (result_source in ('play','teacher_override','bye','timeout_draw','walkover','opponent_absent'));
+```
+Rull tilbake KODEN først (eller samtidig); ny kode forventer kolonnene.

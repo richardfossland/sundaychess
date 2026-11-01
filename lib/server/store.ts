@@ -414,7 +414,8 @@ export async function insertFinishedGames(
 /** Best-effort cleanup of a half-created tournament (children cascade). */
 export async function deleteTournament(id: string): Promise<void> {
   const db = createServiceClient();
-  await db.from("tournaments").delete().eq("id", id);
+  const { error } = await db.from("tournaments").delete().eq("id", id);
+  if (error) console.error("[store] deleteTournament failed (half-built tournament left behind)", id, error);
 }
 
 /** Atomically claim a pre-registered name (RPC claim_player, 0017). Returns the

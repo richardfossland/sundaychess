@@ -98,6 +98,9 @@ export async function setRoundStatus(id: string, status: Round["status"]) {
 export async function listGames(tid: string) {
   return db.games.filter((g) => g.tournament_id === tid);
 }
+export async function getGame(id: string) {
+  return db.games.find((g) => g.id === id) ?? null;
+}
 export async function listGamesForRound(rid: string) {
   return db.games.filter((g) => g.round_id === rid);
 }
