@@ -5,6 +5,7 @@ import { useBoardState } from "@/lib/client/useBoardState";
 import { useWakeLock } from "@/lib/client/useWakeLock";
 import { identity } from "@/lib/client/identity";
 import { no } from "@/lib/locale/no";
+import { HostFileButton } from "./HostFileButton";
 import { DiagnosticsModal } from "./DiagnosticsModal";
 import { LobbyView } from "./LobbyView";
 import { LeagueView } from "./LeagueView";
@@ -88,7 +89,7 @@ export function BoardClient({ tournamentId }: { tournamentId: string }) {
       {/* One fixed toolbar, not two — the live/board toggle only exists once a
           round is running, the diagnostics button only on the device that holds
           the host code, and neither must leave an empty fixed box behind. */}
-      {(liveable || hostCode) && (
+      {(liveable || hostCode || status === "finished") && (
         <div
           className="row"
           style={{ position: "fixed", top: 16, right: 20, zIndex: 40, gap: 4 }}
@@ -113,6 +114,7 @@ export function BoardClient({ tournamentId }: { tournamentId: string }) {
               </button>
             </>
           )}
+          {status !== "playoff" && (status !== "lobby" || state.tournament.currentRound > 0) && state.tournament.config.format !== "cup" && <HostFileButton state={state} />}
           {hostCode && (
             <button
               className="btn btn-ghost"

@@ -83,6 +83,7 @@ export function LobbyView({
   // in the message so the teacher knows exactly who they're about to remove.
   const [kickTarget, setKickTarget] = useState<{ id: string; name: string } | null>(null);
   const [showNotes, setShowNotes] = useState(false);
+  const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     const base = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
@@ -106,6 +107,7 @@ export function LobbyView({
   }
 
   const active = players.filter((p) => p.status === "active");
+  const unclaimed = active.filter((p) => p.preRegistered && !p.claimed).length;
   // Roster is only known once players have joined (see roundsAdvice.ts's doc
   // comment — the arranger wizard runs before that, so it can't check this).
   // The lobby is the first place with a real player count, and the last
@@ -176,6 +178,11 @@ export function LobbyView({
     // Strictly more conservative: it can only delay a ghost sweep, never kick
     // someone it wouldn't have.
   }, [present]);
+
+  function resetClaim(playerId: string) {
+    if (!hostCode) return;
+    api.resetClaim(tournament.id, hostCode, playerId).then(onChanged).catch(() => {});
+  }
 
   function kick(playerId: string) {
     if (!hostCode) return;
@@ -308,6 +315,9 @@ export function LobbyView({
           {active.length < 2 && (
             <p className="faint" style={{ fontSize: 13 }}>Minst 2 spillere må bli med.</p>
           )}
+          {unclaimed > 0 && (
+            <p className="faint" style={{ fontSize: 13 }} data-testid="unclaimed-hint">{no.continueDigital.hostUnclaimedCount(unclaimed)}</p>
+          )}
           {roundsHint && (
             <p className="faint" style={{ fontSize: 13 }}><Icon name="warn" size={16} /> {roundsHint}</p>
           )}
@@ -345,6 +355,25 @@ export function LobbyView({
                     />
                     <span className="avatar">{initials(p.displayName)}</span>
                     {p.displayName}
+                    {p.preRegistered && (
+                      <span
+                        className="faint"
+                        style={{ fontSize: 11 }}
+                        data-testid={p.claimed ? "claimed" : "unclaimed"}
+                      >
+                        {p.claimed ? no.continueDigital.hostClaimed : no.continueDigital.hostUnclaimed}
+                      </span>
+                    )}
+                    {p.preRegistered && p.claimed && (
+                      <button
+                        className="chip-kick"
+                        title={no.continueDigital.hostResetClaim}
+                        aria-label={`${no.continueDigital.hostResetClaim} ${p.displayName}`}
+                        onClick={() => setResetTarget({ id: p.id, name: p.displayName })}
+                      >
+                        <Icon name="undo" size={14} />
+                      </button>
+                    )}
                     {p.team && (
                       <span className="team-chip" style={{ marginLeft: 2 }}>
                         <span className="team-dot" style={{ background: teamColor(p.team) }} />
@@ -368,6 +397,19 @@ export function LobbyView({
       </div>
 
       <FullscreenToggle />
+
+      {resetTarget && (
+        <ConfirmDialog
+          message={no.continueDigital.hostResetConfirm(resetTarget.name)}
+          confirmLabel={no.continueDigital.hostResetClaim}
+          danger
+          onConfirm={() => {
+            resetClaim(resetTarget.id);
+            setResetTarget(null);
+          }}
+          onCancel={() => setResetTarget(null)}
+        />
+      )}
 
       {kickTarget && (
         <ConfirmDialog
