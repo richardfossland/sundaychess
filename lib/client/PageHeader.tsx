@@ -33,7 +33,10 @@ export function PageHeader({ backHref, onBack, backLabel = no.common.back }: Pro
         ) : null}
       </div>
       <Link href="/" className="brandmark page-header-brand" aria-label={no.common.home}>
-        <span className="knight">♞</span> Sunday<b>Chess</b>
+        <span className="knight">♞</span>
+        <span>
+          Sunday<b>Chess</b>
+        </span>
       </Link>
       <div className="page-header-side page-header-side-end">
         <ThemeToggle inline />
