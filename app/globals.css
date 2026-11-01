@@ -2314,6 +2314,7 @@ input[type="radio"] {
   grid-template-columns: var(--tap) 1fr var(--tap);
   align-items: center;
   gap: var(--sp-2);
+  align-self: stretch;
   margin: calc(var(--sp-2) * -1) calc(var(--sp-2) * -1) 0;
 }
 .page-header-side {
@@ -2551,4 +2552,24 @@ input[type="radio"] {
   -webkit-background-clip: text;
   background-clip: text;
   filter: drop-shadow(0 6px 14px rgba(110, 82, 8, 0.25));
+}
+.entrance-btn {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ---- statussider (404, feil, offline) ---- */
+.status-glyph {
+  font-size: 40px;
+  line-height: 1;
+}
+.status-copy {
+  max-width: 380px;
+}
+.status-actions {
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: var(--sp-2);
 }

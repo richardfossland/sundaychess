@@ -8,6 +8,7 @@ import { api, ApiError } from "@/lib/client/api";
 import { identity } from "@/lib/client/identity";
 import { defaultConfig, Wizard } from "./Wizard";
 import { Icon } from "@/lib/client/Icon";
+import { PageHeader } from "@/lib/client/PageHeader";
 
 /** "Turnering DD.MM" — the auto-title "Rask start" gives a tournament created
  * without visiting the title step. */
@@ -71,44 +72,61 @@ export default function HostEntry() {
   return (
     <main className="center-screen">
       <div className="card card-narrow stack scale-in">
-        <div className="brandmark" style={{ justifyContent: "center" }}>
-          <span className="knight">♞</span> Sunday<b>Chess</b>
-        </div>
+        <PageHeader
+          backHref={mode === "choose" ? "/" : undefined}
+          onBack={
+            mode === "open"
+              ? () => {
+                  setError(null);
+                  setMode("choose");
+                }
+              : undefined
+          }
+        />
 
         {mode === "choose" && (
-          <div className="stack" style={{ gap: 12 }}>
+          <div className="btn-stack">
             <p className="eyebrow text-center">Arrangør</p>
             <button
-              className="btn btn-primary btn-block btn-lg"
+              className="btn btn-primary choice"
               disabled={quickBusy}
               onClick={quickStart}
             >
-              {quickBusy ? <span className="spin" /> : <><Icon name="quick" size={16} /> {no.host.quickStart}</>}
+              <span className="choice-icon">
+                {quickBusy ? <span className="spin" /> : <Icon name="quick" size={24} />}
+              </span>
+              <span className="choice-text">
+                <span className="choice-title">{no.host.quickStart}</span>
+                <span className="choice-sub">{no.host.quickStartSub}</span>
+              </span>
             </button>
             {quickError && <div className="banner banner-error">{quickError}</div>}
-            <button
-              className="btn btn-block btn-lg"
-              onClick={() => setMode("create")}
-            >
-              {no.host.customize}
+            <button className="btn choice" onClick={() => setMode("create")}>
+              <span className="choice-icon"><Icon name="edit" size={24} /></span>
+              <span className="choice-text">
+                <span className="choice-title">{no.host.customize}</span>
+                <span className="choice-sub">{no.host.customizeSub}</span>
+              </span>
             </button>
             <button
-              className="btn btn-block btn-lg"
+              className="btn choice"
               onClick={() => {
                 setError(null);
                 setMode("open");
               }}
             >
-              {no.host.enterTitle}
-            </button>
-            <Link href="/arranger/fysisk" className="btn btn-block btn-lg">
-              <b>{no.physical.entryTitle}</b>
-              <span style={{ display: "block", fontSize: "var(--fs-xs)", opacity: 0.75, fontWeight: 400 }}>
-                {no.physical.entrySub}
+              <span className="choice-icon"><Icon name="key" size={24} /></span>
+              <span className="choice-text">
+                <span className="choice-title">{no.host.enterTitle}</span>
+                <span className="choice-sub">{no.host.enterSub}</span>
               </span>
-            </Link>
-            <Link href="/" className="btn btn-ghost btn-block">
-              <Icon name="back" size={16} /> {no.common.back}
+            </button>
+            <Link href="/arranger/fysisk" className="btn choice">
+              <span className="choice-icon"><Icon name="print" size={24} /></span>
+              <span className="choice-text">
+                <span className="choice-title">{no.physical.entryTitle}</span>
+                <span className="choice-sub">{no.physical.entrySub}</span>
+              </span>
             </Link>
           </div>
         )}
@@ -139,12 +157,6 @@ export default function HostEntry() {
               {busy ? <span className="spin" /> : no.host.open}
             </button>
             {error && <div className="banner banner-error">{error}</div>}
-            <button
-              className="btn btn-ghost btn-block"
-              onClick={() => setMode("choose")}
-            >
-              <Icon name="back" size={16} /> {no.common.back}
-            </button>
           </>
         )}
       </div>

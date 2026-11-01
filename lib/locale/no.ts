@@ -98,13 +98,17 @@ export const no = {
   host: {
     createTitle: "Ny turnering",
     quickStart: "Rask start",
-    customize: "Tilpass turnering …",
+    customize: "Tilpass turnering",
+    // Én linje under hvert valg på /arranger: hva det betyr for en ny lærer.
+    quickStartSub: "Lager turneringen med en gang, med vanlige valg (liga, 5 runder)",
+    customizeSub: "Velg selv format, runder, tid og lag, steg for steg",
+    enterSub: "Gå tilbake til en turnering du har laget, med vertskoden",
     // Auto-title for "Rask start" — becomes "Turnering DD.MM" (see
     // app/arranger/page.tsx). Kept as a plain prefix so the date formatting
     // (which isn't language content) stays out of the locale file.
     quickStartTitlePrefix: "Turnering",
     enterTitle: "Åpne turnering",
-    enterPrompt: "Skriv vertskoden for å åpne tavla igjen",
+    enterPrompt: "Skriv vertskoden for å åpne turneringen igjen",
     hostCodeLabel: "Vertskode",
     missingHostCode:
       "Vertskoden mangler på denne enheten. Gå til forsiden og åpne turneringen på nytt med vertskoden din.",
@@ -701,7 +705,7 @@ export const no = {
   /** Fysisk turneringsmodus (lokal-først, uten nett). */
   physical: {
     entryTitle: "Fysisk turnering",
-    entrySub: "Spill over brettet, uten nett",
+    entrySub: "Brett og brikker i klasserommet, uten nett. Du fører resultatene selv",
     pageTitle: "Fysiske turneringer",
     pageIntro: "Lagres i denne nettleseren og virker uten nett. Ingenting sendes til en server.",
     newTournament: "Ny fysisk turnering",

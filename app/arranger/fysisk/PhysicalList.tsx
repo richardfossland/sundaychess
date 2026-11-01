@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { NavLink } from "./nav";
 import { useEffect, useState } from "react";
 import { no } from "@/lib/locale/no";
 import { Icon } from "@/lib/client/Icon";
+import { PageHeader } from "@/lib/client/PageHeader";
 import { deleteTournament, listTournaments, type StorageKind } from "@/lib/physical/storage";
 import type { StoredTournament } from "@/lib/physical/schema";
 import { ImportFile } from "./ImportFile";
@@ -44,16 +44,14 @@ export function PhysicalList() {
   return (
     <main className="center-screen">
       <div className="card card-narrow stack scale-in">
-        <div className="brandmark" style={{ justifyContent: "center" }}>
-          <span className="knight">♞</span> Sunday<b>Chess</b>
+        <PageHeader backHref="/arranger" />
+        <div className="card-head">
+          <p className="eyebrow">{t.pageTitle}</p>
+          <p className="muted fs-xs">{t.pageIntro}</p>
         </div>
-        <p className="eyebrow text-center">{t.pageTitle}</p>
-        <p className="muted text-center" style={{ fontSize: 13 }}>
-          {t.pageIntro}
-        </p>
         {kind === "memory" && <div className="banner banner-error">{t.storageMemoryWarn}</div>}
         {kind === "localStorage" && (
-          <div className="muted text-center" style={{ fontSize: "var(--fs-xs)" }}>
+          <div className="muted text-center fs-xs">
             {t.storageLocalWarn}
           </div>
         )}
@@ -66,12 +64,12 @@ export function PhysicalList() {
         <OpenPublished />
 
         {items && items.length === 0 && <p className="muted text-center">{t.emptyList}</p>}
-        <div className="stack" style={{ gap: 8 }}>
+        <div className="stack gap-2">
           {items?.map((it) => (
-            <div key={it.id} className="spread" style={{ gap: 8 }}>
+            <div key={it.id} className="spread gap-2">
               <NavLink href={`/arranger/fysisk/${it.id}`} className="grow" style={{ textDecoration: "none" }}>
                 <b>{it.title}</b>
-                <span className="muted" style={{ display: "block", fontSize: "var(--fs-xs)" }}>
+                <span className="muted fs-xs" style={{ display: "block" }}>
                   {t.summary(it.playerCount, it.roundsPlayed)}
                 </span>
               </NavLink>
@@ -81,10 +79,6 @@ export function PhysicalList() {
             </div>
           ))}
         </div>
-
-        <Link href="/arranger" className="btn btn-ghost btn-block">
-          <Icon name="back" size={16} /> {no.common.back}
-        </Link>
       </div>
     </main>
   );

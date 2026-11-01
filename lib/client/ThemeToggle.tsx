@@ -14,10 +14,12 @@ function current(): Theme {
 
 /** Screens where the toggle must never appear: it would sit on top of the board
  * (play, solo, versus, arranger) or the host board / projector view
- * (/host/<tournamentId>). The host dashboard (/host) and login keep it. */
+ * (/host/<tournamentId>). The host dashboard (/host) keeps it. /host/login has
+ * its own inline switch in PageHeader. */
 export function themeToggleHiddenOn(pathname: string | null): boolean {
   if (!pathname) return false;
   if (/^\/(play|solo|versus|arranger)(\/|$)/.test(pathname)) return true;
+  if (/^\/host\/login(\/|$)/.test(pathname)) return true;
   return /^\/host\/(?!login(\/|$))[^/]+/.test(pathname);
 }
 
