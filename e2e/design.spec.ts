@@ -205,6 +205,25 @@ test.describe("designregler uten database", () => {
   }
 });
 
+test.describe("tastatur", () => {
+  test("Segmented: piltast flytter både valg og fokus", async ({ page }) => {
+    await open(page, "/arranger/fysisk/ny", DESKTOP, "light");
+    const group = page.getByRole("radiogroup").first();
+    const radios = group.getByRole("radio");
+    expect(await radios.count()).toBeGreaterThanOrEqual(2);
+    await radios.first().focus();
+    await expect(radios.first()).toBeChecked();
+
+    await page.keyboard.press("ArrowRight");
+    await expect(radios.nth(1)).toBeChecked();
+    await expect(radios.nth(1)).toBeFocused();
+
+    await page.keyboard.press("ArrowLeft");
+    await expect(radios.first()).toBeChecked();
+    await expect(radios.first()).toBeFocused();
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Sider med database: én turnering gjenbrukes av alle testene under.
 // ---------------------------------------------------------------------------
