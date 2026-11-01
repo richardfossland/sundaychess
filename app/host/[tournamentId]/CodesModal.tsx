@@ -75,14 +75,14 @@ export function CodesModal({
       cardClassName="card stack scale-in"
       cardStyle={{ width: "100%", maxWidth: 460, maxHeight: "80vh", overflow: "auto" }}
     >
-      <h3 id={titleId} style={{ fontSize: 20 }}>{no.host.codesTitle}</h3>
-      <p className="muted" style={{ fontSize: 13 }}>{no.host.codesHint}</p>
-      <div className="banner banner-warn" style={{ fontSize: 13 }}>
+      <h3 id={titleId} className="modal-title">{no.host.codesTitle}</h3>
+      <p className="muted fs-xs">{no.host.codesHint}</p>
+      <div className="banner banner-warn fs-xs">
         <Icon name="warn" size={16} /> {no.host.codesWarning}
       </div>
       <hr className="thread" />
       {error ? (
-        <div className="stack" style={{ gap: 10 }}>
+        <div className="stack gap-3">
           <div className="banner banner-error">{no.common.error}</div>
           <button className="btn btn-primary" onClick={load}>
             {no.common.retry}
@@ -101,20 +101,10 @@ export function CodesModal({
                   <td className="num">
                     <button
                       type="button"
-                      className="mono"
+                      className="mono code-reveal"
                       title={revealed ? no.host.tapToHide : no.host.tapToReveal}
                       aria-label={`${r.name}: ${revealed ? r.resumeCode : no.host.tapToReveal}`}
                       onClick={() => toggleReveal(r.playerId)}
-                      style={{
-                        background: "none",
-                        border: 0,
-                        padding: 0,
-                        cursor: "pointer",
-                        color: "var(--gold)",
-                        letterSpacing: "0.1em",
-                        fontWeight: 700,
-                        font: "inherit",
-                      }}
                     >
                       {revealed ? r.resumeCode : maskCode(r.resumeCode)}
                     </button>
@@ -122,8 +112,7 @@ export function CodesModal({
                   <td>
                     <button
                       type="button"
-                      className="btn btn-ghost"
-                      style={{ padding: "6px 10px", fontSize: "var(--fs-xs)", minHeight: 0 }}
+                      className="btn btn-ghost btn-sm"
                       onClick={() => copyCode(r.playerId, r.resumeCode)}
                     >
                       {copiedId === r.playerId ? no.common.copied : no.common.copy}

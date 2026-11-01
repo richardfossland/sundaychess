@@ -73,7 +73,7 @@ export function NotesModal({
       cardClassName="card stack scale-in"
       cardStyle={{ width: "100%", maxWidth: 420 }}
     >
-      <h3 id={titleId} style={{ fontSize: 20 }}>
+      <h3 id={titleId} className="modal-title">
         {no.host.notesModalTitle}
       </h3>
       {loadError ? (
@@ -83,16 +83,15 @@ export function NotesModal({
       ) : (
         <>
           <textarea
-            className="input"
+            className="input notes-input"
             rows={3}
             maxLength={MAX_NOTES}
             autoFocus
             placeholder={no.host.notesPlaceholder}
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            style={{ resize: "vertical", minHeight: 80 }}
           />
-          <span className="faint" style={{ fontSize: "var(--fs-xs)", alignSelf: "flex-end" }}>
+          <span className="faint fs-xs notes-count">
             {value.length} / {MAX_NOTES}
           </span>
         </>

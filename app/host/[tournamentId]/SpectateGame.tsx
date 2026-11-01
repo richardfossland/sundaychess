@@ -55,8 +55,8 @@ function SpectatePlayer({
 }) {
   const turn: Turn = side === "white" ? "w" : "b";
   return (
-    <div className="spread" style={{ width: "min(92vw, 520px)" }}>
-      <div className="row" style={{ gap: 10 }}>
+    <div className="spread spectate-bar">
+      <div className="row gap-3">
         <span
           className="avatar-lg"
           style={
@@ -71,7 +71,7 @@ function SpectatePlayer({
         >
           {initials(name)}
         </span>
-        <b style={{ fontSize: 18 }}>{name}</b>
+        <b className="spectate-name">{name}</b>
         {clock && (
           <ChessClock
             ms={turn === "w" ? clock.whiteMs : clock.blackMs}
@@ -206,14 +206,14 @@ export function SpectateGame({
   return (
     <main className="center-screen is-game">
       {(result === "white_win" || result === "black_win") && <Confetti count={140} />}
-      <div className="stack" style={{ alignItems: "center", gap: 14 }}>
-        <button className="btn btn-ghost" style={{ alignSelf: "flex-start" }} onClick={onClose}>
+      <div className="stack align-center gap-4">
+        <button className="btn btn-ghost self-start" onClick={onClose}>
           <Icon name="back" size={16} /> {no.host.backToGames}
         </button>
 
         <SpectatePlayer name={black} side="black" fen={fen} baselineFen={baselineFen} clock={clock} />
 
-        <div className="row" style={{ gap: 12, alignItems: "stretch" }}>
+        <div className="row gap-3 align-stretch">
           <EvalBar fen={fen} />
           <div className="board-frame">
             <div className="board-shell-lg">
@@ -232,10 +232,10 @@ export function SpectateGame({
             <HypeCallout fen={fen} />
             <ReactionLayer items={floats} />
             {decided && (
-              <div className="result-overlay" style={{ position: "absolute", borderRadius: 8 }}>
-                <div className="result-card stack" style={{ alignItems: "center", gap: 8 }}>
+              <div className="result-overlay result-overlay-in">
+                <div className="result-card stack align-center gap-2">
                   <div className="result-emoji"><Icon name={result === "draw" ? "draw" : "cup"} size={84} strokeWidth={1.4} /></div>
-                  <h2 style={{ fontSize: "clamp(28px,5vw,48px)", textAlign: "center" }}>
+                  <h2 className="result-title">
                     {winnerText}
                   </h2>
                 </div>

@@ -784,34 +784,38 @@ a:focus-visible,
   background: var(--gold-grad);
 }
 .chip-kick {
-  margin-left: 2px;
-  /* 32px min — the previous 20px circle was well under the ~44px touch-target
-     guideline; this is the largest it can go without the chip pill itself
-     growing awkwardly tall. */
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  position: relative;
+  /* Selve knappen er 44 px (treffflate); den synlige sirkelen er 28 px og
+     tegnes av ::before. Negative marger gjør at chipen ikke vokser. */
+  width: 44px;
+  height: 44px;
+  margin: -9px -12px -9px -2px;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
-  font-size: var(--fs-xs);
   line-height: 1;
   color: var(--txt-faint);
   background: transparent;
-  border: 1px solid var(--ink-line);
+  border: 0;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  transition: color 0.15s;
 }
-/* the visible circle stays 32px; an invisible ::after extends the hit area to 44px */
-.chip-kick {
-  position: relative;
-}
-.chip-kick::after {
+.chip-kick::before {
   content: "";
   position: absolute;
-  inset: -6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-line);
+  transition: background 0.15s, border-color 0.15s;
+}
+.chip-kick > * {
+  position: relative;
 }
 .chip-kick:hover {
   color: #fff;
+}
+.chip-kick:hover::before {
   background: var(--danger, #d4524e);
   border-color: var(--danger, #d4524e);
 }
@@ -3009,3 +3013,613 @@ input[type="radio"] {
 .block { display: block; }
 .center-top { align-items: flex-start; }
 .text-left { text-align: left; }
+
+
+/* ============ D4: arrangør — toppfelt, lobby, runde, resultat ============ */
+.host-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: var(--sp-4) var(--sp-5) 0;
+  box-sizing: border-box;
+}
+.host-bar-id {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.host-bar .brandmark {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.host-bar-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.host-bar-badge {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.host-bar-tools {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+.host-bar-tools .seg {
+  flex-wrap: nowrap;
+}
+.host-bar-tools .seg-btn,
+.host-actions .btn {
+  white-space: nowrap;
+}
+.host-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.host-more-btn {
+  display: none;
+}
+.conn-badge {
+  position: fixed;
+  top: 16px;
+  z-index: 40;
+  padding: 6px 12px;
+}
+.presentasjon-veksler {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  z-index: 40;
+}
+/* Under ~1200 px samles sekundærhandlingene i «Mer»-menyen. */
+@media (max-width: 1199px) {
+  .host-more-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+  }
+  .host-actions {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + var(--sp-2));
+    z-index: 45;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 240px;
+    padding: var(--sp-2);
+    background: var(--ink-2, var(--ink-soft));
+    border: 1px solid var(--ink-line-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-2);
+  }
+  .host-actions.is-open {
+    display: flex;
+  }
+  .host-actions > *,
+  .host-actions .btn {
+    width: 100%;
+  }
+  .host-actions .btn {
+    justify-content: flex-start;
+    text-align: left;
+  }
+}
+@media (max-width: 640px) {
+  .host-bar {
+    padding: var(--sp-3) var(--sp-4) 0;
+    gap: var(--sp-2);
+  }
+  .host-bar-id {
+    flex-basis: 100%;
+    gap: var(--sp-2);
+  }
+  .host-bar .brandmark {
+    font-size: 18px;
+    gap: var(--sp-1);
+  }
+  .host-bar-tools {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+  .host-bar-tools .seg {
+    flex: 1 1 auto;
+  }
+}
+
+/* Delrad under toppfeltet i hver visning: bli-med-brikke, tidtaker, koder. */
+.host-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+}
+.host-sub .join-chip {
+  min-width: 0;
+}
+
+/* Tabeller i vertsvisning: aldri bredere enn kortet. */
+.board-grid > * {
+  min-width: 0;
+}
+.table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.tiebreak-note {
+  font-size: var(--fs-xs);
+  color: var(--txt-faint);
+  margin: var(--sp-2) 0 0;
+  line-height: 1.45;
+}
+@media (max-width: 640px) {
+  .table.table-compact th,
+  .table.table-compact td {
+    padding: var(--sp-2) var(--sp-2);
+  }
+  .table.table-compact th:first-child,
+  .table.table-compact td:first-child {
+    padding-left: var(--sp-1);
+  }
+}
+
+/* Lobby: PIN-kort og spillerliste. */
+.join-url {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-lg);
+  color: var(--txt-dim);
+}
+.join-url b {
+  color: var(--gold);
+  overflow-wrap: anywhere;
+}
+.roster-count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+@media (max-width: 640px) {
+  .roster-chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-2);
+  }
+  .roster-chips .chip {
+    min-width: 0;
+    padding-right: var(--sp-4);
+  }
+  .roster-chips .chip-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+.chip-name {
+  min-width: 0;
+}
+.chip-presence {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--txt-faint);
+}
+.chip-presence.is-online {
+  background: var(--turn, #56c06a);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--turn, #56c06a) 60%, transparent);
+}
+
+/* Runde: handlingsrad og forklaringer. */
+.round-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}
+.round-actions .btn-primary {
+  flex: 1 1 200px;
+}
+.round-help {
+  display: grid;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  font-size: var(--fs-xs);
+  color: var(--txt-dim);
+  line-height: 1.45;
+}
+.round-help p {
+  margin: 0;
+}
+.game-row {
+  width: 100%;
+  min-height: var(--tap);
+  text-align: left;
+  background: var(--ink-soft);
+  border: 1px solid var(--ink-line);
+  border-radius: 10px;
+  padding: var(--sp-3) 14px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.game-row.is-static {
+  cursor: default;
+}
+.game-row-names {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.timeup-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+  background: color-mix(in srgb, var(--warn) 18%, var(--ink-2));
+  border: 1px solid color-mix(in srgb, var(--warn) 50%, transparent);
+  color: var(--warn-ink);
+}
+
+/* Resultat: pall og tabell side om side på bred skjerm. */
+.finish-wrap {
+  align-items: center;
+  width: 100%;
+  max-width: var(--w-form);
+  text-align: center;
+}
+.finish-grid {
+  display: grid;
+  gap: var(--sp-5);
+  width: 100%;
+  align-items: start;
+}
+.finish-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+}
+.finish-table-card {
+  text-align: left;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+}
+.finish-champion {
+  align-items: center;
+  gap: 6px;
+}
+.champion-cup {
+  line-height: 1;
+  filter: drop-shadow(0 12px 30px rgba(235, 184, 75, 0.45));
+}
+.champion-name {
+  font-size: clamp(40px, 9vw, 80px);
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.finish-results {
+  min-width: 0;
+}
+.finish-block {
+  align-items: center;
+  width: 100%;
+}
+.team-winners {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.team-chip-first {
+  font-size: 17px;
+  padding: 8px 18px;
+}
+.award-title {
+  font-size: 15px;
+}
+.award-who {
+  font-size: var(--fs-sm);
+  color: var(--gold);
+}
+.finish-actions {
+  margin-top: 28px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.podium-avatar {
+  width: 48px;
+  height: 48px;
+  font-size: 16px;
+}
+.podium-name {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+.podium-bar {
+  font-size: 26px;
+}
+.podium-medal {
+  margin-top: 4px;
+}
+.print-title {
+  font-size: 26px;
+  margin-bottom: 2px;
+}
+.print-small {
+  font-size: 13px;
+}
+.print-note {
+  margin-top: 4px;
+}
+.print-recap {
+  margin-top: 18px;
+  width: 100%;
+}
+.print-round {
+  margin-top: 10px;
+}
+.print-list {
+  margin-top: 4px;
+  padding-left: 18px;
+  font-size: 13px;
+}
+@media (min-width: 1024px) {
+  .finish-wrap {
+    max-width: var(--w-wide);
+    min-width: min(100%, var(--w-wide));
+  }
+  .finish-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .finish-main {
+    padding-top: var(--sp-5);
+  }
+  .podium-col {
+    width: clamp(110px, 12vw, 160px);
+  }
+}
+.team-dot-inline {
+  display: inline-block;
+  margin-left: 7px;
+}
+.join-chip {
+  flex-wrap: wrap;
+  max-width: 100%;
+  font-size: var(--fs-sm);
+  padding: 7px 14px;
+  gap: 10px;
+}
+.join-chip-url {
+  overflow-wrap: anywhere;
+}
+.join-chip-pin {
+  color: var(--gold);
+  font-size: 17px;
+  letter-spacing: 0.1em;
+}
+.mt-3 { margin-top: var(--sp-3); }
+.mb-3 { margin-bottom: var(--sp-3); }
+.mb-4 { margin-bottom: var(--sp-4); }
+.mb-5 { margin-bottom: var(--sp-5); }
+.host-main {
+  padding: var(--sp-5) var(--sp-5) 64px;
+}
+.host-head-tv {
+  margin-bottom: var(--sp-5);
+}
+.card-title {
+  font-size: 22px;
+  margin: 0 0 var(--sp-3);
+}
+.spread > .card-title {
+  margin: 0;
+}
+.side-row {
+  font-size: var(--fs-md);
+}
+.gold-num {
+  color: var(--gold);
+}
+.summary-pointer {
+  cursor: pointer;
+}
+@media (max-width: 640px) {
+  .host-main {
+    padding: var(--sp-4) var(--sp-4) 64px;
+  }
+}
+.bracket-actions {
+  margin-top: var(--sp-5);
+  max-width: 480px;
+  flex-wrap: wrap;
+}
+.bracket-actions .btn {
+  flex: 1 1 200px;
+}
+.bracket-note {
+  max-width: 480px;
+}
+.round-note {
+  font-size: var(--fs-xs);
+  margin: var(--sp-2) 0 0;
+}
+.host-code-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-1);
+}
+.host-code-badge {
+  border: 0;
+  cursor: pointer;
+  min-height: var(--tap);
+}
+.host-code-warn {
+  font-size: var(--fs-xs);
+  color: var(--warn);
+}
+.join-card {
+  align-items: center;
+  padding: 40px var(--sp-6);
+}
+.join-card .join-url {
+  margin: 0;
+}
+.join-start {
+  margin-top: 6px;
+  min-width: 220px;
+}
+.qr-frame {
+  padding: var(--sp-3);
+  background: var(--paper);
+  border-radius: 16px;
+  box-shadow: var(--shadow-2);
+}
+.card-title-lg {
+  font-size: 26px;
+}
+.roster-empty {
+  padding: 28px 0;
+  text-align: center;
+}
+@media (max-width: 640px) {
+  .join-card {
+    padding: var(--sp-5) var(--sp-4);
+  }
+  .host-code-reveal {
+    align-items: flex-start;
+  }
+}
+
+/* Live-rutenett (vert og tavle). */
+.live-main {
+  padding: var(--sp-3) var(--sp-5) 64px;
+}
+.live-main-one {
+  max-width: min(96vw, 1100px);
+}
+.live-main-grid {
+  max-width: min(96vw, 1800px);
+}
+.live-head {
+  margin-bottom: var(--sp-2);
+}
+.live-card {
+  padding: var(--sp-3);
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+.live-card-one {
+  padding: var(--sp-4);
+  width: 100%;
+}
+.live-board {
+  border-radius: 8px;
+  overflow: hidden;
+}
+.live-grid {
+  display: grid;
+  gap: var(--sp-5);
+  justify-content: center;
+}
+.live-empty {
+  padding: 40px;
+}
+.result-title {
+  font-size: clamp(28px, 5vw, 46px);
+  text-align: center;
+}
+.result-title-sm {
+  font-size: clamp(24px, 4.5vw, 40px);
+}
+.win-flash {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 55;
+}
+@media (max-width: 640px) {
+  .live-main {
+    padding: var(--sp-3) var(--sp-4) 64px;
+  }
+}
+
+/* Modaler og småting i vertsvisningen. */
+.modal-title {
+  font-size: 20px;
+}
+.fw-700 {
+  font-weight: 700;
+}
+.nowrap {
+  white-space: nowrap;
+}
+.break-word {
+  word-break: break-word;
+}
+.table-small {
+  font-size: var(--fs-xs);
+}
+.notes-input {
+  resize: vertical;
+  min-height: 80px;
+}
+.notes-count {
+  align-self: flex-end;
+}
+.code-reveal {
+  background: none;
+  border: 0;
+  padding: 0;
+  min-height: var(--tap);
+  cursor: pointer;
+  color: var(--gold);
+  letter-spacing: 0.1em;
+  font: inherit;
+  font-weight: 700;
+}
+.host-file {
+  position: relative;
+}
+.host-file-error {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  width: 260px;
+  font-size: var(--fs-xs);
+  z-index: 2;
+}
+.spectate-bar {
+  width: min(92vw, 520px);
+}
+.spectate-name {
+  font-size: 18px;
+}
+.result-overlay-in {
+  position: absolute;
+  border-radius: 8px;
+}

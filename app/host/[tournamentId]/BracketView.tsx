@@ -133,26 +133,25 @@ export function BracketView({
   }
 
   return (
-    <main className="wrap" style={{ padding: "28px 24px 64px" }}>
-      <header className="spread" style={{ marginBottom: 24 }}>
-        <span className="brandmark">
-          <span className="knight">♞</span> Sunday<b>Chess</b>
-        </span>
-        <span className="badge badge-live">{no.host.bracket}</span>
+    <main className="wrap host-main">
+      <header className={presentasjon ? "spread host-head-tv" : "host-sub"}>
+        {presentasjon && (
+          <>
+            <span className="brandmark">
+              <span className="knight">♞</span> Sunday<b>Chess</b>
+            </span>
+            <span className="badge badge-live">{no.host.bracket}</span>
+          </>
+        )}
         {timerSec && currentCol?.round.startedAt && liveCount > 0 && (
-          <div className="row" style={{ gap: 10 }}>
+          <div className="row gap-3">
             <RoundTimer
               startedAt={currentCol.round.startedAt}
               durationSec={timerSec}
               extendedMs={currentCol.round.extendedMs ?? 0}
             />
             {!presentasjon && (
-              <button
-                className="btn btn-ghost"
-                style={{ padding: "8px 12px" }}
-                disabled={busy}
-                onClick={addMinute}
-              >
+              <button className="btn btn-ghost" disabled={busy} onClick={addMinute}>
                 {busy ? <span className="spin" /> : no.host.addMinute}
               </button>
             )}
@@ -165,7 +164,7 @@ export function BracketView({
             {no.host.showCodes}
           </button>
         )}
-        {tournament.title && <span className="muted">{tournament.title}</span>}
+        {presentasjon && tournament.title && <span className="muted">{tournament.title}</span>}
       </header>
 
       <BracketBoard
@@ -176,27 +175,9 @@ export function BracketView({
       />
 
       {!presentasjon && timeUp && liveCount > 0 && (
-        <div
-          className="banner"
-          style={{
-            marginTop: 16,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            background: "color-mix(in srgb, var(--warn) 18%, var(--ink-2))",
-            border: "1px solid color-mix(in srgb, var(--warn) 50%, transparent)",
-            color: "var(--warn-ink)",
-            maxWidth: 480,
-          }}
-        >
+        <div className="banner timeup-banner bracket-note">
           <span><Icon name="alarm" size={16} /> {no.host.timeUpSuggestion}</span>
-          <button
-            className="btn btn-danger"
-            disabled={busy}
-            onClick={() => setConfirmForce(true)}
-            style={{ flexShrink: 0 }}
-          >
+          <button className="btn btn-danger" disabled={busy} onClick={() => setConfirmForce(true)}>
             {busy ? <span className="spin" /> : no.host.endRound}
           </button>
         </div>
@@ -204,7 +185,7 @@ export function BracketView({
 
       {!presentasjon && (
         <>
-        <div className="row" style={{ marginTop: 24, maxWidth: 480 }}>
+        <div className="row bracket-actions">
           {hasUndecidedDraw ? (
             <>
               <button className="btn grow" disabled={busy} onClick={() => advance("rematch")}>
@@ -229,18 +210,18 @@ export function BracketView({
           )}
         </div>
         {hasUndecidedDraw ? (
-          <p className="muted" style={{ fontSize: 13, marginTop: 8, maxWidth: 480 }}>
+          <p className="muted round-note bracket-note">
             {no.host.drawChoiceHint}
           </p>
         ) : (
           !allResolved && (
-            <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
+            <p className="muted round-note">
               {no.host.awaitAllGames}
             </p>
           )
         )}
-        {notice && <div className="banner banner-wait" style={{ marginTop: 10, maxWidth: 480 }}>{notice}</div>}
-        {error && <div className="banner banner-error" style={{ marginTop: 10, maxWidth: 480 }}>{error}</div>}
+        {notice && <div className="banner banner-wait bracket-note mt-3">{notice}</div>}
+        {error && <div className="banner banner-error bracket-note mt-3">{error}</div>}
         </>
       )}
 

@@ -93,7 +93,7 @@ export function OverrideModal({
         />
       ) : (
         <>
-          <h3 id={titleId} style={{ fontSize: 20 }}>{no.host.overrideTitle}</h3>
+          <h3 id={titleId} className="modal-title">{no.host.overrideTitle}</h3>
           <p className="muted">
             {white.name} {no.player.vs} {black?.name ?? no.host.bye}
           </p>
@@ -151,7 +151,7 @@ export function OverrideModal({
             <>
               <hr className="thread" />
               <p className="eyebrow">{no.host.absentTitle}</p>
-              <div className="row" style={{ gap: 6 }}>
+              <div className="row gap-2">
                 <button
                   className={`btn grow ${scope === "round" ? "btn-primary" : "btn-ghost"}`}
                   onClick={() => setScope("round")}

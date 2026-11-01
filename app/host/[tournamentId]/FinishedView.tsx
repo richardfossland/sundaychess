@@ -15,6 +15,7 @@ import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
 import { BracketBoard } from "@/lib/client/BracketBoard";
 import { no } from "@/lib/locale/no";
 import { Icon, MedalIcon, type IconName } from "@/lib/client/Icon";
+import { StandingsTable } from "./StandingsTable";
 import { usePresentasjon } from "@/lib/client/storskjerm/usePresentasjon";
 
 const AWARD_ICON: Record<Award["key"], IconName> = {
@@ -175,7 +176,7 @@ export function FinishedView({ state }: { state: BoardState }) {
   // podium order: 2nd, 1st, 3rd  (champion centre, tallest)
   const top = standings.slice(0, 3);
   const order = [top[1], top[0], top[2]].filter(Boolean);
-  const heights: Record<number, number> = { 1: 150, 2: 112, 3: 84 };
+  const heights: Record<number, number> = { 1: 170, 2: 128, 3: 96 };
   const medals: Record<number, ReactNode> = { 1: <MedalIcon rank={1} size={30} />, 2: <MedalIcon rank={2} size={30} />, 3: <MedalIcon rank={3} size={30} /> };
 
   return (
@@ -189,18 +190,18 @@ export function FinishedView({ state }: { state: BoardState }) {
 
       {/* Printed page only: a plain title + date the projector never shows. */}
       <div className="print-only">
-        <h1 style={{ fontSize: 26, marginBottom: 2 }}>{tournament.title || no.appName}</h1>
-        <p style={{ fontSize: 13 }}>
+        <h1 className="print-title">{tournament.title || no.appName}</h1>
+        <p className="print-small">
           {new Date().toLocaleDateString("no", { day: "2-digit", month: "long", year: "numeric" })}
         </p>
         {/* Teacher's own reminder (class, lesson, …) — never shown to
             students on the projector; this print-only block is host-only
             paper, fetched below like the awards' PGN (never on the 5s poll —
             see lib/dto.ts's toBoardTournament). */}
-        {notes && <p style={{ fontSize: 13, marginTop: 4 }}>{notes}</p>}
+        {notes && <p className="print-small print-note">{notes}</p>}
       </div>
 
-      <div className="stack text-center" style={{ alignItems: "center", maxWidth: 680, gap: 18 }}>
+      <div className="stack text-center finish-wrap">
         <span className="brandmark reveal" style={{ ["--i" as string]: 0 } as CSSProperties}>
           <span className="knight">♞</span> Sunday<b>Chess</b>
         </span>
@@ -209,105 +210,57 @@ export function FinishedView({ state }: { state: BoardState }) {
         </p>
 
         {champion && (
-          <div className="stack" style={{ alignItems: "center", gap: 6 }}>
-            <div className="float" style={{ fontSize: 80, lineHeight: 1, filter: "drop-shadow(0 12px 30px rgba(235,184,75,.45))" }}>
+          <div className="stack finish-champion">
+            <div className="float champion-cup">
               <Icon name="cup" size={80} strokeWidth={1.3} />
             </div>
-            <h1
-              className="scale-in gold-text"
-              style={{ fontSize: "clamp(40px,9vw,80px)", background: "var(--gold-grad)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}
-            >
-              {champion.displayName}
-            </h1>
+            <h1 className="scale-in gold-text champion-name">{champion.displayName}</h1>
             <p className="muted">{no.host.champion}</p>
           </div>
         )}
 
-        {/* podium */}
-        <div className="podium" style={{ marginTop: 14 }}>
-          {order.map((s) => (
-            <div className="podium-col" key={s.playerId}>
-              <div className="avatar-lg" style={{ width: 48, height: 48, fontSize: 16 }}>
-                {initials(s.displayName)}
-              </div>
-              <b style={{ fontSize: 15 }}>{s.displayName}</b>
-              <span className="badge">{s.score}</span>
-              <div
-                className={`podium-bar ${s.rank === 1 ? "p1" : ""}`}
-                style={{ height: heights[s.rank], animationDelay: `${0.2 + s.rank * 0.12}s`, fontSize: 26 }}
-              >
-                <span style={{ marginTop: 4 }}>{medals[s.rank]}</span>
-              </div>
+        {/* Pall og tabell: side om side på bred skjerm, ellers under hverandre. */}
+        <div className="finish-grid">
+          <div className="finish-main">
+            <div className="podium">
+              {order.map((s) => (
+                <div className="podium-col" key={s.playerId}>
+                  <div className="avatar-lg podium-avatar">{initials(s.displayName)}</div>
+                  <b className="podium-name">{s.displayName}</b>
+                  <span className="badge podium-score">{s.score}</span>
+                  <div
+                    className={`podium-bar ${s.rank === 1 ? "p1" : ""}`}
+                    style={{ height: heights[s.rank], animationDelay: `${0.2 + s.rank * 0.12}s` }}
+                  >
+                    <span className="podium-medal">{medals[s.rank]}</span>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-
-        {/* Full results — the podium only shows the top 3; ranks 4+ still
-            matter to a class projecting this on the wall. */}
-        <div className="stack" style={{ alignItems: "stretch", gap: 10, marginTop: 22, width: "100%" }}>
-          <p className="eyebrow" style={{ textAlign: "center" }}>{no.host.standings}</p>
-          <div className="card" style={{ padding: 0, overflow: "hidden", textAlign: "left" }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{no.host.rank}</th>
-                  <th>{no.host.name}</th>
-                  <th className="num">{no.host.score}</th>
-                  <th className="num" title={no.host.tiebreakHelp}>
-                    {no.host.tiebreak}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {standings.map((s) => (
-                  <tr key={s.playerId}>
-                    <td>
-                      <span className={`rankpill ${s.rank <= 3 ? "r" + s.rank : ""}`}>
-                        {s.rank}
-                      </span>
-                    </td>
-                    <td>
-                      {s.displayName}
-                      {teamById(s.playerId) && (
-                        <span
-                          className="team-dot"
-                          title={teamById(s.playerId) ?? ""}
-                          style={{
-                            background: teamColor(teamById(s.playerId) ?? ""),
-                            display: "inline-block",
-                            marginLeft: 7,
-                          }}
-                        />
-                      )}
-                    </td>
-                    <td className="num"><b>{s.score}</b></td>
-                    <td className="num muted">{s.tiebreak}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
-          <p className="faint" style={{ fontSize: "var(--fs-xs)", textAlign: "center" }}>
-            {no.host.tiebreakHelp}
-          </p>
-          {nonPlayCount > 0 && (
-            <p className="faint" style={{ fontSize: "var(--fs-xs)", textAlign: "center" }}>
-              {no.host.resultSourceLegend(nonPlayCount)}
-            </p>
-          )}
+
+          {/* Full results — the podium only shows the top 3; ranks 4+ still
+              matter to a class projecting this on the wall. */}
+          <div className="stack gap-3 finish-results">
+            <p className="eyebrow">{no.host.standings}</p>
+            <div className="card finish-table-card">
+              <StandingsTable standings={standings} teamById={teamById} />
+            </div>
+            {nonPlayCount > 0 && (
+              <p className="tiebreak-note">{no.host.resultSourceLegend(nonPlayCount)}</p>
+            )}
+          </div>
         </div>
 
         {teamRows.length > 0 && (
-          <div className="stack" style={{ alignItems: "center", gap: 10, marginTop: 12, width: "100%" }}>
+          <div className="stack gap-3 finish-block">
             <p className="eyebrow">{no.teams.winner}</p>
-            <div className="row" style={{ flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
+            <div className="row team-winners">
               {teamRows.map((r, i) => (
                 <span
                   key={r.team}
-                  className="team-chip"
+                  className={`team-chip${i === 0 ? " team-chip-first" : ""}`}
                   style={{
-                    fontSize: i === 0 ? 17 : 14,
-                    padding: i === 0 ? "8px 18px" : undefined,
                     borderColor:
                       i === 0
                         ? `color-mix(in srgb, ${teamColor(r.team)} 70%, transparent)`
@@ -326,7 +279,7 @@ export function FinishedView({ state }: { state: BoardState }) {
         )}
 
         {awards.length > 0 && (
-          <div className="stack" style={{ alignItems: "center", gap: 12, marginTop: 18, width: "100%" }}>
+          <div className="stack gap-3 finish-block">
             <p className="eyebrow">{no.awards.title}</p>
             <div className="award-grid">
               {awards.map((a, i) => (
@@ -336,11 +289,11 @@ export function FinishedView({ state }: { state: BoardState }) {
                   style={{ ["--i" as string]: 3 + i } as CSSProperties}
                 >
                   <span className="award-emoji"><Icon name={AWARD_ICON[a.key]} size={26} /></span>
-                  <b style={{ fontSize: 15 }}>{no.awards[a.key]}</b>
-                  <span style={{ fontSize: 14, color: "var(--gold)" }}>
+                  <b className="award-title">{no.awards[a.key]}</b>
+                  <span className="award-who">
                     {a.playerIds.map(nameById).join(" & ")}
                   </span>
-                  <span className="faint" style={{ fontSize: "var(--fs-xs)" }}>
+                  <span className="faint fs-xs">
                     {awardDetail(a)}
                   </span>
                 </div>
@@ -351,7 +304,7 @@ export function FinishedView({ state }: { state: BoardState }) {
 
         {/* how the knockout went — the full bracket path (cup / playoff only) */}
         {rounds.some((r) => r.phase === "playoff") && (
-          <div className="stack no-print" style={{ alignItems: "center", gap: 10, marginTop: 18, width: "100%" }}>
+          <div className="stack gap-3 finish-block no-print">
             <p className="eyebrow">{no.host.bracketRecap}</p>
             <BracketBoard games={games} rounds={rounds} players={players} />
           </div>
@@ -360,7 +313,7 @@ export function FinishedView({ state }: { state: BoardState }) {
         {/* Printed page only: per-round pairings + results (the bracket board
             above is a canvas-y interactive widget, cheap to skip on paper —
             this plain list is the "if cheap" per-round recap instead). */}
-        <div className="print-only" style={{ marginTop: 18, width: "100%" }}>
+        <div className="print-only print-recap">
           <p className="eyebrow">{no.host.games}</p>
           {rounds
             .slice()
@@ -369,14 +322,14 @@ export function FinishedView({ state }: { state: BoardState }) {
               const roundGames = games.filter((g) => g.roundId === r.id);
               if (roundGames.length === 0) return null;
               return (
-                <div key={r.id} style={{ marginTop: 10 }}>
+                <div key={r.id} className="print-round">
                   <b>
                     {no.host.round} {r.number}
                     {r.phase === "playoff" ? ` · ${no.host.bracket}` : ""}
                   </b>
-                  <ul style={{ marginTop: 4, paddingLeft: 18 }}>
+                  <ul className="print-list">
                     {roundGames.map((g) => (
-                      <li key={g.id} style={{ fontSize: 13 }}>
+                      <li key={g.id}>
                         {nameById(g.whitePlayerId)}
                         {g.blackPlayerId ? ` – ${nameById(g.blackPlayerId)}` : ""}:{" "}
                         {printResultLabel(g)}
@@ -390,7 +343,7 @@ export function FinishedView({ state }: { state: BoardState }) {
 
         {/* Tavlevisning: ingen «Ny turnering»/utskrift på projektoren. */}
         {!presentasjon && (
-          <div className="row no-print" style={{ marginTop: 28, gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          <div className="row no-print finish-actions">
             <Link href="/arranger" className="btn btn-primary btn-lg">
               {no.host.newTournament} →
             </Link>

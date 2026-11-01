@@ -61,12 +61,12 @@ export function DiagnosticsModal({
       cardClassName="card stack scale-in"
       cardStyle={{ width: "100%", maxWidth: 720, maxHeight: "84vh", overflow: "auto" }}
     >
-      <h3 id={titleId} style={{ fontSize: 20 }}><Icon name="diag" size={20} /> {no.diag.title}</h3>
-      <p className="muted" style={{ fontSize: 13 }}>{no.diag.hint}</p>
+      <h3 id={titleId} className="modal-title"><Icon name="diag" size={20} /> {no.diag.title}</h3>
+      <p className="muted fs-xs">{no.diag.hint}</p>
       <hr className="thread" />
 
       {error ? (
-        <div className="stack" style={{ gap: 10 }}>
+        <div className="stack gap-3">
           <div className="banner banner-error">{no.common.error}</div>
           <button className="btn btn-primary" onClick={load}>
             {no.common.retry}
@@ -79,24 +79,24 @@ export function DiagnosticsModal({
       ) : data.events.length === 0 ? (
         <p className="muted">{no.diag.empty}</p>
       ) : (
-        <div className="stack" style={{ gap: 14 }}>
-          <div className="stack" style={{ gap: 6 }}>
-            <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}>{no.diag.countsTitle}</p>
+        <div className="stack gap-4">
+          <div className="stack gap-2">
+            <p className="eyebrow">{no.diag.countsTitle}</p>
             <table className="table">
               <tbody>
                 {kindRows.map(([kind, n]) => (
                   <tr key={kind}>
                     <td>{no.diag.kinds[kind] ?? kind}</td>
-                    <td className="num mono" style={{ fontWeight: 700 }}>{n}</td>
+                    <td className="num mono fw-700">{n}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <div className="stack" style={{ gap: 6 }}>
-            <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}>{no.diag.eventsTitle}</p>
-            <table className="table" style={{ fontSize: 13 }}>
+          <div className="stack gap-2">
+            <p className="eyebrow">{no.diag.eventsTitle}</p>
+            <table className="table table-small">
               <thead>
                 <tr>
                   <th>{no.diag.time}</th>
@@ -108,14 +108,13 @@ export function DiagnosticsModal({
               <tbody>
                 {data.events.map((e) => (
                   <tr key={e.id}>
-                    <td className="mono num" style={{ whiteSpace: "nowrap" }}>
+                    <td className="mono num nowrap">
                       {clock(e.at)}
                     </td>
                     <td>{no.diag.kinds[e.kind] ?? e.kind}</td>
                     <td>{nameById(e.playerId)}</td>
                     <td
-                      className="mono muted"
-                      style={{ fontSize: "var(--fs-xs)", wordBreak: "break-word" }}
+                      className="mono muted fs-xs break-word"
                     >
                       {compactDetail(e.detail, e.uaClass)}
                     </td>

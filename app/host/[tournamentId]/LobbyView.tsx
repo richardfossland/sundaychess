@@ -224,110 +224,93 @@ export function LobbyView({
   }, [tournament.id, onChanged]);
 
   return (
-    <main className="wrap" style={{ padding: "34px 24px 64px" }}>
-      <header className="spread reveal" style={{ marginBottom: 30 }}>
-        <span className="brandmark">
-          <span className="knight">♞</span> Sunday<b>Chess</b>
-        </span>
-        <div className="row" style={{ gap: 12, alignItems: "flex-start" }}>
-          {tournament.title && <span className="muted">{tournament.title}</span>}
-          {!presentasjon && (
-          <button
-            type="button"
-            className="btn btn-ghost"
-            style={{ padding: "6px 12px", fontSize: 13, minHeight: 0 }}
-            title={no.host.editNotes}
-            aria-label={no.host.editNotes}
-            onClick={() => setShowNotes(true)}
-          >
-            <Icon name="edit" size={16} />
-          </button>
-          )}
-          {!presentasjon && hostCode && (
-            hostCodeRevealed ? (
-              <div className="stack" style={{ gap: 4, alignItems: "flex-end" }}>
-                <div className="row" style={{ gap: 6 }}>
-                  <button
-                    type="button"
-                    className="badge"
-                    style={{ border: 0, cursor: "pointer" }}
-                    title={no.host.tapToHide}
-                    onClick={hideHostCode}
-                  >
-                    {no.host.hostCodeLabel}{" "}
-                    <span className="mono" style={{ color: "var(--gold)" }}>{hostCode}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    style={{ padding: "6px 12px", fontSize: 13, minHeight: 0 }}
-                    onClick={copyHostCode}
-                  >
-                    {hostCodeCopied ? no.common.copied : no.common.copy}
-                  </button>
-                </div>
-                <span style={{ fontSize: "var(--fs-xs)", color: "var(--warn)" }}>
-                  <Icon name="warn" size={16} /> {no.host.hostCodeWarning}
-                </span>
+    <main className="wrap host-main">
+      <header className={presentasjon ? "spread host-head-tv reveal" : "host-sub reveal"}>
+        {presentasjon && (
+          <>
+            <span className="brandmark">
+              <span className="knight">♞</span> Sunday<b>Chess</b>
+            </span>
+            {tournament.title && <span className="muted">{tournament.title}</span>}
+          </>
+        )}
+        {!presentasjon && (
+          <>
+            <button type="button" className="btn btn-ghost" onClick={() => setShowNotes(true)}>
+              <Icon name="edit" size={16} /> {no.host.editNotes}
+            </button>
+            <span className="grow" />
+          </>
+        )}
+        {!presentasjon && hostCode && (
+          hostCodeRevealed ? (
+            <div className="host-code-reveal">
+              <div className="row gap-2">
+                <button
+                  type="button"
+                  className="badge host-code-badge"
+                  title={no.host.tapToHide}
+                  onClick={hideHostCode}
+                >
+                  {no.host.hostCodeLabel}{" "}
+                  <span className="mono gold-num">{hostCode}</span>
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={copyHostCode}>
+                  {hostCodeCopied ? no.common.copied : no.common.copy}
+                </button>
               </div>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-ghost"
-                style={{ padding: "6px 12px", fontSize: 13, minHeight: 0 }}
-                onClick={revealHostCode}
-              >
-                {no.host.revealHostCode}
-              </button>
-            )
-          )}
-        </div>
+              <span className="host-code-warn">
+                <Icon name="warn" size={16} /> {no.host.hostCodeWarning}
+              </span>
+            </div>
+          ) : (
+            <button type="button" className="btn btn-ghost" onClick={revealHostCode}>
+              {no.host.revealHostCode}
+            </button>
+          )
+        )}
       </header>
 
       <div className="board-grid split-lobby">
         {/* Join panel */}
         <section
-          className="card stack text-center reveal"
-          style={{ alignItems: "center", padding: "40px 32px", ["--i" as string]: 1 } as CSSProperties}
+          className="card stack text-center reveal join-card"
+          style={{ ["--i" as string]: 1 } as CSSProperties}
         >
           <p className="eyebrow">{no.host.pinLabel}</p>
           <div className="pin-hero">{tournament.joinPin}</div>
-          <div className="row" style={{ gap: 8, color: "var(--txt-dim)", fontSize: 15 }}>
+          <p className="join-url">
             <span>Gå til</span>
-            <b style={{ color: "var(--txt)" }}>{joinUrl.replace(/^https?:\/\//, "")}</b>
-          </div>
+            <b>{joinUrl.replace(/^https?:\/\//, "")}</b>
+          </p>
           {joinUrl && (
-            <div
-              className="scale-in"
-              style={{ padding: 12, background: "var(--paper)", borderRadius: 16, boxShadow: "var(--shadow-2)" }}
-            >
+            <div className="scale-in qr-frame">
               <QRCode value={joinUrl} size={172} />
             </div>
           )}
           {!presentasjon && (
-          <button
-            className="btn btn-primary btn-lg"
-            style={{ marginTop: 6, minWidth: 220 }}
-            disabled={starting || active.length < 2}
-            onClick={startLeague}
-          >
-            {starting ? (
-              <span className="spin" />
-            ) : tournament.config.format === "cup" ? (
-              <><Icon name="cup" size={16} /> {no.host.startCup} →</>
-            ) : (
-              `${no.host.startLeague} →`
-            )}
-          </button>
+            <button
+              className="btn btn-primary btn-lg join-start"
+              disabled={starting || active.length < 2}
+              onClick={startLeague}
+            >
+              {starting ? (
+                <span className="spin" />
+              ) : tournament.config.format === "cup" ? (
+                <><Icon name="cup" size={16} /> {no.host.startCup} →</>
+              ) : (
+                `${no.host.startLeague} →`
+              )}
+            </button>
           )}
           {!presentasjon && active.length < 2 && (
-            <p className="faint" style={{ fontSize: 13 }}>Minst 2 spillere må bli med.</p>
+            <p className="faint fs-xs">Minst 2 spillere må bli med.</p>
           )}
           {!presentasjon && unclaimed > 0 && (
-            <p className="faint" style={{ fontSize: 13 }} data-testid="unclaimed-hint">{no.continueDigital.hostUnclaimedCount(unclaimed)}</p>
+            <p className="faint fs-xs" data-testid="unclaimed-hint">{no.continueDigital.hostUnclaimedCount(unclaimed)}</p>
           )}
           {!presentasjon && roundsHint && (
-            <p className="faint" style={{ fontSize: 13 }}><Icon name="warn" size={16} /> {roundsHint}</p>
+            <p className="faint fs-xs"><Icon name="warn" size={16} /> {roundsHint}</p>
           )}
           {!presentasjon && error && <div className="banner banner-error">{error}</div>}
         </section>
@@ -335,16 +318,16 @@ export function LobbyView({
         {/* Roster */}
         <section className="card stack reveal" style={{ ["--i" as string]: 2 } as CSSProperties}>
           <div className="spread">
-            <h2 style={{ fontSize: 26 }}>{no.host.players}</h2>
+            <h2 className="card-title card-title-lg">{no.host.players}</h2>
             <span className="badge badge-live">{active.length}</span>
           </div>
           <hr className="thread" />
           {active.length === 0 ? (
-            <p className="muted" style={{ padding: "28px 0", textAlign: "center" }}>
+            <p className="muted roster-empty">
               {no.host.noPlayers}
             </p>
           ) : (
-            <div className="chips">
+            <div className="chips roster-chips">
               {active.map((p) => {
                 const online = present.has(p.id);
                 return (
@@ -352,21 +335,13 @@ export function LobbyView({
                     <span
                       title={online ? no.host.online : no.host.offline}
                       aria-label={online ? no.host.online : no.host.offline}
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        flexShrink: 0,
-                        background: online ? "var(--turn, #56c06a)" : "var(--txt-faint)",
-                        boxShadow: online ? "0 0 6px color-mix(in srgb, var(--turn) 60%, transparent)" : "none",
-                      }}
+                      className={`chip-presence${online ? " is-online" : ""}`}
                     />
                     <span className="avatar">{initials(p.displayName)}</span>
-                    {p.displayName}
+                    <span className="chip-name">{p.displayName}</span>
                     {p.preRegistered && (
                       <span
-                        className="faint"
-                        style={{ fontSize: "var(--fs-xs)" }}
+                        className="faint fs-xs"
                         data-testid={p.claimed ? "claimed" : "unclaimed"}
                       >
                         {p.claimed ? no.continueDigital.hostClaimed : no.continueDigital.hostUnclaimed}
@@ -383,7 +358,7 @@ export function LobbyView({
                       </button>
                     )}
                     {p.team && (
-                      <span className="team-chip" style={{ marginLeft: 2 }}>
+                      <span className="team-chip">
                         <span className="team-dot" style={{ background: teamColor(p.team) }} />
                         {p.team}
                       </span>
