@@ -52,11 +52,11 @@ export function OpenPublished() {
       <summary className="btn btn-sm btn-ghost" style={{ listStyle: "none", cursor: "pointer" }}>{L.openTitle}</summary>
       <form className="stack" style={{ gap: 8, marginTop: 8 }} onSubmit={go}>
         <label className="stack" style={{ gap: 2 }}>
-          <span className="muted" style={{ fontSize: 12 }}>{L.openIdLabel}</span>
+          <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{L.openIdLabel}</span>
           <input className="input" value={id} onChange={(e) => setId(e.target.value)} autoComplete="off" />
         </label>
         <label className="stack" style={{ gap: 2 }}>
-          <span className="muted" style={{ fontSize: 12 }}>{L.openCodeLabel}</span>
+          <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{L.openCodeLabel}</span>
           <input className="input" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" autoCapitalize="characters" placeholder="ABCD-12" />
         </label>
         {err && <div className="banner banner-error" role="alert">{err}</div>}

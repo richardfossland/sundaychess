@@ -49,7 +49,7 @@ export function FileMenu({ t }: { t: PhysicalTournament }) {
           </button>
         </div>
       </details>
-      {msg && <span className="muted" role="status" style={{ display: "block", fontSize: 12 }}>{msg}</span>}
+      {msg && <span className="muted" role="status" style={{ display: "block", fontSize: "var(--fs-xs)" }}>{msg}</span>}
     </span>
   );
 }

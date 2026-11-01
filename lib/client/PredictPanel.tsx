@@ -66,7 +66,7 @@ export function PredictPanel({
   return (
     <div className="card stack" style={{ padding: 18, width: "100%", maxWidth: 420, gap: 10 }}>
       <div className="spread">
-        <p className="eyebrow" style={{ fontSize: 11 }}><Icon name="target" size={14} /> {no.predict.title}</p>
+        <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}><Icon name="target" size={14} /> {no.predict.title}</p>
         {myPoints > 0 && (
           <span className="badge">
             {myPoints} {no.predict.points}

@@ -118,7 +118,7 @@ export function PublicView({ id }: { id: string }) {
             </table>
           </div>
         </section>
-        <p className="muted" style={{ fontSize: 12, margin: 0 }}>{L.pubUpdated}</p>
+        <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: 0 }}>{L.pubUpdated}</p>
       </div>
     </main>
   );

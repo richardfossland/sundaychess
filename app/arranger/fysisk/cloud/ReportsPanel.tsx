@@ -141,7 +141,7 @@ export function BoardReports({ t, board, apply }: { t: PhysicalTournament; board
         {list.map((rep) => (
           <div key={rep.id} className="spread" style={{ gap: 8 }}>
             <span>
-              <b>{resultText(rep.result)}</b> <span className="muted" style={{ fontSize: 12 }}>({L.reportFrom[rep.reporter]}, {L.reportFromDevice(devices.indexOf(rep.deviceId) + 1)})</span>
+              <b>{resultText(rep.result)}</b> <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>({L.reportFrom[rep.reporter]}, {L.reportFromDevice(devices.indexOf(rep.deviceId) + 1)})</span>
             </span>
             <span className="row" style={{ gap: 4 }}>
               <button type="button" className="btn btn-sm btn-primary" onClick={() => approveReport(t, apply, list, rep, refresh)}>{L.approve}</button>

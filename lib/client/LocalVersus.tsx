@@ -224,7 +224,7 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
             </div>
           ) : (
             <div className="result-card stack" style={{ alignItems: "center", gap: 12 }}>
-              <div className="result-emoji">{outcome === "draw" ? "🤝" : "🎉"}</div>
+              <div className="result-emoji"><Icon name={outcome === "draw" ? "draw" : "party"} size={84} strokeWidth={1.4} /></div>
               <h1 style={{ fontSize: "clamp(34px,8vw,60px)" }}>{outText}</h1>
               <div className="row" style={{ marginTop: 6 }}>
                 <button className="btn btn-primary btn-lg" onClick={newGame}>

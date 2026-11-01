@@ -6,6 +6,7 @@ import type { ReportResult, Reporter } from "@/lib/physical/cloudTypes";
 import { newId } from "@/lib/physical/events";
 import { getDeviceId, sendReport } from "@/lib/physical/reportClient";
 import type { PublicSnapshot } from "@/lib/physical/snapshot";
+import { Icon } from "@/lib/client/Icon";
 
 const L = no.physicalCloud;
 const SIDES: { value: ReportResult; label: string }[] = [
@@ -148,8 +149,8 @@ export function ReportView({ id, round, board }: { id: string; round: number; bo
         {!k && !missing && <div className="banner banner-error">{L.repMissingKey}</div>}
         {pairing && pairing.black && (
           <div className="card" style={{ padding: 10 }}>
-            <div>⚪ <b>{name(pairing.white)}</b></div>
-            <div>⚫ <b>{name(pairing.black)}</b></div>
+            <div><Icon name="circle" size={14} className="dot-white" /> <b>{name(pairing.white)}</b></div>
+            <div><Icon name="circle" size={14} className="dot-black" /> <b>{name(pairing.black)}</b></div>
           </div>
         )}
         {snap && !rd && <div className="banner">{L.repNotOpen}</div>}

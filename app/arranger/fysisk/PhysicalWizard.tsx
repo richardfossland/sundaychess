@@ -154,7 +154,7 @@ export function PhysicalWizard() {
               {PHYSICAL_SYSTEMS.map((s) => (
                 <button key={s} type="button" className={`btn btn-block ${system === s ? "btn-primary" : "btn-ghost"}`} style={{ textAlign: "left", padding: "12px 16px" }} aria-pressed={system === s} onClick={() => setSystem(s)}>
                   <b>{t.systems[s].label}</b>
-                  <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>{t.systems[s].help}</span>
+                  <span style={{ display: "block", fontSize: "var(--fs-xs)", opacity: 0.75, fontWeight: 400 }}>{t.systems[s].help}</span>
                 </button>
               ))}
             </div>
@@ -203,7 +203,7 @@ export function PhysicalWizard() {
                 <li key={k} className="spread" style={{ gap: 8 }}>
                   <span className="grow">
                     <b>{i + 1}. {no.tiebreaks[k].label}</b>
-                    <span className="muted" style={{ display: "block", fontSize: 12 }}>{no.tiebreaks[k].help}</span>
+                    <span className="muted" style={{ display: "block", fontSize: "var(--fs-xs)" }}>{no.tiebreaks[k].help}</span>
                   </span>
                   <span className="row" style={{ gap: 4 }}>
                     <button type="button" className="btn btn-sm btn-ghost" aria-label={t.moveUp} disabled={i === 0} onClick={() => moveTb(i, -1)}>↑</button>
@@ -242,7 +242,7 @@ export function PhysicalWizard() {
               <button type="button" className="btn" onClick={importPaste} disabled={!paste.trim()}>{t.pasteImport}</button>
               {pasteMsg && <span className="muted" style={{ fontSize: 13 }}>{pasteMsg}</span>}
               {pasteErrors.map((m) => (
-                <span key={m} className="banner banner-error" style={{ fontSize: 12 }}>{m}</span>
+                <span key={m} className="banner banner-error" style={{ fontSize: "var(--fs-xs)" }}>{m}</span>
               ))}
             </div>
             {roster.length < 2 && <span className="muted" style={{ fontSize: 13 }}>{t.needTwoPlayers}</span>}

@@ -42,6 +42,19 @@ import {
   BookOpen,
   ClipboardList,
   Sparkles,
+  PartyPopper,
+  Handshake,
+  Frown,
+  Hand,
+  Hourglass,
+  TrendingUp,
+  ChevronDown,
+  ThumbsUp,
+  Pause,
+  RotateCcw,
+  Circle,
+  Star,
+  Flame,
   type LucideProps,
 } from "lucide-react";
 
@@ -50,9 +63,9 @@ import {
 // MEANS, not which Lucide component it is, and tree-shaking keeps the bundle
 // to exactly these.
 //
-// Deliberately NOT here (kept as text/emoji because they are content, not UI
-// chrome): chess-piece glyphs (♔♚♞♟ — the brand and the piece colours),
-// celebration/result emoji, medals, awards and the spectator reaction emoji.
+// Deliberately NOT here (kept as text because they are content, not UI
+// chrome): chess-piece glyphs (♔♚♞♟ — the brand and the piece colours) and the
+// spectator reaction emoji (user-sent content, see Reactions.tsx).
 const icons = {
   alarm: AlarmClock,
   backStep: ChevronLeft,
@@ -97,6 +110,19 @@ const icons = {
   quick: Zap,
   review: ClipboardList,
   sparkle: Sparkles,
+  party: PartyPopper,
+  draw: Handshake,
+  sad: Frown,
+  wave: Hand,
+  hourglass: Hourglass,
+  comeback: TrendingUp,
+  chevronDown: ChevronDown,
+  thumbsUp: ThumbsUp,
+  pause: Pause,
+  retry: RotateCcw,
+  circle: Circle,
+  star: Star,
+  flame: Flame,
 } as const;
 
 export type IconName = keyof typeof icons;
@@ -119,4 +145,11 @@ export function Icon({ name, size = 18, strokeWidth = 1.9, className, ...rest }:
       {...rest}
     />
   );
+}
+
+/** Podium medal in gold/silver/bronze (colours come from --medal-1..3 so they
+ * stay readable in both themes). */
+export function MedalIcon({ rank, size = 20 }: { rank: number; size?: number }) {
+  const r = rank >= 1 && rank <= 3 ? rank : 3;
+  return <Icon name="league" size={size} className={`medal medal-${r}`} />;
 }

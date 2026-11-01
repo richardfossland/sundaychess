@@ -266,7 +266,7 @@ export function LobbyView({
                     {hostCodeCopied ? no.common.copied : no.common.copy}
                   </button>
                 </div>
-                <span style={{ fontSize: 12, color: "var(--warn)" }}>
+                <span style={{ fontSize: "var(--fs-xs)", color: "var(--warn)" }}>
                   <Icon name="warn" size={16} /> {no.host.hostCodeWarning}
                 </span>
               </div>
@@ -366,7 +366,7 @@ export function LobbyView({
                     {p.preRegistered && (
                       <span
                         className="faint"
-                        style={{ fontSize: 11 }}
+                        style={{ fontSize: "var(--fs-xs)" }}
                         data-testid={p.claimed ? "claimed" : "unclaimed"}
                       >
                         {p.claimed ? no.continueDigital.hostClaimed : no.continueDigital.hostUnclaimed}

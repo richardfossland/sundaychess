@@ -234,7 +234,7 @@ export function SpectateGame({
             {decided && (
               <div className="result-overlay" style={{ position: "absolute", borderRadius: 8 }}>
                 <div className="result-card stack" style={{ alignItems: "center", gap: 8 }}>
-                  <div className="result-emoji">{result === "draw" ? "🤝" : "🏆"}</div>
+                  <div className="result-emoji"><Icon name={result === "draw" ? "draw" : "cup"} size={84} strokeWidth={1.4} /></div>
                   <h2 style={{ fontSize: "clamp(28px,5vw,48px)", textAlign: "center" }}>
                     {winnerText}
                   </h2>

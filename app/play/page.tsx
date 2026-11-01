@@ -239,7 +239,7 @@ export default function Play() {
           <div className="brandmark" style={{ justifyContent: "center" }}>
             <span className="knight">♞</span> Sunday<b>Chess</b>
           </div>
-          <div style={{ fontSize: 40 }}>👋</div>
+          <div><Icon name="wave" size={40} strokeWidth={1.5} /></div>
           <h2 style={{ fontSize: 22 }}>{no.player.removedTitle}</h2>
           <p className="muted">{no.player.removedBody}</p>
           <button
@@ -331,7 +331,7 @@ export default function Play() {
             </button>
             <div className="row" style={{ gap: 12, margin: "2px 0" }}>
               <hr className="thread grow" />
-              <span className="faint" style={{ fontSize: 12 }}>eller</span>
+              <span className="faint" style={{ fontSize: "var(--fs-xs)" }}>eller</span>
               <hr className="thread grow" />
             </div>
             <Link href="/solo" className="btn btn-block">
@@ -355,7 +355,7 @@ export default function Play() {
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && name.trim() && doJoin()}
               />
-              <span className="muted" style={{ fontSize: 12 }}>
+              <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>
                 {no.player.nameHint}
               </span>
             </div>
@@ -396,7 +396,7 @@ export default function Play() {
                   onClick={() => void doClaim(n.id)}
                 >
                   {n.displayName}
-                  {n.club ? <span className="faint" style={{ marginLeft: 8, fontSize: 12 }}>{n.club}</span> : null}
+                  {n.club ? <span className="faint" style={{ marginLeft: 8, fontSize: "var(--fs-xs)" }}>{n.club}</span> : null}
                 </button>
               ))}
             </div>
@@ -405,7 +405,7 @@ export default function Play() {
                 {no.continueDigital.pickNotListed}
               </button>
             ) : (
-              <p className="faint" style={{ fontSize: 12 }}>{no.continueDigital.pickNoFresh}</p>
+              <p className="faint" style={{ fontSize: "var(--fs-xs)" }}>{no.continueDigital.pickNoFresh}</p>
             )}
             <button className="btn btn-ghost btn-block" onClick={() => setScreen("join")}>
               {no.continueDigital.pickBack}

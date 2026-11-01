@@ -123,7 +123,7 @@ export function CodesModal({
                     <button
                       type="button"
                       className="btn btn-ghost"
-                      style={{ padding: "6px 10px", fontSize: 12, minHeight: 0 }}
+                      style={{ padding: "6px 10px", fontSize: "var(--fs-xs)", minHeight: 0 }}
                       onClick={() => copyCode(r.playerId, r.resumeCode)}
                     >
                       {copiedId === r.playerId ? no.common.copied : no.common.copy}

@@ -85,7 +85,7 @@ export function BracketBoard({
                   onClick={clickable ? () => onPick!(g) : undefined}
                 >
                   {isTiebreak && (
-                    <span className="badge" style={{ fontSize: 10 }}>
+                    <span className="badge" style={{ fontSize: "var(--fs-xs)" }}>
                       <Icon name="versus" size={14} /> {no.host.replay}
                     </span>
                   )}

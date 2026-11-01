@@ -5,6 +5,7 @@ import { totalRounds } from "@/lib/physical/reducer";
 import { crosstableByRound } from "@/lib/physical/roundView";
 import type { PhysicalTournament } from "@/lib/physical/schema";
 import { standings } from "@/lib/physical/selectors";
+import { Icon } from "@/lib/client/Icon";
 
 const p = no.physical;
 const fmt = (n: number | null) => (n === null ? "–" : Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, ""));
@@ -127,11 +128,11 @@ export function BracketPanel({ t }: { t: PhysicalTournament }) {
                 <div key={g.board} className="pb-match" aria-label={p.boardLabel(g.board)}>
                   <div className="pb-side" data-win={w === "white"} data-lose={w === "black"}>
                     <span>{name(g.white)}</span>
-                    {w === "white" && <span aria-label={p.bracketWinner}>✓</span>}
+                    {w === "white" && <span aria-label={p.bracketWinner}><Icon name="check" size={14} /></span>}
                   </div>
                   <div className="pb-side" data-win={w === "black"} data-lose={w === "white"}>
                     <span>{g.black === null ? <i className="muted">{p.bye}</i> : name(g.black)}</span>
-                    {w === "black" && <span aria-label={p.bracketWinner}>✓</span>}
+                    {w === "black" && <span aria-label={p.bracketWinner}><Icon name="check" size={14} /></span>}
                   </div>
                 </div>
               );
