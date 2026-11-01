@@ -935,7 +935,7 @@ a:focus-visible,
    Smal skjerm: én kolonne (status, motstander, brett, deg, knapper, ekstra,
    trekkliste, verktøy) som skal passe i 100dvh. Bred skjerm (>= 1024 px):
    brett med spillerlinjer til venstre, sidepanel til høyre. Brettet skaleres
-   etter vindushøyden: --gl-board = min(100dvh - --gl-chrome, ledig bredde).
+   etter vindushøyden: --gl-board = min(100svh - --gl-chrome, ledig bredde).
    --gl-chrome er summen av alt som ligger rundt brettet (marg, to spillerlinjer,
    rammer, mellomrom) og må holdes i takt med målene under. */
 .game-page {
@@ -945,9 +945,15 @@ a:focus-visible,
   --gl-frame: 16px; /* brettramme: 2 x 8 px */
   --gl-bar: 48px;
   --gl-chrome: 400px;
+  /* Ledig bredde i én kolonne. Høyden (svh, ikke dvh: brettet skal ikke
+   * hoppe når iOS-verktøylinja vises/skjules) får bare krympe brettet ned til
+   * gulvet min(ledig bredde, 300px) — siden scroller heller enn at brettet
+   * blir uspillelig lite. Kolonnebredden (--gl-w) følger brettet, så
+   * knapper og reaksjoner får aldri mindre plass enn gulvet. */
+  --gl-avail: calc(100vw - 2 * var(--gl-gutter) - var(--gl-frame) - var(--gl-eval));
   --gl-board: min(
-    100vw - 2 * var(--gl-gutter) - var(--gl-frame) - var(--gl-eval),
-    100dvh - var(--gl-chrome),
+    var(--gl-avail),
+    max(100svh - var(--gl-chrome), min(var(--gl-avail), 300px)),
     760px
   );
   --gl-w: calc(var(--gl-board) + var(--gl-frame) + var(--gl-eval));
@@ -1288,7 +1294,7 @@ a:focus-visible,
     /* 2 x 16 marg + 2 x 52 spillerlinje + 2 x 8 mellomrom + 16 ramme = 172 */
     --gl-chrome: 180px;
     --gl-board: min(
-      100dvh - var(--gl-chrome),
+      100svh - var(--gl-chrome),
       100vw - 2 * var(--gl-gutter) - var(--gl-aside) - var(--sp-5) - var(--gl-frame) - var(--gl-eval),
       900px
     );
@@ -1354,7 +1360,7 @@ a:focus-visible,
     --gl-bar: 40px;
     --gl-chrome: 120px;
     --gl-board: min(
-      100dvh - var(--gl-chrome),
+      100svh - var(--gl-chrome),
       100vw - 2 * var(--gl-gutter) - var(--gl-aside) - var(--sp-4) - var(--gl-frame) - var(--gl-eval)
     );
   }

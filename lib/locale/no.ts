@@ -530,7 +530,8 @@ export const no = {
     // (replaces "Venter på neste motstander" + "Venter på at arrangøren starter
     // runde n" saying the same thing twice).
     waitingRound: (n: number) => `Venter på runde ${n}`,
-    waitingRoundHint: "Arrangøren starter den når alle partiene er ferdig.",
+    waitingRoundHint: "Arrangøren starter neste runde snart.",
+    waitingFinish: "Venter på at arrangøren avslutter turneringen",
     pointsOf: (total: number, score: number) => `av ${total} · ${score} poeng`,
     waitingBye:
       "Du har frirunde denne runden og får 1 poeng gratis. Slapp av til neste runde.",
