@@ -64,16 +64,16 @@ export function PredictPanel({
   }
 
   return (
-    <div className="card stack" style={{ padding: 18, width: "100%", maxWidth: 420, gap: 10 }}>
+    <div className="card stack pl-aside">
       <div className="spread">
-        <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}><Icon name="target" size={14} /> {no.predict.title}</p>
+        <p className="eyebrow"><Icon name="target" size={14} /> {no.predict.title}</p>
         {myPoints > 0 && (
           <span className="badge">
             {myPoints} {no.predict.points}
           </span>
         )}
       </div>
-      <p className="muted" style={{ fontSize: 13 }}>{no.predict.hint}</p>
+      <p className="pl-aside-body">{no.predict.hint}</p>
 
       {tippable.map((g) => {
         // Pick by PLAYER NAME, not colour — not every spectator knows who is
@@ -84,16 +84,15 @@ export function PredictPanel({
           { key: "black", label: nameById(g.blackPlayerId), glyph: "♚" },
         ];
         return (
-          <div key={g.id} className="row" style={{ gap: 6 }}>
+          <div key={g.id} className="pl-tips">
             {options.map(({ key, label, glyph }) => (
               <button
                 key={key}
-                className={`btn grow ${picks[g.id] === key ? "btn-primary" : "btn-ghost"}`}
-                style={{ padding: "8px 6px", fontSize: 13 }}
+                className={`btn pl-tip ${picks[g.id] === key ? "btn-primary" : "btn-ghost"}`}
                 aria-pressed={picks[g.id] === key}
                 onClick={() => tip(g.id, key)}
               >
-                {glyph && <span className="faint" style={{ marginRight: 4 }}>{glyph}</span>}
+                {glyph && <span className="faint pl-tip-glyph">{glyph}</span>}
                 {label}
               </button>
             ))}

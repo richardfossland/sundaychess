@@ -19,42 +19,54 @@ import { RoundTimer } from "@/lib/client/RoundTimer";
 import { resumeTroubleFromStatus } from "@/lib/client/resumeCopy";
 import { no } from "@/lib/locale/no";
 import { GameView } from "./GameView";
+import "./play.css";
 import { Icon, MedalIcon } from "@/lib/client/Icon";
 
-/** The player's own end-of-tournament card: placement, top 3, winning team. */
+function Brand() {
+  return (
+    <div className="brandmark pl-brand">
+      <span className="knight">♞</span> Sunday<b>Chess</b>
+    </div>
+  );
+}
+
+/** The player's own end-of-tournament card. The placement is the headline
+ *  ("Du ble nr. 7 av 8 · 2 poeng"); top 3 and the winning team sit under it. */
 function FinalResults({ state, playerId }: { state: BoardState; playerId: string }) {
   const { standings, tournament, players } = state;
   const mine = standings.find((s) => s.playerId === playerId);
   const top = standings.slice(0, 3);
-  const medals = [1, 2, 3].map((r) => <MedalIcon key={r} rank={r} />);
   const teamRows = computeTeamStandings(tournament.config.teams ?? [], players);
 
   return (
-    <div className="card stack" style={{ padding: 18, width: "100%", maxWidth: 420, gap: 10 }}>
-      <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}><Icon name="flag" size={14} /> {no.player.finalTitle}</p>
+    <div className="pl-final">
+      <p className="pl-done" role="status">
+        <Icon name="flag" size={16} /> {no.player.tournamentFinished}
+      </p>
       {mine && (
-        <p style={{ fontSize: 17 }}>
-          {no.player.youPlaced} <b style={{ color: "var(--gold)", fontSize: 22 }}>{mine.rank}</b>{" "}
-          {no.player.of} {standings.length} · {mine.score} {no.host.score.toLowerCase()}
-        </p>
+        <div className="pl-hero" data-testid="final-placement">
+          <p className="pl-hero-lead">
+            {no.player.youPlaced} <b className="pl-hero-rank">{mine.rank}</b>
+          </p>
+          <p className="pl-hero-sub">{no.player.pointsOf(standings.length, mine.score)}</p>
+        </div>
       )}
-      <div className="stack" style={{ gap: 4 }}>
+      <div className="pl-podium" aria-label={no.player.finalTitle}>
         {top.map((s, i) => (
           <div
-            className="spread"
+            className={`pl-podium-row${s.playerId === playerId ? " is-me" : ""}`}
             key={s.playerId}
-            style={{ fontSize: 14, fontWeight: s.playerId === playerId ? 700 : 400 }}
           >
-            <span>
-              {medals[i]} {s.displayName}
+            <span className="pl-podium-name">
+              <MedalIcon rank={i + 1} /> {s.displayName}
             </span>
             <span className="muted">{s.score}</span>
           </div>
         ))}
       </div>
       {teamRows.length > 0 && (
-        <div className="spread" style={{ marginTop: 4 }}>
-          <span className="muted" style={{ fontSize: 13 }}>{no.teams.winner}</span>
+        <div className="pl-team-row">
+          <span className="muted fs-xs">{no.teams.winner}</span>
           <span className="team-chip">
             <span className="team-dot" style={{ background: teamColor(teamRows[0].team) }} />
             <Icon name="cup" size={16} /> {teamRows[0].team} · <b>{teamRows[0].score}</b>
@@ -202,19 +214,13 @@ export function WaitingRoom({
   if (tournamentGone) {
     return (
       <main className="center-screen">
-        <div
-          className="card card-narrow stack text-center scale-in"
-          style={{ alignItems: "center" }}
-        >
-          <div className="brandmark" style={{ justifyContent: "center" }}>
-            <span className="knight">♞</span> Sunday<b>Chess</b>
-          </div>
-          <div><Icon name="flag" size={40} /></div>
-          <h2 style={{ fontSize: 22 }}>{no.player.tournamentGone}</h2>
+        <div className="card card-narrow stack pl-card scale-in">
+          <Brand />
+          <div className="pl-icon"><Icon name="flag" size={40} /></div>
+          <h2 className="pl-title">{no.player.tournamentGone}</h2>
           <p className="muted">{no.player.tournamentGoneBody}</p>
           <button
-            className="btn btn-primary btn-lg"
-            style={{ marginTop: 6 }}
+            className="btn btn-primary btn-lg pl-cta"
             onClick={() => {
               // onLeave FIRST: it records the telemetry event, and that reads
               // the stored identity for the (opaque) ids — clearing first would
@@ -238,14 +244,14 @@ export function WaitingRoom({
     const message = resumeTroubleFromStatus(errorStatus, errorCode);
     return (
       <main className="center-screen">
-        <div className="card card-narrow stack text-center" style={{ alignItems: "center" }}>
+        <div className="card card-narrow stack pl-card">
           <h2>{no.common.error}</h2>
           <p className="muted">{message}</p>
           <button className="btn btn-primary btn-lg" onClick={() => refresh()}>
             {no.common.retry}
           </button>
           <button
-            className="btn btn-ghost"
+            className="text-link"
             onClick={() => {
               onLeave(); // first — see the tournament-gone button above
               identity.clearPlayer(me.tournamentId);
@@ -278,19 +284,13 @@ export function WaitingRoom({
     };
     return (
       <main className="center-screen">
-        <div
-          className="card card-narrow stack text-center scale-in"
-          style={{ alignItems: "center" }}
-        >
-          <div className="brandmark" style={{ justifyContent: "center" }}>
-            <span className="knight">♞</span> Sunday<b>Chess</b>
-          </div>
-          <div><Icon name="wave" size={40} strokeWidth={1.5} /></div>
-          <h2 style={{ fontSize: 22 }}>{no.player.removedLobbyTitle}</h2>
+        <div className="card card-narrow stack pl-card scale-in">
+          <Brand />
+          <div className="pl-icon"><Icon name="wave" size={40} strokeWidth={1.5} /></div>
+          <h2 className="pl-title">{no.player.removedLobbyTitle}</h2>
           <p className="muted">{no.player.removedLobbyBody}</p>
           <button
-            className="btn btn-primary btn-lg"
-            style={{ marginTop: 6 }}
+            className="btn btn-primary btn-lg pl-cta"
             disabled={rejoining}
             onClick={rejoin}
           >
@@ -318,13 +318,6 @@ export function WaitingRoom({
   }
 
   const eliminated = state ? isOut(state, me.playerId) : false;
-  let banner: string = no.player.waitingStart;
-  if (status !== "lobby") {
-    if (status === "finished") banner = no.player.tournamentFinished;
-    else if (eliminated) banner = no.player.outOfTournament;
-    else if (game?.status === "bye") banner = no.player.waitingBye;
-    else banner = no.player.waitingNext;
-  }
   // The spinner means "hang on, more is coming" — drop it once the player is out
   // or the tournament is over, where nothing more is coming for them.
   const showWaitingSpinner = !eliminated && status !== "finished";
@@ -344,133 +337,139 @@ export function WaitingRoom({
     ? offerSoloWhileWaiting(state, me.playerId)
     : false;
 
+  // ONE status message. Between rounds with every game done, the round number
+  // IS the message ("Venter på runde 2") — no second line about the opponent.
+  let headline: string = no.player.waitingStart;
+  let sub: string | null = null;
+  if (status !== "lobby") {
+    if (status === "finished") headline = no.player.tournamentFinished;
+    else if (eliminated) headline = no.player.outOfTournament;
+    else if (game?.status === "bye") {
+      headline = no.player.waitingBye;
+      sub = progress?.label ?? null;
+    } else if (progress && progress.live === 0) {
+      headline = no.player.waitingRound(progress.round + 1);
+      sub = no.player.waitingRoundHint;
+    } else {
+      headline = no.player.waitingNext;
+      sub = progress?.label ?? null;
+    }
+  }
+
   const myTeam = meRow?.team ?? null;
+  const leave = (reason?: "logout" | "switch_player") => {
+    onLeave(reason); // first — see the tournament-gone button above
+    identity.clearPlayer(me.tournamentId);
+  };
+
+  const meLinks = (
+    <div className="pl-me">
+      {showCode && (
+        <div className="pl-code">
+          <div className="big-code" data-testid="my-code">{me.resumeCode}</div>
+        </div>
+      )}
+      <div className="pl-me-links">
+        {!showCode && (
+          <button className="text-link" onClick={() => setShowCode(true)}>
+            <Icon name="key" size={16} /> {no.player.showMyCode}
+          </button>
+        )}
+        {/* Shared devices: the iPad that Ada used in round 1 is Bo's in round 2.
+            The ordinary leave path, scoped to THIS tournament, so a session for
+            another tournament on the same device survives. */}
+        <button className="text-link" data-testid="switch-player" onClick={() => leave("switch_player")}>
+          {no.player.switchPlayer}
+        </button>
+        <button className="text-link" onClick={() => leave()}>
+          {no.player.logOut}
+        </button>
+      </div>
+      <p className="pl-me-hint">{no.player.resumeHint}</p>
+    </div>
+  );
+
+  const hasAside = status !== "lobby" && status !== "finished";
 
   return (
     <main className="center-screen" data-testid="waiting-room">
       {showReconnectBadge && (
-        <div
-          className="banner banner-wait"
-          style={{ position: "fixed", top: 16, left: 20, zIndex: 40, padding: "6px 12px" }}
-          role="status"
-          aria-live="polite"
-        >
+        <div className="banner banner-wait pl-reconnect" role="status" aria-live="polite">
           {no.player.reconnecting}
         </div>
       )}
-      <div className="stack" style={{ alignItems: "center", gap: 16, width: "100%", maxWidth: 450 }}>
-      <div className="card card-narrow stack text-center scale-in" style={{ alignItems: "center" }}>
-        <div className="brandmark" style={{ justifyContent: "center" }}>
-          <span className="knight">♞</span> Sunday<b>Chess</b>
-        </div>
-        <div className="avatar-lg float" style={{ width: 64, height: 64, fontSize: 22, marginTop: 4 }}>
-          {initials(me.displayName)}
-        </div>
-        <h2 style={{ fontSize: 26 }}>{me.displayName}</h2>
-        {myTeam && (
-          <span className="team-chip" style={{ fontSize: 13 }}>
-            <span className="team-dot" style={{ background: teamColor(myTeam) }} />
-            {no.teams.yourTeam} {myTeam}
-          </span>
-        )}
-
-        {/* Shared devices: the iPad that Ada used in round 1 is Bo's in round 2.
-            The name above is the question this button answers, so it sits right
-            under it — and it is the ordinary leave path, scoped to THIS
-            tournament, so a session for another tournament on the same device
-            survives. */}
-        <button
-          className="btn btn-ghost"
-          style={{ fontSize: 13 }}
-          data-testid="switch-player"
-          onClick={() => {
-            onLeave("switch_player"); // first — see the tournament-gone button above
-            identity.clearPlayer(me.tournamentId);
-          }}
-        >
-          {no.player.switchPlayer}
-        </button>
-
-        <div className="banner banner-wait" style={{ marginTop: 2, width: "100%" }}>
-          {showWaitingSpinner && (
-            <span
-              className="spin"
-              style={{ display: "inline-block", verticalAlign: "middle", marginRight: 10 }}
-            />
+      <div className="pl-wrap">
+        <div className="card card-narrow stack pl-card scale-in">
+          <Brand />
+          {state && status === "finished" ? (
+            <>
+              <FinalResults state={state} playerId={me.playerId} />
+              <p className="muted fs-xs">
+                {me.displayName}
+                {myTeam ? ` · ${no.teams.yourTeam} ${myTeam}` : ""}
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="avatar-lg pl-avatar float">{initials(me.displayName)}</div>
+              <h2 className="pl-name">{me.displayName}</h2>
+              {myTeam && (
+                <span className="team-chip">
+                  <span className="team-dot" style={{ background: teamColor(myTeam) }} />
+                  {no.teams.yourTeam} {myTeam}
+                </span>
+              )}
+              <div className="pl-status" role="status">
+                <p className={`pl-status-main${headline.length > 48 ? " is-long" : ""}`}>
+                  {showWaitingSpinner && <span className="spin" aria-hidden="true" />}
+                  <span>{headline}</span>
+                </p>
+                {sub && (
+                  <div className="pl-status-sub">
+                    <span>{sub}</span>
+                    {progress?.timer && (
+                      <RoundTimer
+                        startedAt={progress.timer.startedAt}
+                        durationSec={progress.timer.durationSec}
+                        extendedMs={progress.timer.extendedMs}
+                        compact
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
           )}
-          {banner}
+          {meLinks}
         </div>
 
-        {progress && (
-          <div className="row" style={{ gap: 8, alignItems: "center", justifyContent: "center" }}>
-            <span className="muted" style={{ fontSize: 13 }}>{progress.label}</span>
-            {progress.timer && (
-              <RoundTimer
-                startedAt={progress.timer.startedAt}
-                durationSec={progress.timer.durationSec}
-                extendedMs={progress.timer.extendedMs}
-                compact
-              />
-            )}
+        {/* the cup ladder — how it's going / how it went (knockout only) */}
+        {state && state.rounds.some((r) => r.phase === "playoff") && (
+          <div className="card stack pl-fill">
+            <p className="eyebrow">{no.player.cupProgress}</p>
+            <BracketBoard games={state.games} rounds={state.rounds} players={state.players} />
           </div>
         )}
 
-        {showCode ? (
-          <div className="big-code">{me.resumeCode}</div>
-        ) : (
-          <button className="btn btn-ghost" onClick={() => setShowCode(true)}>
-            {no.player.showMyCode}
-          </button>
+        {/* Secondary, muted: things to do while waiting. */}
+        {/* something to chew on while waiting */}
+        {state && hasAside && <PredictPanel me={me} state={state} />}
+
+        {/* eliminated / bye / finished early — nothing left to do right now,
+            so offer a solo game against the computer instead of a bare wait.
+            target="_blank": opening it in THIS tab would lose the tournament
+            screen (and, mid-game, the presence heartbeat). */}
+        {showSoloWhileWaiting && (
+          <div className="card stack pl-aside">
+            <p className="eyebrow">{no.player.soloWhileWaitingTitle}</p>
+            <p className="pl-aside-body">{no.player.soloWhileWaitingBody}</p>
+            <a href="/solo" target="_blank" rel="noopener" className="btn btn-ghost btn-block">
+              {no.player.soloWhileWaitingCta}
+            </a>
+          </div>
         )}
-        <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>
-          {no.player.resumeHint}
-        </p>
 
-        <button
-          className="btn btn-ghost"
-          style={{ marginTop: 8 }}
-          onClick={() => {
-            onLeave(); // first — see the tournament-gone button above
-            identity.clearPlayer(me.tournamentId);
-          }}
-        >
-          {no.player.logOut}
-        </button>
-      </div>
-
-      {/* the cup ladder — how it's going / how it went (knockout only) */}
-      {state && state.rounds.some((r) => r.phase === "playoff") && (
-        <div className="card stack" style={{ padding: 14, width: "100%", gap: 8 }}>
-          <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}>{no.player.cupProgress}</p>
-          <BracketBoard games={state.games} rounds={state.rounds} players={state.players} />
-        </div>
-      )}
-
-      {/* the player's own final standings once it's all over */}
-      {state && status === "finished" && (
-        <FinalResults state={state} playerId={me.playerId} />
-      )}
-
-      {/* something to chew on while waiting */}
-      {state && status !== "lobby" && status !== "finished" && (
-        <PredictPanel me={me} state={state} />
-      )}
-
-      {/* eliminated / bye / finished early — nothing left to do right now,
-          so offer a solo game against the computer instead of a bare wait.
-          target="_blank": opening it in THIS tab would lose the tournament
-          screen (and, mid-game, the presence heartbeat). */}
-      {showSoloWhileWaiting && (
-        <div className="card stack" style={{ padding: 14, width: "100%", gap: 8 }}>
-          <p className="eyebrow" style={{ fontSize: "var(--fs-xs)" }}>{no.player.soloWhileWaitingTitle}</p>
-          <p className="muted" style={{ fontSize: 13 }}>{no.player.soloWhileWaitingBody}</p>
-          <a href="/solo" target="_blank" rel="noopener" className="btn btn-ghost btn-block">
-            {no.player.soloWhileWaitingCta}
-          </a>
-        </div>
-      )}
-
-      <PuzzleCard />
+        {status !== "finished" && <PuzzleCard />}
       </div>
     </main>
   );

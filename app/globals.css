@@ -2349,7 +2349,8 @@ a:focus-visible,
   left: 0;
   right: 0;
   z-index: 1000;
-  padding: 8px 14px;
+  padding: var(--sp-2) var(--sp-4);
+  line-height: 1.4;
   text-align: center;
   font-weight: 700;
   font-size: var(--fs-sm);

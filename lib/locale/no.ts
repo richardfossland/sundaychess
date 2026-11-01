@@ -514,6 +514,12 @@ export const no = {
     resume: "Gjenoppta",
     waitingStart: "Venter på at arrangøren starter …",
     waitingNext: "Venter på neste motstander …",
+    // Between rounds, every game done: ONE message with the round number
+    // (replaces "Venter på neste motstander" + "Venter på at arrangøren starter
+    // runde n" saying the same thing twice).
+    waitingRound: (n: number) => `Venter på runde ${n}`,
+    waitingRoundHint: "Arrangøren starter den når alle partiene er ferdig.",
+    pointsOf: (total: number, score: number) => `av ${total} · ${score} poeng`,
     waitingBye:
       "Du har frirunde denne runden og får 1 poeng gratis. Slapp av til neste runde.",
     outOfTournament:

@@ -1,0 +1,265 @@
+/* D3: elevreisen — venterom, mellom runder, sluttresultat, «fjernet»-skjerm.
+   Hierarki: status øverst (stor), handlinger som rolige tekstlenker, sekundært
+   innhold (sjakknøtt, solo, tipping) dempet under. Bare tokens fra globals.css. */
+
+.pl-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+  width: 100%;
+  max-width: var(--w-narrow);
+}
+.pl-card {
+  width: 100%;
+  align-items: center;
+  text-align: center;
+}
+.pl-brand {
+  justify-content: center;
+}
+.pl-icon {
+  color: var(--gold-ink);
+}
+.pl-title {
+  font-size: var(--fs-xl);
+}
+.pl-cta {
+  margin-top: var(--sp-2);
+}
+
+/* reconnect-merke: fast i hjørnet, men med luft og lesbar tekst */
+.pl-reconnect {
+  position: fixed;
+  top: var(--sp-4);
+  left: var(--sp-4);
+  z-index: 40;
+  padding: var(--sp-1) var(--sp-3);
+  font-size: var(--fs-xs);
+}
+
+/* ---- identitet + status ---- */
+.pl-avatar {
+  width: 56px;
+  height: 56px;
+  font-size: var(--fs-lg);
+}
+.pl-name {
+  font-size: var(--fs-xl);
+  line-height: 1.2;
+}
+.pl-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  width: 100%;
+  padding: var(--sp-4);
+  border-radius: var(--radius);
+  background: var(--s-03);
+  border: 1px solid var(--ink-line);
+}
+.pl-status-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--txt);
+  line-height: 1.3;
+}
+.pl-status-main.is-long {
+  font-size: var(--fs-md);
+}
+.pl-status-sub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--txt-dim);
+}
+/* «Turneringen er ferdig» er en melding, ikke en knapp: ingen ramme/bakgrunn. */
+.pl-done {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+}
+
+/* ---- «Meg»: rolige tekstlenker, 44 px treffflate ---- */
+.pl-me {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  width: 100%;
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--ink-line);
+}
+.pl-me-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 var(--sp-2);
+}
+.pl-me .text-link {
+  padding: 0 var(--sp-3);
+}
+.pl-me-hint {
+  font-size: var(--fs-xs);
+  color: var(--txt-faint);
+}
+.pl-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-5);
+  border: 1px dashed color-mix(in srgb, var(--gold) 40%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--gold) 6%, transparent);
+}
+
+/* ---- sluttresultat: plassering er hovedbudskapet ---- */
+.pl-final {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+  width: 100%;
+  text-align: center;
+}
+.pl-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.pl-hero-lead {
+  font-family: var(--display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--txt);
+}
+.pl-hero-rank {
+  font-size: var(--fs-display);
+  line-height: 1.1;
+  padding: 0 var(--sp-1);
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.pl-hero-sub {
+  font-size: var(--fs-md);
+  color: var(--txt-dim);
+}
+.pl-podium {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  width: 100%;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--ink-line);
+}
+.pl-podium-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 36px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+}
+.pl-podium-row.is-me {
+  font-weight: 700;
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+}
+.pl-podium-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  text-align: left;
+}
+.pl-team-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: 0 var(--sp-3);
+}
+
+/* ---- sekundært innhold: dempet ---- */
+.pl-aside-head {
+  width: 100%;
+  margin-top: var(--sp-2);
+  text-align: center;
+}
+.pl-aside {
+  width: 100%;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: transparent;
+  border: 1px solid var(--ink-line);
+  box-shadow: none;
+}
+.pl-aside .eyebrow {
+  color: var(--txt-dim);
+}
+.pl-aside-body {
+  font-size: var(--fs-xs);
+  color: var(--txt-dim);
+}
+.pl-puzzle {
+  align-items: center;
+}
+.pl-puzzle-board {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.pl-puzzle-prompt {
+  font-size: var(--fs-sm);
+}
+.pl-fill {
+  width: 100%;
+}
+.pl-tips {
+  display: flex;
+  gap: var(--sp-2);
+}
+.pl-tip {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-1);
+  font-size: var(--fs-xs);
+}
+.pl-tip-glyph {
+  margin-right: var(--sp-1);
+}
+
+/* page.tsx: «Koden din» (etter innmelding) og klubbnavn i navnevalg */
+.pl-code-wide {
+  padding: var(--sp-4) 0;
+}
+.pl-club {
+  margin-left: var(--sp-2);
+}
+
+/* .text-link brukes også på <button>: nullstill nettleserens knappestil */
+button.text-link {
+  background: none;
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
