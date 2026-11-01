@@ -19,6 +19,13 @@ export function StorskjermPanel({ onClose }: { onClose: () => void }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const [melding, setMelding] = useState<Melding>(null);
+  // Siste onClose i en ref: kalleren sender en ny funksjon ved hver render
+  // (tavla poller hvert 5. s), og fokus-effekten under skal bare kjøre én gang
+  // — ellers hopper fokuset tilbake til første knapp ved hver oppdatering.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
   // Enhet leses etter mount (navigator finnes ikke på serveren).
   const [enhet, setEnhet] = useState({ apple: false, ios: false, chromium: false });
 
@@ -40,7 +47,7 @@ export function StorskjermPanel({ onClose }: { onClose: () => void }) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab" || !card) return;
@@ -58,7 +65,7 @@ export function StorskjermPanel({ onClose }: { onClose: () => void }) {
       document.removeEventListener("keydown", onKey);
       opener?.focus?.();
     };
-  }, [onClose]);
+  }, []);
 
   const fullskjermHer = () => {
     settPresentasjon(true);

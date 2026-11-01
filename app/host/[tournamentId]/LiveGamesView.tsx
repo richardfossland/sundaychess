@@ -18,6 +18,7 @@ import { plyOf } from "@/lib/chess/ply";
 import { SpectateGame } from "./SpectateGame";
 import { FullscreenToggle } from "@/lib/client/FullscreenToggle";
 import { Confetti } from "@/lib/client/Confetti";
+import { usePresentasjon } from "@/lib/client/storskjerm/usePresentasjon";
 
 // L8: the grid never highlights squares (that's the single-game spectate
 // view's job) — a stable empty object + constant key so every mini/big board
@@ -99,6 +100,7 @@ export function LiveGamesView({
   onExitLive?: () => void;
 }) {
   const { tournament, players, games, rounds } = state;
+  const presentasjon = usePresentasjon();
   const nameById = useMemo(() => {
     const m = new Map(players.map((p) => [p.id, p.displayName]));
     return (id: string | null) => (id ? (m.get(id) ?? "?") : no.host.bye);
@@ -366,7 +368,8 @@ export function LiveGamesView({
   return (
     <main className="wrap" style={{ padding: "12px 24px 64px", maxWidth: "min(96vw, 1800px)" }}>
       {live.length === 0 ? (
-        roundOver && onExitLive ? (
+        // Tavlevisning: ingen "tilbake til arrangering"-kort (vertskontroll).
+        roundOver && onExitLive && !presentasjon ? (
           // Round done — nothing left to watch. A fullscreen card prompts the
           // host back to the arranging view to advance the round / bracket.
           <div className="result-overlay">

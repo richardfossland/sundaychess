@@ -16,6 +16,7 @@ import { BracketBoard } from "@/lib/client/BracketBoard";
 import { OverrideModal } from "./OverrideModal";
 import { CodesModal } from "./CodesModal";
 import { Icon } from "@/lib/client/Icon";
+import { effectiveHostCode, usePresentasjon } from "@/lib/client/storskjerm/usePresentasjon";
 
 export function BracketView({
   state,
@@ -25,6 +26,8 @@ export function BracketView({
   onChanged: () => void;
 }) {
   const { tournament, players, games, rounds } = state;
+  // Tavlevisning (projektor/cast): ingen arrangørkontroller, ingen modaler.
+  const presentasjon = usePresentasjon();
   const [hostCode, setHostCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,8 +38,8 @@ export function BracketView({
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setHostCode(identity.hostCode(tournament.id));
-  }, [tournament.id]);
+    setHostCode(effectiveHostCode(identity.hostCode(tournament.id), presentasjon));
+  }, [tournament.id, presentasjon]);
 
   const player = useMemo(() => {
     const byId = new Map(players.map((p) => [p.id, p]));
@@ -143,21 +146,25 @@ export function BracketView({
               durationSec={timerSec}
               extendedMs={currentCol.round.extendedMs ?? 0}
             />
-            <button
-              className="btn btn-ghost"
-              style={{ padding: "8px 12px" }}
-              disabled={busy}
-              onClick={addMinute}
-            >
-              {busy ? <span className="spin" /> : no.host.addMinute}
-            </button>
+            {!presentasjon && (
+              <button
+                className="btn btn-ghost"
+                style={{ padding: "8px 12px" }}
+                disabled={busy}
+                onClick={addMinute}
+              >
+                {busy ? <span className="spin" /> : no.host.addMinute}
+              </button>
+            )}
           </div>
         )}
         <span className="grow" />
         <JoinChip pin={tournament.joinPin} />
-        <button className="btn btn-ghost" onClick={() => setShowCodes(true)}>
-          {no.host.showCodes}
-        </button>
+        {!presentasjon && (
+          <button className="btn btn-ghost" onClick={() => setShowCodes(true)}>
+            {no.host.showCodes}
+          </button>
+        )}
         {tournament.title && <span className="muted">{tournament.title}</span>}
       </header>
 
@@ -165,10 +172,10 @@ export function BracketView({
         games={games}
         rounds={rounds}
         players={players}
-        onPick={(g) => setOverrideGame(g)}
+        onPick={presentasjon ? undefined : (g) => setOverrideGame(g)}
       />
 
-      {timeUp && liveCount > 0 && (
+      {!presentasjon && timeUp && liveCount > 0 && (
         <div
           className="banner"
           style={{
@@ -195,45 +202,49 @@ export function BracketView({
         </div>
       )}
 
-      <div className="row" style={{ marginTop: 24, maxWidth: 480 }}>
-        {hasUndecidedDraw ? (
-          <>
-            <button className="btn grow" disabled={busy} onClick={() => advance("rematch")}>
-              {busy ? <span className="spin" /> : <><Icon name="versus" size={16} /> {no.host.playRematch}</>}
-            </button>
+      {!presentasjon && (
+        <>
+        <div className="row" style={{ marginTop: 24, maxWidth: 480 }}>
+          {hasUndecidedDraw ? (
+            <>
+              <button className="btn grow" disabled={busy} onClick={() => advance("rematch")}>
+                {busy ? <span className="spin" /> : <><Icon name="versus" size={16} /> {no.host.playRematch}</>}
+              </button>
+              <button
+                className="btn btn-primary grow"
+                disabled={busy}
+                onClick={() => advance("ranking")}
+              >
+                {busy ? <span className="spin" /> : <><Icon name="cup" size={16} /> {no.host.advanceBySeed}</>}
+              </button>
+            </>
+          ) : (
             <button
               className="btn btn-primary grow"
-              disabled={busy}
-              onClick={() => advance("ranking")}
+              disabled={busy || !allResolved}
+              onClick={() => advance()}
             >
-              {busy ? <span className="spin" /> : <><Icon name="cup" size={16} /> {no.host.advanceBySeed}</>}
+              {busy ? <span className="spin" /> : isFinal ? no.host.crownChampion : no.host.nextRound}
             </button>
-          </>
-        ) : (
-          <button
-            className="btn btn-primary grow"
-            disabled={busy || !allResolved}
-            onClick={() => advance()}
-          >
-            {busy ? <span className="spin" /> : isFinal ? no.host.crownChampion : no.host.nextRound}
-          </button>
-        )}
-      </div>
-      {hasUndecidedDraw ? (
-        <p className="muted" style={{ fontSize: 13, marginTop: 8, maxWidth: 480 }}>
-          {no.host.drawChoiceHint}
-        </p>
-      ) : (
-        !allResolved && (
-          <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
-            {no.host.awaitAllGames}
+          )}
+        </div>
+        {hasUndecidedDraw ? (
+          <p className="muted" style={{ fontSize: 13, marginTop: 8, maxWidth: 480 }}>
+            {no.host.drawChoiceHint}
           </p>
-        )
+        ) : (
+          !allResolved && (
+            <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
+              {no.host.awaitAllGames}
+            </p>
+          )
+        )}
+        {notice && <div className="banner banner-wait" style={{ marginTop: 10, maxWidth: 480 }}>{notice}</div>}
+        {error && <div className="banner banner-error" style={{ marginTop: 10, maxWidth: 480 }}>{error}</div>}
+        </>
       )}
-      {notice && <div className="banner banner-wait" style={{ marginTop: 10, maxWidth: 480 }}>{notice}</div>}
-      {error && <div className="banner banner-error" style={{ marginTop: 10, maxWidth: 480 }}>{error}</div>}
 
-      {showCodes && (
+      {!presentasjon && showCodes && (
         <CodesModal
           tournamentId={tournament.id}
           hostCode={hostCode ?? ""}
@@ -241,7 +252,7 @@ export function BracketView({
         />
       )}
 
-      {overrideGame && (
+      {!presentasjon && overrideGame && (
         <OverrideModal
           gameId={overrideGame.id}
           hostCode={hostCode ?? ""}
@@ -260,7 +271,7 @@ export function BracketView({
         />
       )}
 
-      {confirmForce && (
+      {!presentasjon && confirmForce && (
         <ConfirmDialog
           message={no.host.forceResolveConfirm}
           danger
