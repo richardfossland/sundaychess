@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/server/store", async () => await import("./helpers/memoryStore"));
 vi.mock("@/lib/server/broadcast", () => ({ broadcast: vi.fn(async () => {}) }));
-vi.mock("@/lib/server/gameEvents", () => ({ afterGameResolved: vi.fn() }));
+vi.mock("@/lib/server/gameEvents", () => ({ afterGameResolved: vi.fn(async () => {}) }));
 const budget = vi.hoisted(() => ({ blocked: false }));
 vi.mock("@/lib/server/attempts", () => ({
   isCodeBlocked: vi.fn(async () => false),
