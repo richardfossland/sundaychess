@@ -111,10 +111,6 @@
 }
 .pl-me .text-link {
   padding: 0 var(--sp-3);
-  background: none;
-  border: 0;
-  font-family: inherit;
-  cursor: pointer;
 }
 .pl-me-hint {
   font-size: var(--fs-xs);
@@ -258,4 +254,12 @@
 }
 .pl-club {
   margin-left: var(--sp-2);
+}
+
+/* .text-link brukes også på <button>: nullstill nettleserens knappestil */
+button.text-link {
+  background: none;
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
 }
