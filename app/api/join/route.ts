@@ -30,8 +30,6 @@ async function handlePost(req: Request, device: string): Promise<Response> {
     if (await registerGuessFailure("pin", device, req)) return fail(429, "rate_limited");
     return fail(404, "invalid_pin");
   }
-  // Correct PIN: confirm the block against the DB, not the per-isolate cache (no 200-vs-429 oracle).
-  if (await isGuessBlocked("pin", device, req, true)) return fail(429, "rate_limited");
   if (t.status !== "lobby") return fail(409, "already_started");
   // Continued from a physical tournament: only the pre-registered names may play,
   // unless the physical tournament allowed late entry (M5b).

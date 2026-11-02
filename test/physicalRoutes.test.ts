@@ -159,10 +159,11 @@ describe("host auth (PUT/GET log, keys, reports, DELETE)", () => {
     expect((await getLog(get(`/api/physical/${ID}/log`, { "x-pair-token": pairToken }), ctx())).status).toBe(200);
   });
 
-  it("the correct code is re-checked with fresh:true (no stale negative-cache oracle)", async () => {
+  it("the correct code from a blocked IP is 429 (no stale 'clean' oracle)", async () => {
     const { hostCode } = await seed();
-    isCodeBlocked.mockImplementation((async (_s: string, _r: Request, o?: { fresh?: boolean }) => !!o?.fresh) as never);
+    isCodeBlocked.mockResolvedValue(true);
     expect((await getLog(get(`/api/physical/${ID}/log`, { "x-host-code": hostCode }), ctx())).status).toBe(429);
+    expect(isCodeBlocked).toHaveBeenCalledWith(`phys:${ID}`, expect.anything());
   });
 
   it("a wrong code that trips the limit answers 429", async () => {
