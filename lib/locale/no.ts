@@ -1346,6 +1346,40 @@ export const no = {
     hostResetConfirm: (n: string) => `Frigjøre navnet «${n}»? Eleven som har valgt det mister tilgangen, og navnet kan velges på nytt.`,
     hostUnclaimedCount: (n: number) => `${n} navn er ikke valgt ennå. De som ikke møter kan settes som fraværende når runden er i gang.`,
   },
+
+  // E3: tilgjengelighet (skjermleser, tastatur, trekkbekreftelse, høy kontrast)
+  a11y: {
+    themeContrast: "Høy kontrast",
+    confirmMoves: "Bekreft trekk",
+    confirmMovesHint: "Trekket vises først som foreløpig, og spilles først når du trykker Bekreft.",
+    confirm: "Bekreft",
+    undo: "Angre",
+    pendingLabel: "Foreløpig trekk",
+    pendingMove: (txt: string) => `Foreløpig trekk: ${txt}`,
+    pendingAnnounce: (txt: string) => `Foreløpig trekk: ${txt}. Trykk Bekreft eller Angre.`,
+    boardKeys:
+      "Sjakkbrett. Bruk piltastene for å flytte markøren, Enter eller mellomrom for å velge brikke og rute, Escape for å avbryte.",
+    cellSelected: "valgt",
+    cellLegal: "lovlig trekk",
+    you: "Du",
+    opponent: "Motstanderen",
+    computer: "Datamaskinen",
+    by: (who: string, txt: string) => `${who}: ${txt}`,
+    whiteWins: "Hvit vant",
+    blackWins: "Svart vant",
+    draw: "Remis",
+    gameOver: (txt: string) => `Partiet er over. ${txt}`,
+  },
+  // PGN-eksport og FEN-kopiering
+  pgn: {
+    download: "Last ned PGN",
+    downloadAll: "Last ned alle partier (PGN)",
+    copyFen: "Kopier FEN",
+    fenCopied: "FEN kopiert",
+    fenFailed: "Kunne ikke kopiere",
+    failed: "Kunne ikke laste ned partiet.",
+    resignation: "Oppgivelse",
+  },
   // Personvernside (/personvern) og lenker dit.
   privacy: {
     link: "Personvern",

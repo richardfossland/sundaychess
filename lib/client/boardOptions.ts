@@ -53,10 +53,10 @@ export const BOARD_BASE_OPTIONS = {
 // re-render of the board itself.
 // ---------------------------------------------------------------------------
 
-export type BoardTheme = "green" | "wood" | "gold";
+export type BoardTheme = "green" | "wood" | "gold" | "contrast";
 
 export const BOARD_THEME_KEY = "chess:boardTheme";
-export const BOARD_THEMES: readonly BoardTheme[] = ["green", "wood", "gold"];
+export const BOARD_THEMES: readonly BoardTheme[] = ["green", "wood", "gold", "contrast"];
 export const DEFAULT_BOARD_THEME: BoardTheme = "green";
 
 /** The palette per theme. Mirrors the `[data-board-theme]` blocks in
@@ -84,10 +84,22 @@ export const BOARD_PALETTES: Record<
     last: "rgba(30, 120, 210, 0.5)",
     selected: "rgba(30, 150, 90, 0.6)",
   },
+  // Høy kontrast: hvite og mellomgrå (#767676) ruter. Mellomgrått er den ene
+  // gråtonen som har minst 4,5:1 mot både hvite og svarte brikker, så begge
+  // brikkefarger leses på mørke ruter; svarte brikker og alle omriss leses på
+  // hvite. Siste trekk og valgt rute er ikke fargefyll men tykke svarte/hvite
+  // rammer (`--board-last-ring`, `--board-selected-ring` i globals.css), som
+  // synes på begge rutefarger og uten å farge brikken.
+  contrast: {
+    light: "#ffffff",
+    dark: "#767676",
+    last: "transparent",
+    selected: "transparent",
+  },
 };
 
 export function isBoardTheme(v: unknown): v is BoardTheme {
-  return v === "green" || v === "wood" || v === "gold";
+  return v === "green" || v === "wood" || v === "gold" || v === "contrast";
 }
 
 export function loadBoardTheme(): BoardTheme {
@@ -146,10 +158,17 @@ export function highlightStyles(opts: {
 }): Record<string, CSSProperties> {
   const styles: Record<string, CSSProperties> = {};
   if (opts.last) {
-    styles[opts.last.from] = { background: "var(--board-last)" };
-    styles[opts.last.to] = { background: "var(--board-last)" };
+    // `--board-*-ring` er `none` i alle temaer unntatt høy kontrast, som
+    // markerer med ramme i stedet for fargefyll.
+    const last = { background: "var(--board-last)", boxShadow: "var(--board-last-ring, none)" };
+    styles[opts.last.from] = { ...last };
+    styles[opts.last.to] = { ...last };
   }
-  if (opts.selected) styles[opts.selected] = { background: "var(--board-selected)" };
+  if (opts.selected)
+    styles[opts.selected] = {
+      background: "var(--board-selected)",
+      boxShadow: "var(--board-selected-ring, none)",
+    };
   for (const sq of opts.legal ?? []) {
     styles[sq] = {
       ...(styles[sq] ?? {}),

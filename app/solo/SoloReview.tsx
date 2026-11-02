@@ -6,6 +6,10 @@ import { reviewFacts, templatedSummaryNo } from "@/lib/chess/reviewSummary";
 import type { ReviewFacts } from "@/lib/chess/reviewSummary";
 import { no } from "@/lib/locale/no";
 import { Icon } from "@/lib/client/Icon";
+import { PgnButtons } from "@/lib/client/PgnButtons";
+import { Chess } from "chess.js";
+import { finalFen, gamePgn, pgnFileName } from "@/lib/export/pgn";
+import type { GameStatus } from "@/lib/types";
 
 // Coached post-game review for a SOLO game. The game is client-only, so all
 // engine truth is derived here in the browser (annotateGame replays the PGN);
@@ -128,6 +132,35 @@ export function SoloReview({
           )}
         </>
       )}
+
+      <PgnButtons
+        load={async () => {
+          const c = new Chess();
+          try {
+            c.loadPgn(pgn);
+          } catch {}
+          const status: GameStatus = c.isCheckmate()
+            ? c.turn() === "w"
+              ? "black_win"
+              : "white_win"
+            : c.isDraw()
+              ? "draw"
+              : "live";
+          const you = no.solo.you;
+          const cpu = no.solo.computer;
+          return {
+            filename: pgnFileName(no.appName),
+            pgn: gamePgn({
+              event: no.appName,
+              white: playerColor === "white" ? you : cpu,
+              black: playerColor === "black" ? you : cpu,
+              status,
+              pgn,
+            }),
+            fen: finalFen(pgn),
+          };
+        }}
+      />
 
       <button className="btn btn-ghost btn-block" onClick={onClose}>
         <Icon name="back" size={16} /> {no.review.close}

@@ -918,6 +918,7 @@ a:focus-visible,
 }
 /* player board — a comfortably large centre on every screen */
 .board-shell {
+  position: relative;
   width: min(94vw, 78vh, 760px);
   aspect-ratio: 1;
   border-radius: 8px;
@@ -993,6 +994,7 @@ a:focus-visible,
 .gl-extra { order: 6; }
 .gl-moves { order: 7; }
 .gl-tools { order: 8; }
+.gl-confirm { order: 4; }
 
 .gl-status .banner,
 .gl-extra .banner {
@@ -1284,6 +1286,19 @@ a:focus-visible,
   --board-last: rgba(30, 120, 210, 0.5);
   --board-selected: rgba(30, 150, 90, 0.6);
   --board-dot: rgba(30, 20, 5, 0.45);
+}
+
+[data-board-theme="contrast"] {
+  --board-light: #ffffff;
+  --board-dark: #767676;
+  --board-last: transparent;
+  --board-selected: transparent;
+  --board-dot: #000000;
+  /* ramme i stedet for fyll: svart kant med hvit innside leses på begge rutefarger */
+  --board-last-ring: inset 0 0 0 4px #000000, inset 0 0 0 6px #ffffff;
+  --board-selected-ring: inset 0 0 0 4px #000000, inset 0 0 0 8px #ffffff,
+    inset 0 0 0 12px #000000;
+  --board-premove-ring: inset 0 0 0 4px #ffffff, inset 0 0 0 8px #000000;
 }
 
 /* bred skjerm: brett + sidepanel */
@@ -2979,6 +2994,14 @@ input[type="radio"] {
 .seg.seg-thirds .seg-btn {
   flex: 1 1 0;
 }
+/* Brettfarger: fire valg (E3, med høy kontrast). To og to på smal skjerm. */
+.seg.seg-quarters {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+}
+.seg-quarters .seg-btn {
+  padding-inline: var(--sp-2);
+}
 
 /* ---- lyst tema: gull som tekst/glyf ---- */
 :root[data-theme="light"] .landing-glyph {
@@ -3762,6 +3785,77 @@ input[type="checkbox"].switch:focus-visible { outline: none; }
 }
 .podium-points {
   display: none;
+}
+
+
+/* ============ E3: tilgjengelighet ============ */
+
+/* Tastaturrutenettet over brettet: gjennomsiktig, tar aldri imot mus/touch. */
+.board-keys {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  outline: none;
+}
+.board-keys-row {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+}
+.board-keys-cell {
+  position: relative;
+}
+/* Fokusruta: dobbel ramme (svart ytterst, hvit innenfor, svart innerst) leses
+   mot lyse og mørke ruter i alle brettfarger, minst 3:1 mot begge. */
+.board-keys:focus-visible .board-keys-cell[data-cursor="true"],
+.board-keys:focus .board-keys-cell[data-cursor="true"] {
+  box-shadow:
+    inset 0 0 0 3px #000000,
+    inset 0 0 0 6px #ffffff,
+    inset 0 0 0 8px #000000;
+}
+@media (forced-colors: active) {
+  .board-keys:focus-visible .board-keys-cell[data-cursor="true"] {
+    outline: 4px solid Highlight;
+    outline-offset: -4px;
+  }
+}
+
+/* Foreløpig trekk: Bekreft / Angre rett under brettet. */
+.move-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  background: var(--ink-2);
+  border: 2px solid var(--gold);
+}
+.move-confirm-text {
+  font-weight: 700;
+  min-width: 0;
+}
+.move-confirm-btns {
+  display: flex;
+  gap: var(--sp-2);
+  margin-left: auto;
+}
+.move-confirm-btns .btn {
+  min-height: 44px;
+}
+/* Synlig fokusramme på alt som kan fokuseres, i alle brettfarger og temaer:
+   hvit ring utenpå svart ring gir minst 3:1 mot hvilken som helst bakgrunn. */
+.move-confirm .btn:focus-visible,
+.gl-pop .switch:focus-visible,
+.gl-pop .seg-btn:focus-visible {
+  outline: 3px solid #000000;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px #ffffff;
 }
 
 /* ---- personvernside og diskrete personvernlenker ---- */
