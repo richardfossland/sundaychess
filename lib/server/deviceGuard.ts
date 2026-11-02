@@ -52,12 +52,11 @@ export async function withDeviceCookie(
   return res;
 }
 
-/** Is this device (or its IP) blocked for `scope`? `fresh` = confirm against the DB (use on a CORRECT guess). */
-export async function isGuessBlocked(scope: string, device: string, req: Request, fresh = false): Promise<boolean> {
-  const f = fresh ? { fresh: true } : {};
+/** Is this device (or its IP) blocked for `scope`? */
+export async function isGuessBlocked(scope: string, device: string, req: Request): Promise<boolean> {
   return (
-    (await isCodeBlocked(`${scope}:d:${device}`, req, { max: DEVICE_MAX_FAILURES, ...f })) ||
-    (await isCodeBlocked(scope, req, { max: IP_MAX_FAILURES, ...f }))
+    (await isCodeBlocked(`${scope}:d:${device}`, req, { max: DEVICE_MAX_FAILURES })) ||
+    (await isCodeBlocked(scope, req, { max: IP_MAX_FAILURES }))
   );
 }
 

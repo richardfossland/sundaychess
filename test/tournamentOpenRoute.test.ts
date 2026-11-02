@@ -68,11 +68,12 @@ describe("POST /api/tournament/open", () => {
     expect(openTournamentByHostCode).toHaveBeenCalledWith("HOST-01");
   });
 
-  it("a correct code is re-checked against the DB (fresh), so a stale negative cache cannot leak 200", async () => {
-    // Cached read says clean; the fresh read (other isolate blocked the IP) says blocked.
-    isCodeBlocked.mockImplementation(async (_s: string, _r: Request, o?: { fresh?: boolean }) => !!o?.fresh);
+  it("a correct code from a blocked IP is 429 (block asked before the lookup, never a cached 'clean')", async () => {
+    isCodeBlocked.mockResolvedValue(true);
     const res = await POST(req({ hostCode: "host 01" }));
     expect(res.status).toBe(429);
+    expect(isCodeBlocked).toHaveBeenCalled();
+    for (const call of isCodeBlocked.mock.calls) expect(call[2]).not.toHaveProperty("fresh");
     isCodeBlocked.mockResolvedValue(false);
   });
 
