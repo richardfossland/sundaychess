@@ -138,6 +138,46 @@ test.describe("trekkbekreftelse", () => {
   });
 });
 
+test.describe("trekkbekreftelse: skjermleser og fast spor", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("chess:confirmMoves", "1"));
+  });
+
+  test("skjermleser-aktivering (syntetisk click på rutene) velger og flytter; fokus stjeles ikke; sporet har fast høyde", async ({ page }) => {
+    await startVersus(page);
+    const slot = page.getByTestId("confirm-slot");
+    const shell = page.getByTestId("board-shell");
+    const slotBefore = await slot.boundingBox();
+    const shellBefore = await shell.boundingBox();
+    expect(slotBefore && slotBefore.height).toBeGreaterThan(0);
+
+    // Rutene har pointer-events:none, men dispatchede click når handleren.
+    await page.locator(`${GRID}-e2`).dispatchEvent("click");
+    await page.locator(`${GRID}-e4`).dispatchEvent("click");
+    const bar = page.getByTestId("move-confirm");
+    await expect(bar).toBeVisible();
+    // Fokus lå ikke i rutenettet (ingen tastatur): Bekreft skal ikke få fokus.
+    await expect(page.getByRole("button", { name: no.a11y.confirm })).not.toBeFocused();
+
+    const slotAfter = await slot.boundingBox();
+    const shellAfter = await shell.boundingBox();
+    expect(slotAfter!.height).toBe(slotBefore!.height);
+    expect(shellAfter!.y).toBe(shellBefore!.y);
+    expect(shellAfter!.height).toBe(shellBefore!.height);
+
+    await page.getByRole("button", { name: no.a11y.confirm }).click();
+    await expect(bar).toBeHidden();
+    expect((await slot.boundingBox())!.height).toBe(slotBefore!.height);
+  });
+
+  test("vanlig museklikk går fortsatt til brettet under rutenettet", async ({ page }) => {
+    await startVersus(page);
+    await page.getByTestId("board-shell").locator('[data-square="e2"]').click();
+    await page.getByTestId("board-shell").locator('[data-square="e4"]').click();
+    await expect(page.getByTestId("move-confirm")).toBeVisible();
+  });
+});
+
 test.describe("høy kontrast", () => {
   test("temaet kan velges og settes på spillvisningen", async ({ page }) => {
     await startVersus(page);

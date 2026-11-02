@@ -193,9 +193,12 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
     }
   }
 
-  const shownFen = tentative ? tentative.fen : fen;
+  // Et foreløpig trekk vises aldri etter at partiet er over (et trekk som avsluttet
+  // partiet under en åpen Bekreft skal ikke tegne et falskt brett).
+  const showTentative = !!tentative && !outcome;
+  const shownFen = showTentative ? tentative!.fen : fen;
   const squareStyles = highlightStyles({
-    last: tentative ? { from: tentative.from, to: tentative.to } : lastMove,
+    last: showTentative ? { from: tentative!.from, to: tentative!.to } : lastMove,
     selected,
     legal,
   });
@@ -276,6 +279,7 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
         </>
       }
       announcement={announcement}
+      reserveConfirm={confirmMoves}
       confirm={
         tentative && !outcome ? (
           <MoveConfirmBar

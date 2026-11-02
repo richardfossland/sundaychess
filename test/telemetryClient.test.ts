@@ -47,6 +47,7 @@ function rawBody(n = 0): string {
 
 import {
   report,
+  ownTopFrame,
   uaClass,
   apiKind,
   errDetail,
@@ -96,7 +97,35 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("ownTopFrame()", () => {
+  const ORIGIN = "https://chess.sundaysuite.app";
+  it("tar første ramme fra egen origin, uten vert og spørrestreng", () => {
+    const stack = [
+      "Error: x",
+      "    at f (chrome-extension://abcdef/content.js:1:2)",
+      "    at g (https://chess.sundaysuite.app/_next/static/chunks/app.js?v=1:12:34)",
+    ].join("\n");
+    expect(ownTopFrame(stack, ORIGIN)).toBe("/_next/static/chunks/app.js:12");
+  });
+  it("Safari/Firefox-format (fn@url)", () => {
+    expect(ownTopFrame("f@https://chess.sundaysuite.app/a.js:5:6", ORIGIN)).toBe("/a.js:5");
+  });
+  it("utvidelser og fremmede verter gir ingen ramme (hendelsen droppes)", () => {
+    expect(ownTopFrame("Error\n at x (chrome-extension://abc/content.js:1:2)", ORIGIN)).toBeUndefined();
+    expect(ownTopFrame("Error\n at x (moz-extension://abc/c.js:1:2)", ORIGIN)).toBeUndefined();
+    expect(ownTopFrame("Error\n at x (https://evil.example/_next/a.js:1:2)", ORIGIN)).toBeUndefined();
+    expect(ownTopFrame("Error\n at x (https://chess.sundaysuite.app.evil.example/a.js:1:2)", ORIGIN)).toBeUndefined();
+    expect(ownTopFrame(undefined, ORIGIN)).toBeUndefined();
+    expect(ownTopFrame("Script error.", ORIGIN)).toBeUndefined();
+  });
+});
+
 describe("report()", () => {
+  it("legger `build` først i detail, så den aldri er den som droppes ved 2 KB", () => {
+    report("watchdog", { zzz: "x", build: "spoofed" });
+    expect(Object.keys(sent().detail as object)[0]).toBe("build");
+  });
+
   it("stamps a flat string `build` into detail", () => {
     report("watchdog", { gameId: GID, ms: 11000, build: "spoofed" });
     const p = sent();

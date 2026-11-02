@@ -995,6 +995,22 @@ a:focus-visible,
 .gl-moves { order: 7; }
 .gl-tools { order: 8; }
 .gl-confirm { order: 4; }
+/* Fast spor når trekkbekreftelse er på: samme høyde med og uten foreløpig
+   trekk (ingen layout-hopp). Sporet (64 px + 8 px mellomrom) er lagt til i
+   --gl-chrome så brettet krymper tilsvarende og siden fortsatt går opp i
+   skjermhøyden. */
+.game-page.has-confirm {
+  --gl-chrome: 472px;
+}
+.game-page.gl-rich.has-confirm {
+  --gl-chrome: 632px;
+}
+.gl-confirm-slot {
+  height: 64px;
+}
+.gl-confirm-slot[data-empty="true"] {
+  visibility: hidden;
+}
 
 .gl-status .banner,
 .gl-extra .banner {
@@ -1294,6 +1310,8 @@ a:focus-visible,
   --board-last: transparent;
   --board-selected: transparent;
   --board-dot: #000000;
+  --board-notation-on-light: #000000;
+  --board-notation-on-dark: #000000;
   /* ramme i stedet for fyll: svart kant med hvit innside leses på begge rutefarger */
   --board-last-ring: inset 0 0 0 4px #000000, inset 0 0 0 6px #ffffff;
   --board-selected-ring: inset 0 0 0 4px #000000, inset 0 0 0 8px #ffffff,
@@ -3810,8 +3828,7 @@ input[type="checkbox"].switch:focus-visible { outline: none; }
 }
 /* Fokusruta: dobbel ramme (svart ytterst, hvit innenfor, svart innerst) leses
    mot lyse og mørke ruter i alle brettfarger, minst 3:1 mot begge. */
-.board-keys:focus-visible .board-keys-cell[data-cursor="true"],
-.board-keys:focus .board-keys-cell[data-cursor="true"] {
+.board-keys:focus-visible .board-keys-cell[data-cursor="true"] {
   box-shadow:
     inset 0 0 0 3px #000000,
     inset 0 0 0 6px #ffffff,
@@ -3827,7 +3844,10 @@ input[type="checkbox"].switch:focus-visible { outline: none; }
 /* Foreløpig trekk: Bekreft / Angre rett under brettet. */
 .move-confirm {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-2) var(--sp-3);
@@ -3838,6 +3858,7 @@ input[type="checkbox"].switch:focus-visible { outline: none; }
 }
 .move-confirm-text {
   font-weight: 700;
+  line-height: 1.2;
   min-width: 0;
 }
 .move-confirm-btns {

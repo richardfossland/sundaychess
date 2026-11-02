@@ -39,6 +39,11 @@ export const BOARD_BASE_OPTIONS = {
   // spread.
   darkSquareStyle: { backgroundColor: "var(--board-dark)" },
   lightSquareStyle: { backgroundColor: "var(--board-light)" },
+  // Koordinatene (a–h, 1–8) følger temaet: bibliotekets faste farger (#F0D9B5 /
+  // #B58863) er ulesbare på høykontrast-brettet. Reservefargene er bibliotekets
+  // egne, så de andre temaene ser ut som før.
+  darkSquareNotationStyle: { color: "var(--board-notation-on-dark, #F0D9B5)" },
+  lightSquareNotationStyle: { color: "var(--board-notation-on-light, #B58863)" },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -64,7 +69,15 @@ export const DEFAULT_BOARD_THEME: BoardTheme = "green";
  * measures: light vs dark square must be at least 1.6:1 apart in luminance. */
 export const BOARD_PALETTES: Record<
   BoardTheme,
-  { light: string; dark: string; last: string; selected: string }
+  {
+    light: string;
+    dark: string;
+    last: string;
+    selected: string;
+    /** Koordinatfarge på lyse / mørke ruter når temaet overstyrer den (ellers biblioteket sin). */
+    notationOnLight?: string;
+    notationOnDark?: string;
+  }
 > = {
   green: {
     light: "#ecd9b0",
@@ -95,6 +108,9 @@ export const BOARD_PALETTES: Record<
     dark: "#767676",
     last: "transparent",
     selected: "transparent",
+    // Svart tekst: 21:1 mot hvit og 4,6:1 mot #767676.
+    notationOnLight: "#000000",
+    notationOnDark: "#000000",
   },
 };
 

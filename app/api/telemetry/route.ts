@@ -64,6 +64,15 @@ function noContent(): Response {
   return new Response(null, { status: 204 });
 }
 
+/** C0/C1 control characters (ESC, CR, NUL, …). A string from a beacon is printed
+ * by scripts/errors-report.mjs and the teacher's readout; an ESC sequence in a
+ * `message` could rewrite a terminal. Stripped on the way IN so no stored row
+ * carries one. */
+const CONTROL_CHARS = /[\x00-\x1f\x7f-\x9f]/g;
+function stripControl(s: string): string {
+  return s.replace(CONTROL_CHARS, "");
+}
+
 /** Flat, primitives-only, size-bounded detail. Strings are truncated, nested
  * structures dropped entirely, and the running JSON size is checked after every
  * key so the result is ALWAYS within MAX_DETAIL_BYTES — a client that ignores
@@ -72,9 +81,10 @@ function sanitizeDetail(raw: unknown): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    const key = k.slice(0, 40);
+    const key = stripControl(k).slice(0, 40);
+    if (!key) continue;
     let val: unknown;
-    if (typeof v === "string") val = v.slice(0, MAX_STRING);
+    if (typeof v === "string") val = stripControl(v).slice(0, MAX_STRING);
     else if (typeof v === "number" && Number.isFinite(v)) val = v;
     else if (typeof v === "boolean" || v === null) val = v;
     else continue; // objects, arrays, functions, undefined → dropped

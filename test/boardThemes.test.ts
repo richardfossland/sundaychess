@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { BOARD_PALETTES, BOARD_THEMES, isBoardTheme } from "@/lib/client/boardOptions";
+import { BOARD_BASE_OPTIONS, BOARD_PALETTES, BOARD_THEMES, isBoardTheme } from "@/lib/client/boardOptions";
 
 function channel(v: number): number {
   const c = v / 255;
@@ -50,6 +50,20 @@ describe("høykontrast-brettet (E3)", () => {
   it("svarte brikker har minst 4,5:1 mot lyse ruter, og rutene skiller seg tydelig", () => {
     expect(ratio("#000000", c.light)).toBeGreaterThanOrEqual(4.5);
     expect(ratio(c.light, c.dark)).toBeGreaterThanOrEqual(4.5);
+  });
+  it("koordinatene (a–h, 1–8) har minst 4,5:1 mot både lyse og mørke ruter", () => {
+    expect(c.notationOnLight).toBeDefined();
+    expect(c.notationOnDark).toBeDefined();
+    expect(ratio(c.notationOnLight!, c.light)).toBeGreaterThanOrEqual(4.5);
+    expect(ratio(c.notationOnDark!, c.dark)).toBeGreaterThanOrEqual(4.5);
+  });
+  it("palettens koordinatfarger er satt som variabler i CSS, og brettet leser dem", () => {
+    const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+    const block = css.match(/\[data-board-theme="contrast"\]\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(block).toContain(`--board-notation-on-light: ${c.notationOnLight}`);
+    expect(block).toContain(`--board-notation-on-dark: ${c.notationOnDark}`);
+    expect(BOARD_BASE_OPTIONS.lightSquareNotationStyle.color).toContain("--board-notation-on-light");
+    expect(BOARD_BASE_OPTIONS.darkSquareNotationStyle.color).toContain("--board-notation-on-dark");
   });
   it("markørene er rammer (svart/hvit) definert i CSS", () => {
     const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");

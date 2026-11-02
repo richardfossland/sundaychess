@@ -15,7 +15,7 @@ import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
 import { BracketBoard } from "@/lib/client/BracketBoard";
 import { no } from "@/lib/locale/no";
 import { downloadPgn } from "@/lib/client/pgnActions";
-import { pgnFileName, tournamentPgn } from "@/lib/export/pgn";
+import { exportRound, pgnFileName, tournamentPgn } from "@/lib/export/pgn";
 import { Icon, MedalIcon, type IconName } from "@/lib/client/Icon";
 import { StandingsTable } from "./StandingsTable";
 import { usePresentasjon } from "@/lib/client/storskjerm/usePresentasjon";
@@ -168,7 +168,6 @@ export function FinishedView({ state }: { state: BoardState }) {
     setPgnFailed(false);
     try {
       const full = await api.board(tournament.id, { full: true });
-      const roundNo = new Map(full.rounds.map((r) => [r.id, r.number]));
       const name = new Map(full.players.map((p) => [p.id, p.displayName]));
       const title = tournament.title || no.appName;
       const text = tournamentPgn(
@@ -176,11 +175,13 @@ export function FinishedView({ state }: { state: BoardState }) {
           .filter((g) => g.blackPlayerId && g.pgn)
           .map((g) => ({
             event: title,
-            round: roundNo.get(g.roundId) ?? 0,
+            // Sluttspillrunder fortsetter etter ligarundene (ellers kolliderer «Round 1»).
+            round: exportRound(full.rounds, g.roundId) ?? 0,
             board: (g.slot ?? 0) + 1,
             white: name.get(g.whitePlayerId) ?? "?",
             black: name.get(g.blackPlayerId as string) ?? "?",
             status: g.status,
+            resultSource: g.resultSource,
             pgn: g.pgn as string,
           })),
       );

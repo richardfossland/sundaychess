@@ -192,6 +192,34 @@ function clampDetail(detail: Record<string, unknown> | undefined): Record<string
   return out;
 }
 
+/** Øverste stack-ramme som kommer fra VÅR egen kode: `sti:linje`, uten vert og
+ * spørrestreng. Rammene analyseres med skjema + vert (ikke bare sti), slik at en
+ * nettleserutvidelse (`chrome-extension://…/content.js:1:2`) aldri forveksles
+ * med et bundle fra oss. `undefined` = ingen ramme fra `origin`: kalleren skal
+ * da droppe hendelsen (feilen er ikke vår, og skal ikke telles). */
+export function ownTopFrame(stack: unknown, origin: string): string | undefined {
+  if (typeof stack !== "string") return undefined;
+  let own: string;
+  try {
+    own = new URL(origin).origin;
+  } catch {
+    return undefined;
+  }
+  for (const line of stack.split("\n")) {
+    // «at fn (https://host/_next/x.js:12:34)» og Safari/Firefox sin «fn@https://host/x.js:12:34».
+    const m = /([a-z][a-z0-9+.-]*:\/\/[^\s()/]*)(\/[^\s()]*?):(\d+):(\d+)/i.exec(line);
+    if (!m || m[1].toLowerCase() !== own.toLowerCase()) continue;
+    let path = m[2];
+    try {
+      path = new URL(path, "http://x").pathname; // uten spørrestreng
+    } catch {
+      // allerede en sti
+    }
+    return `${path.slice(-120)}:${m[3]}`;
+  }
+  return undefined;
+}
+
 /** Rate cap + dedupe, in one decision. */
 function allow(kind: string, detailKey: string, now: number): boolean {
   if (now - windowStartedAt >= RATE_WINDOW_MS) {
@@ -230,9 +258,13 @@ export function report(
   try {
     if (typeof window === "undefined") return; // server render — nothing to do
 
-    const clamped = clampDetail(detail);
-    // Versjonen settes ALLTID av oss (overstyrer det kallstedet måtte ha sendt).
-    clamped.build = BUILD_ID.slice(0, 40);
+    // `build` legges FØRST (nøkkelrekkefølgen følger med til serveren): når
+    // serveren klipper detail ved 2 KB, er det de siste nøklene som faller, og
+    // versjonen skal aldri være en av dem. Settes ALLTID av oss (overstyrer
+    // det kallstedet måtte ha sendt).
+    const build = BUILD_ID.slice(0, 40);
+    const clamped: Record<string, unknown> = { build, ...clampDetail(detail) };
+    clamped.build = build;
     // Lift a game id out of the detail bag into its own column.
     const rawGameId = clamped.gameId;
     let gameId: string | undefined;

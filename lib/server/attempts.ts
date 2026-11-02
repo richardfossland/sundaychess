@@ -22,7 +22,13 @@ export type AttemptOpts = {
 };
 
 const CACHE_MAX = 2000;
-// Only "blocked" is cached (until the window lapses). "Not blocked" is NEVER
+/** Longest an isolate trusts a cached "blocked" (ms). The DB window is FIXED from
+ * window_start (0015: it only restarts once expired), so the block ends at
+ * window_start + window. An isolate that first sees the block late must not
+ * cache it for a whole new window (~2x lockout, differing per isolate), so the
+ * cache is only a short shield against hammering the RPC. */
+export const BLOCK_CACHE_MS = 30_000;
+// Only "blocked" is cached, and only briefly. "Not blocked" is NEVER
 // cached: another isolate may have blocked the IP a moment ago, and a stale
 // "clean" answer would give a CORRECT code 200 while wrong ones get 429 — an
 // oracle for a guesser who has already hit the block.
@@ -30,7 +36,7 @@ const cache = new Map<string, { until: number }>();
 
 function remember(key: string, ttlMs: number): void {
   cache.delete(key);
-  cache.set(key, { until: Date.now() + ttlMs });
+  cache.set(key, { until: Date.now() + Math.min(ttlMs, BLOCK_CACHE_MS) });
   while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value as string);
 }
 
@@ -52,7 +58,7 @@ export async function isCodeBlocked(scope: string, req: Request, opts: AttemptOp
     });
     if (error) throw error;
     if (data === true) {
-      remember(key, (opts.windowS ?? CODE_WINDOW_S) * 1000);
+      remember(key, BLOCK_CACHE_MS);
       return true;
     }
     return false;
@@ -72,6 +78,8 @@ export async function registerCodeFailure(scope: string, req: Request, opts: Att
       p_max: opts.max ?? CODE_MAX_FAILURES,
     });
     if (error) throw error;
+    // The failure that trips the block IS in the current fixed window, so the
+    // block cannot outlast it; still capped at BLOCK_CACHE_MS (remember()).
     if (data === true) remember(`${scope}|${ipKey(req)}`, (opts.windowS ?? CODE_WINDOW_S) * 1000);
     return data === true;
   } catch (e) {

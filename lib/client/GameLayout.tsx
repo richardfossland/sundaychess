@@ -30,6 +30,10 @@ export interface GameLayoutProps {
   rich?: boolean;
   /** E3: «Bekreft / Angre» for et foreløpig trekk, rett under brettet (MoveConfirmBar). */
   confirm?: ReactNode;
+  /** Trekkbekreftelse er slått på: reserver et fast spor (samme høyde med og uten
+   * foreløpig trekk) så brettet og resten av siden ikke hopper midt i partiet.
+   * Av: ingen plass reservert. */
+  reserveConfirm?: boolean;
   /** E3: teksten skjermleseren leser opp (trekk og partislutt). Se useMoveAnnouncer. */
   announcement?: string;
   /** Overlegg og dialoger (resultat, bekreftelser). Arver brettfargene. */
@@ -57,13 +61,14 @@ export function GameLayout({
   tools,
   rich,
   confirm,
+  reserveConfirm,
   announcement,
   children,
 }: GameLayoutProps) {
   const [theme] = useBoardTheme();
   return (
     <main
-      className={`game-page${rich ? " gl-rich" : ""}`}
+      className={`game-page${rich ? " gl-rich" : ""}${reserveConfirm ? " has-confirm" : ""}`}
       data-board-theme={theme}
     >
       <div className={`game-layout${evalBar ? " has-eval" : ""}`}>
@@ -84,7 +89,17 @@ export function GameLayout({
             </div>
           </div>
           <div className="gl-bottom">{bottom}</div>
-          {confirm && <div className="gl-confirm">{confirm}</div>}
+          {reserveConfirm ? (
+            <div
+              className="gl-confirm gl-confirm-slot"
+              data-empty={confirm ? undefined : "true"}
+              data-testid="confirm-slot"
+            >
+              {confirm}
+            </div>
+          ) : (
+            confirm && <div className="gl-confirm">{confirm}</div>
+          )}
         </div>
         <div className="gl-aside">
           {status && <div className="gl-status">{status}</div>}

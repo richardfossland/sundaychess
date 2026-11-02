@@ -54,8 +54,11 @@ for (let from = 0; ; from += PAGE) {
   if (page.length < PAGE) break;
 }
 
+// Kontrolltegn (ESC o.l.) fra lagrede rader skal aldri nå terminalen, selv om
+// serveren allerede fjerner dem: eldre rader eller en direkte DB-skriving kan ha dem.
+const clean = (v) => String(v).replace(/[\x00-\x1f\x7f-\x9f]/g, "");
 const day = (iso) => iso.slice(0, 10);
-const buildOf = (r) => (r.detail && typeof r.detail.build === "string" && r.detail.build) || "(ukjent)";
+const buildOf = (r) => (r.detail && typeof r.detail.build === "string" && clean(r.detail.build)) || "(ukjent)";
 
 console.log(`Feiloversikt, siste ${days} dager (${rows.length} hendelser)\n`);
 if (!rows.length) process.exit(0);
@@ -64,13 +67,13 @@ if (!rows.length) process.exit(0);
 console.log("== Antall per type per dag ==");
 const perDay = new Map();
 for (const r of rows) {
-  const d = day(r.at);
+  const d = clean(day(r.at));
   if (!perDay.has(d)) perDay.set(d, new Map());
   const m = perDay.get(d);
   m.set(r.kind, (m.get(r.kind) ?? 0) + 1);
 }
 for (const d of [...perDay.keys()].sort()) {
-  const parts = [...perDay.get(d)].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k}=${n}`);
+  const parts = [...perDay.get(d)].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${clean(k)}=${n}`);
   console.log(`${d}  ${parts.join("  ")}`);
 }
 
@@ -80,8 +83,8 @@ const groups = new Map();
 for (const r of rows) {
   if (r.kind !== "js_error") continue;
   const d = r.detail ?? {};
-  const msg = String(d.message ?? "(uten melding)");
-  const frame = String(d.at ?? d.boundary ?? "(uten ramme)");
+  const msg = clean(d.message ?? "(uten melding)");
+  const frame = clean(d.at ?? d.boundary ?? "(uten ramme)");
   const k = `${msg}\u0000${frame}`;
   let g = groups.get(k);
   if (!g) groups.set(k, (g = { msg, frame, n: 0, first: r.at, last: r.at, builds: new Set() }));

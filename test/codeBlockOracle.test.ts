@@ -25,7 +25,7 @@ vi.mock("@/lib/supabase/service", () => ({
 }));
 
 import { authHost } from "@/lib/server/auth";
-import { __resetAttemptsCache, CODE_MAX_FAILURES } from "@/lib/server/attempts";
+import { __resetAttemptsCache, BLOCK_CACHE_MS, CODE_MAX_FAILURES } from "@/lib/server/attempts";
 import { withApi } from "@/lib/server/http";
 
 const ID = "11111111-1111-4111-8111-111111111111";
@@ -81,5 +81,20 @@ describe("block oracle across isolates", () => {
 
   it("an unblocked IP with the right code is unaffected", async () => {
     expect(await status("ABCD-12")).toBe(200);
+  });
+
+  it("a block that lapses in the DB stops applying within BLOCK_CACHE_MS (no ~2x lockout)", async () => {
+    vi.useFakeTimers();
+    try {
+      db.failures = CODE_MAX_FAILURES;
+      expect(await status("ABCD-12")).toBe(429);
+      // The DB window ends (fixed from window_start) a moment later.
+      db.failures = 0;
+      vi.advanceTimersByTime(BLOCK_CACHE_MS + 1);
+      expect(await status("ABCD-12")).toBe(200);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(BLOCK_CACHE_MS).toBeLessThanOrEqual(30_000);
   });
 });

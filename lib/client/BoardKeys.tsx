@@ -114,6 +114,12 @@ export function BoardKeys({
   const startSquare = orientation === "white" ? "e2" : "e7";
   const active = cursor ?? startSquare;
 
+  /** Samme vei for Enter/mellomrom og for skjermleser-aktivering (click). */
+  function activate(sq: string) {
+    const p = pieces[sq];
+    onActivate(sq, p ? { pieceType: (p.color === "w" ? "w" : "b") + p.piece.toUpperCase() } : null);
+  }
+
   function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     const k = e.key;
@@ -123,8 +129,11 @@ export function BoardKeys({
       if (next) setCursor(next);
     } else if (k === "Enter" || k === " ") {
       e.preventDefault();
-      const p = pieces[active];
-      onActivate(active, p ? { pieceType: (p.color === "w" ? "w" : "b") + p.piece.toUpperCase() } : null);
+      // Hold Enter inne på «Bekreft»: fokus flyttes hit midt i auto-repeten, og
+      // de gjentatte tastetrykkene skal ikke velge en brikke. Bare et nytt,
+      // bevisst tastetrykk (ikke repeat) aktiverer ruta.
+      if (e.repeat) return;
+      activate(active);
     } else if (k === "Escape") {
       e.preventDefault();
       onCancel();
@@ -159,6 +168,14 @@ export function BoardKeys({
                 data-cursor={sq === active ? "true" : undefined}
                 aria-selected={sq === selected}
                 aria-label={[speakSquare(sq, pieces), ...extra].join(", ")}
+                // VoiceOver/TalkBack/ChromeVox «dobbelttrykk» sender et syntetisk
+                // click til elementet. `pointer-events: none` stopper bare ekte
+                // mus/touch (som går til brettet under), ikke dispatchede
+                // click-events, så dette når handleren uten å fange pekeren.
+                onClick={() => {
+                  setCursor(sq);
+                  activate(sq);
+                }}
               />
             );
           })}

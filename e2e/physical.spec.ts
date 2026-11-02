@@ -64,7 +64,7 @@ test("offline: hel runde med tastatur, angre, umiddelbar omlasting og lagring", 
   await page.reload();
   await expect(progress(page)).toHaveText(p.progress(3, 3));
   await expect(page.getByRole("button", { name: p.setResultLabel(1, p.results["1-0"]) })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByTestId("save-state")).toHaveText(p.saveSaved);
+  await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "saved");
 
   // Publisert runde er låst for parringsendring uten bekreftelse.
   await page.getByRole("button", { name: p.editPairing }).click();
