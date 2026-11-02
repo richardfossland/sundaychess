@@ -22,11 +22,15 @@ export function BracketBoard({
   rounds,
   players,
   onPick,
+  fit,
 }: {
   games: PublicGame[];
   rounds: BoardState["rounds"];
   players: PublicPlayer[];
   onPick?: (g: PublicGame) => void;
+  /** Storskjerm: fyll hele flaten (kolonne per runde, like høye rader) i
+   * stedet for å rulle. Skriften følger antall kamper i første runde. */
+  fit?: boolean;
 }) {
   const playerById = useMemo(() => {
     const byId = new Map(players.map((p) => [p.id, p]));
@@ -46,6 +50,9 @@ export function BracketBoard({
 
   if (columns.length === 0) return null;
 
+  const firstSlots = new Set(columns[0].games.map((g) => g.slot ?? 0)).size;
+  const density = firstSlots <= 2 ? "l" : firstSlots <= 4 ? "m" : firstSlots <= 8 ? "s" : "xs";
+
   const slot = (g: PublicGame, side: "white" | "black") => {
     const id = side === "white" ? g.whitePlayerId : g.blackPlayerId;
     const p = playerById(id);
@@ -62,7 +69,10 @@ export function BracketBoard({
   };
 
   return (
-    <div className={`bracket ${onPick ? "" : "bracket-readonly"}`}>
+    <div
+      className={`bracket ${onPick ? "" : "bracket-readonly"}${fit ? " bracket-fit" : ""}`}
+      data-density={fit ? density : undefined}
+    >
       {columns.map((col) => {
         // Games sharing a slot = an original draw + its tiebreak rematch.
         const slotCounts = new Map<number, number>();

@@ -133,7 +133,7 @@ export function BracketView({
   }
 
   return (
-    <main className="wrap host-main">
+    <main className={`wrap host-main${presentasjon ? " tv-bracket" : ""}`}>
       <header className={presentasjon ? "spread host-head-tv" : "host-sub"}>
         {presentasjon && (
           <>
@@ -172,6 +172,7 @@ export function BracketView({
         rounds={rounds}
         players={players}
         onPick={presentasjon ? undefined : (g) => setOverrideGame(g)}
+        fit={presentasjon}
       />
 
       {!presentasjon && timeUp && liveCount > 0 && (

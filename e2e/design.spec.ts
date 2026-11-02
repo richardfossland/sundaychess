@@ -478,3 +478,158 @@ test.describe("designregler med turnering", () => {
     await expect(page.locator(".live-board")).toHaveCount(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Cup: storskjerm (live-rutenett og sluttspilltre) og arrangørens resultat på
+// telefon. Cup krever `format: "cup"` og nok spillere for et tre.
+// ---------------------------------------------------------------------------
+
+type Joined = { playerId: string; resumeCode: string };
+
+async function postOk<T>(request: import("@playwright/test").APIRequestContext, path: string, data: unknown): Promise<T> {
+  const res = await request.post(path, { data });
+  expect(res.status(), `POST ${path} → ${res.status()} ${await res.text()}`).toBe(200);
+  return (await res.json()) as T;
+}
+
+/** Cup med `n` spillere; runde 1 er startet. */
+async function startedCup(
+  request: import("@playwright/test").APIRequestContext,
+  n: number,
+): Promise<{ id: string; hostCode: string; players: Joined[] }> {
+  const t = await postOk<{ id: string; joinPin: string; hostCode: string }>(request, "/api/tournament", {
+    title: process.env.E2E_TITLE ?? "E2E",
+    config: { format: "cup" },
+  });
+  const players: Joined[] = [];
+  for (let i = 1; i <= n; i++) {
+    players.push(await postOk<Joined>(request, "/api/join", { pin: t.joinPin, displayName: `Spiller ${i}` }));
+  }
+  await postOk(request, "/api/round/start", { tournamentId: t.id, hostCode: t.hostCode });
+  return { id: t.id, hostCode: t.hostCode, players };
+}
+
+/** Spiller cupen ferdig: hvit gir opp i hvert parti, runde for runde. */
+async function finishCup(
+  request: import("@playwright/test").APIRequestContext,
+  cup: { id: string; hostCode: string; players: Joined[] },
+): Promise<void> {
+  const byId = new Map(cup.players.map((p) => [p.playerId, p]));
+  for (let i = 0; i < 8; i++) {
+    const board = (await (await request.get(`/api/tournament/${cup.id}`)).json()) as {
+      tournament: { status: string };
+      games: { id: string; status: string; whitePlayerId: string; blackPlayerId: string | null }[];
+    };
+    if (board.tournament.status === "finished") return;
+    for (const g of board.games.filter((x) => x.status === "live" && x.blackPlayerId)) {
+      const w = byId.get(g.whitePlayerId)!;
+      await request.post("/api/game/resign", { data: { gameId: g.id, playerId: w.playerId, resumeCode: w.resumeCode } });
+    }
+    const body = { tournamentId: cup.id, hostCode: cup.hostCode };
+    const adv = await request.post("/api/round/advance", { data: body });
+    if (!adv.ok()) await request.post("/api/round/start", { data: body });
+  }
+}
+
+/** Storskjerm ligger i overflow: hidden, så mål i stedet at innholdet ligger
+ * innenfor flaten og at den ikke har noe å rulle. */
+async function expectTvFits(page: Page, where: string, selector: string): Promise<void> {
+  const r = await page.evaluate((sel) => {
+    const root = document.querySelector(sel) as HTMLElement | null;
+    if (!root) return { missing: true as const };
+    const rb = root.getBoundingClientRect();
+    const bad: string[] = [];
+    for (const el of Array.from(root.querySelectorAll("*"))) {
+      const b = el.getBoundingClientRect();
+      if (b.width < 1 || b.height < 1) continue;
+      if (b.bottom > innerHeight + 1 || b.right > innerWidth + 1 || b.bottom > rb.bottom + 1)
+        bad.push(`<${el.tagName.toLowerCase()}.${String((el as HTMLElement).className).split(/\s+/)[0]}> bunn ${Math.round(b.bottom)}`);
+    }
+    return {
+      missing: false as const,
+      bad: bad.slice(0, 6),
+      scrollY: root.scrollHeight > root.clientHeight + 1,
+      scrollX: root.scrollWidth > root.clientWidth + 1,
+      pageY: document.documentElement.scrollHeight > innerHeight,
+      right: rb.right,
+      width: rb.width,
+    };
+  }, selector);
+  expect(r.missing, `${where}: fant ikke ${selector}`).toBe(false);
+  if (r.missing) return;
+  expect(r.bad, `${where}: innhold klippes:\n  ${r.bad.join("\n  ")}`).toEqual([]);
+  expect(r.scrollY || r.scrollX || r.pageY, `${where}: flaten scroller`).toBe(false);
+}
+
+test.describe("cup: storskjerm og arrangør-resultat", () => {
+  test.describe.configure({ mode: "serial" });
+  let cup8: Awaited<ReturnType<typeof startedCup>>;
+  let cup16: Awaited<ReturnType<typeof startedCup>>;
+
+  test.beforeAll(async ({ playwright }) => {
+    test.setTimeout(120_000);
+    const request = await playwright.request.newContext({ baseURL: "http://localhost:3000" });
+    try {
+      cup8 = await startedCup(request, 8);
+      cup16 = await startedCup(request, 16);
+    } finally {
+      await request.dispose();
+    }
+  });
+
+  for (const [label, get] of [["8", () => cup8], ["16", () => cup16]] as const) {
+    test(`storskjerm Live (${label} spillere) · 1280×720: ingen klipping, ingen scroll`, async ({ page, context }) => {
+      const cup = get();
+      await seedHostCode(context, cup.id, cup.hostCode);
+      await open(page, `/host/${cup.id}?visning=tavle`, TV, "dark");
+      await page.getByRole("radio", { name: no.host.liveToggle }).click();
+      await expect(page.locator(".live-tv-card").first()).toBeVisible();
+      await expectTvFits(page, `Live ${label} (1280×720)`, ".live-tv");
+      await expectDesign(page, `Live ${label} (1280×720)`, { targets: false, fitsHeight: true });
+    });
+
+    test(`storskjerm sluttspill (${label} spillere) · 1280×720 og 1920×1080: fyller flaten, ingen scroll`, async ({ page, context }) => {
+      const cup = get();
+      await seedHostCode(context, cup.id, cup.hostCode);
+      for (const vp of [TV, { width: 1920, height: 1080 }]) {
+        await open(page, `/host/${cup.id}?visning=tavle`, vp, "dark");
+        await expect(page.locator(".bracket-fit").first()).toBeVisible();
+        const where = `Sluttspill ${label} (${vp.width}×${vp.height})`;
+        await expectTvFits(page, where, ".bracket-fit");
+        const w = await page.locator(".bracket-fit").evaluate((el) => el.getBoundingClientRect().width);
+        expect(w, `${where}: treet fyller ikke bredden`).toBeGreaterThan(vp.width * 0.85);
+        await expectDesign(page, where, { targets: false, fitsHeight: true });
+      }
+    });
+  }
+
+  test("arrangør-resultat på 390 px: treet ligger i egen rullbar boks uten overflyt", async ({ page, context, playwright }) => {
+    test.setTimeout(120_000);
+    const request = await playwright.request.newContext({ baseURL: "http://localhost:3000" });
+    try {
+      await finishCup(request, cup8);
+    } finally {
+      await request.dispose();
+    }
+    await seedHostCode(context, cup8.id, cup8.hostCode);
+    await open(page, `/host/${cup8.id}`, { width: 390, height: 844 }, "light");
+    await expect(page.locator(".bracket").first()).toBeVisible({ timeout: 25_000 });
+    const m = await page.evaluate(() => {
+      const b = document.querySelector(".bracket") as HTMLElement;
+      const r = b.getBoundingClientRect();
+      return {
+        pageOverflow: document.documentElement.scrollWidth > innerWidth,
+        left: r.left,
+        right: r.right,
+        scrolls: b.scrollWidth > b.clientWidth,
+        scrollLeft: b.scrollLeft,
+      };
+    });
+    expect(m.pageOverflow, "siden har horisontal overflyt").toBe(false);
+    expect(m.left, "treet starter utenfor skjermen til venstre").toBeGreaterThanOrEqual(0);
+    expect(m.right, "boksen stikker ut til høyre").toBeLessThanOrEqual(390);
+    expect(m.scrolls, "treet skal kunne rulles sideveis i boksen").toBe(true);
+    expect(m.scrollLeft).toBe(0);
+    await expectDesign(page, "arrangør-resultat (390×844)", { targets: false });
+  });
+});

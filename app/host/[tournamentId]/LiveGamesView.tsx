@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { CSSProperties } from "react";
 import type { BoardState } from "@/lib/dto";
 import type { GameStatus, Turn } from "@/lib/types";
@@ -90,6 +90,36 @@ function headerFontSize(liveCount: number): number {
  * dense stops being readable from across a classroom. */
 const LIVE_GRID_CAP = 8;
 
+/** Skjermstørrelse som «BxH»-streng (stabil primitiv for useSyncExternalStore).
+ * Server/første render antar 1920×1080. */
+function subscribeViewport(cb: () => void) {
+  window.addEventListener("resize", cb);
+  return () => window.removeEventListener("resize", cb);
+}
+const viewportSnap = () => `${window.innerWidth}x${window.innerHeight}`;
+const viewportServer = () => "1920x1080";
+
+/** Beste rutenett (kolonner × rader) for n partier på en W×H-skjerm, og
+ * størrelsen på brettet i det. Ca. 26 % av høyden går til navn/klokker/luft
+ * per rad. */
+function tvLayout(n: number, W: number, H: number) {
+  const availW = W * 0.95;
+  const availH = H * 0.95;
+  let best = { cols: 1, rows: n, board: 0 };
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols);
+    const board = Math.min(availW / cols - 24, availH / rows - Math.max(44, H * 0.06));
+    if (board > best.board) best = { cols, rows, board };
+  }
+  return best;
+}
+
+/** Minste lesbare brett på storskjerm: ca. 27 % av skjermens 16:9-høyde
+ * (≈195 px på 720, ≈290 px på 1080). */
+function tvMinBoard(W: number, H: number) {
+  return 0.27 * Math.min(W * 0.5625, H);
+}
+
 export function LiveGamesView({
   state,
   onStale,
@@ -102,6 +132,9 @@ export function LiveGamesView({
 }) {
   const { tournament, players, games, rounds } = state;
   const presentasjon = usePresentasjon();
+  const [vw, vh] = useSyncExternalStore(subscribeViewport, viewportSnap, viewportServer)
+    .split("x")
+    .map(Number);
   const nameById = useMemo(() => {
     const m = new Map(players.map((p) => [p.id, p.displayName]));
     return (id: string | null) => (id ? (m.get(id) ?? "?") : no.host.bye);
@@ -292,7 +325,18 @@ export function LiveGamesView({
   // What's actually on screen — capped until the host asks to see the rest.
   // Board size/header font are keyed off THIS count, not `live.length`, so the
   // grid never sizes for boards that aren't rendered.
-  const visible = showAll ? live : live.slice(0, LIVE_GRID_CAP);
+  // Tavlevisning: ingen «Vis alle»-knapp (ingen kontroller). Vis så mange
+  // partier som får plass i lesbar størrelse, og «+N til» for resten.
+  let tvShown = live.length;
+  if (presentasjon) {
+    const min = tvMinBoard(vw, vh);
+    while (tvShown > 1 && tvLayout(tvShown, vw, vh).board < min) tvShown--;
+  }
+  const visible = presentasjon
+    ? live.slice(0, tvShown)
+    : showAll
+      ? live
+      : live.slice(0, LIVE_GRID_CAP);
 
   if (openId) {
     const g = games.find((x) => x.id === openId);
@@ -320,7 +364,7 @@ export function LiveGamesView({
   const Heads = (g: (typeof live)[number]) => (
     <div
       className="spread live-head"
-      style={{ fontSize: headerFontSize(visible.length) }}
+      style={presentasjon ? undefined : { fontSize: headerFontSize(visible.length) }}
     >
       <span className="row gap-1 live-side">
         <b>{nameById(g.whitePlayerId)}</b>
@@ -333,6 +377,54 @@ export function LiveGamesView({
       </span>
     </div>
   );
+
+  // Tavlevisning: rutenettet fyller akkurat én skjermhøyde (ingen scroll).
+  if (presentasjon && live.length > 0) {
+    const lay = tvLayout(visible.length, vw, vh);
+    const rest = live.length - visible.length;
+    return (
+      <main className="live-tv">
+        <div
+          className="live-tv-grid"
+          style={{
+            gridTemplateColumns: `repeat(${lay.cols}, minmax(0, 1fr))`,
+            gridTemplateRows: `repeat(${lay.rows}, minmax(0, 1fr))`,
+          }}
+        >
+          {visible.map((g) => (
+            <div key={g.id} className="card live-tv-card">
+              {Heads(g)}
+              <div className="live-tv-board-area">
+                <div className="live-tv-board">
+                  <PlayBoard
+                    id={`tv-${g.id}`}
+                    fen={fenOf(g)}
+                    orientation="white"
+                    allowDragging={false}
+                    showNotation={visible.length <= 2}
+                    squareStyles={NO_SQUARE_STYLES}
+                    stylesKey={NO_STYLES_KEY}
+                    onDrop={NOOP_DROP}
+                    onSquareClick={NOOP_CLICK}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {rest > 0 && <p className="live-tv-more">+{rest} til</p>}
+        {winFlash && !roundOver && (
+          <div className="win-flash">
+            <Confetti count={90} />
+            <div className="result-card stack align-center gap-2">
+              <div className="result-emoji"><Icon name="party" size={84} strokeWidth={1.4} /></div>
+              <h2 className="live-result-title live-result-title-sm">{winFlash}</h2>
+            </div>
+          </div>
+        )}
+      </main>
+    );
+  }
 
   // 1 game left → one big board that fills the projector.
   if (live.length === 1) {
