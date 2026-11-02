@@ -35,8 +35,11 @@ contrast (#8), back-buttons (#9/#10).
 - [x] `currentRoundResolved` no longer vacuously-true on an empty round; `advanceRound`
   finishes instead of pairing an empty, un-advanceable round when <2 active remain (`league.ts`).
 - [ ] → B4: idempotent tiebreak/casual creation (needs a DB unique index / advisory lock).
-- [ ] → B6 (P3 polish): repeat-bye double point (`pair.ts`), override-of-bye mis-score,
-  team-standings phase filter (SQL), cup block-and-warn UI when >256.
+- [x] → B6 (P3 polish): repeat-bye double point (`pair.ts`) ✅ — bevist av `test/pair.test.ts`
+  («repeat bye never doubles up…», via ekte `byeCounts`, inkl. ½/0-bye); override-of-bye
+  mis-score ✅ — `test/overrideRoute.test.ts` (full-, ½- og 0-bye gir 409 `cannot_override_bye`;
+  ½/0-bye har `black_player_id = null`, som #139 sjekker). Team-standings phase filter ✅ (batch 6).
+  Cup block-and-warn UI når >256: ikke gjort.
 
 ## Batch 4 — scale / Worker-pressure  ✅ (the real wins; rest refuted/deferred)
 - [x] **Server-side fetch timeout** on the service-role Supabase client (`service.ts`): every

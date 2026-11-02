@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { report } from "@/lib/client/telemetry";
 import { no } from "@/lib/locale/no";
@@ -35,6 +36,12 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         <div className="status-glyph">♟️</div>
         <h2 className="fs-xl">{no.common.error}</h2>
         <p className="muted status-copy">{no.common.errorRetryBody}</p>
+        <p className="faint status-copy">
+          {no.privacy.errorNote}{" "}
+          <Link href="/personvern" className="text-link-inline">
+            {no.privacy.link}
+          </Link>
+        </p>
         <div className="row status-actions">
           <button className="btn btn-primary btn-lg" onClick={() => reset()}>
             {no.common.retry}

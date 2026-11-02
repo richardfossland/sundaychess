@@ -302,6 +302,50 @@ after killing a tab" paths are now covered by `e2e/smoke.spec.ts` and
 - [ ] `chess.sundaysuite.app` serves the app; env vars set in the Worker;
       realtime works over the deployed origin.
 
+## Røyktest 2026-11
+
+Prod: https://chess.sundaysuite.app (versjon `59f1a31c`). Kryss av og noter avvik med enhet og skjermbilde.
+**Gi alle testturneringer et navn som starter med `ZZTEST`**, så rydder jeg dem etterpå.
+
+### Utstyr
+- 1 PC/Mac som arrangør (helst koblet til projektor)
+- 2–3 elevenheter: minst én iPhone (Safari), én Chromebook eller Android
+
+### 1. Inngang og navigasjon (5 min)
+- [ ] Forsiden: «Chess»-logoen er lesbar i både lyst og mørkt tema (temabryteren oppe til høyre)
+- [ ] Tilbake-ikonet og logoen tar deg til forsiden fra /solo, /arranger og /play
+- [ ] På iPhone: ingen sideveis rulling noe sted, og knappene er store nok til å treffe
+
+### 2. Digital turnering, sveitsisk (15 min)
+- [ ] /arranger → lag turnering (3 runder). Forklaringene i veiviseren gir mening
+- [ ] Elevene blir med med PIN, og alle vises i lobbyen på storskjermen (også nr. 13 og utover)
+- [ ] Under partiet: brettet fyller skjermen uten rulling på telefon og Chromebook, og knappene er synlige uten å rulle
+- [ ] Brettema Grønn/Tre/Gull kan byttes
+- [ ] Bondeforvandling gir valg av brikke
+- [ ] Remistilbud, oppgivelse og lukking av fanen midt i et parti (gjenoppta med koden)
+- [ ] «Mer»-menyen hos arrangøren når vinduet er smalt
+- [ ] Etter siste runde: arrangøren ser «Venter på at arrangøren avslutter», ikke «Venter på runde 4»
+
+### 3. Cup / sluttspill (10 min, 4–8 spillere)
+- [ ] Den som taper får «Du er ute», ikke «venter på runde 2»
+- [ ] Sluttspilltreet fyller storskjermen uten rulling (720p og 1080p)
+- [ ] Cup-resultatet kan rulles sideveis på mobil, uten at venstre side kuttes
+
+### 4. Storskjerm / projektor (5 min)
+- [ ] Lobby, runde, live-rutenett og sluttresultat får plass uten rulling
+- [ ] Ved mer enn 12 rader vises «+N til»
+
+### 5. Fysisk turnering (10 min)
+- [ ] /arranger → fysisk: lag turnering, par runde 1, skriv ut bordkort med QR
+- [ ] Meld et resultat via QR på telefon → arrangøren godkjenner → det vises
+- [ ] Last inn siden på nytt midt i en runde: ingenting er borte
+- [ ] «Fortsett digitalt» → elevene kan velge navnet sitt og spille videre i appen
+- [ ] «Last ned som fysisk turneringsfil» gir en fil
+
+### 6. Etterpå
+- [ ] Trykk **Diagnostikk** på arrangørtavla: noter typer og antall (særlig `channel_error`, `kick` og `js_error`)
+- [ ] Send meg avvikene. Jeg sletter alle `ZZTEST`-turneringer
+
 ## Hardening backlog (documented, not blocking — unchanged by this program)
 
 - **Rate limiting** is in-memory/per-process (`lib/server/http.ts`). For a

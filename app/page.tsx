@@ -70,6 +70,9 @@ export default function Landing() {
         <Link href="/host" className="text-link reveal" style={r(8)}>
           {no.hostAuth.landingLink}
         </Link>
+        <Link href="/personvern" className="text-link text-link-quiet reveal" style={r(9)}>
+          {no.privacy.link}
+        </Link>
       </div>
     </main>
   );
