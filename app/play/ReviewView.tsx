@@ -7,7 +7,7 @@ import type { StoredPlayer } from "@/lib/client/identity";
 import { no } from "@/lib/locale/no";
 import { Icon } from "@/lib/client/Icon";
 import { PgnButtons } from "@/lib/client/PgnButtons";
-import { finalFen, gamePgn, pgnFileName } from "@/lib/export/pgn";
+import { exportRound, finalFen, gamePgn, pgnFileName } from "@/lib/export/pgn";
 
 // Per-player coached review screen. Fetches the engine-derived review for one
 // finished game (POST /api/review) and shows the coaching paragraph (AI-narrated
@@ -104,8 +104,9 @@ export function ReviewView({
           // Samme visningsnavn som tavla; tittel/runde fra offentlig tavle-tilstand.
           const b = await api.board(g.tournamentId).catch(() => null);
           const title = b?.tournament.title || no.appName;
-          const round = b?.rounds.find((r) => r.id === g.roundId)?.number ?? null;
-          const slot = b?.games.find((x) => x.id === g.id)?.slot;
+          const round = b ? exportRound(b.rounds, g.roundId) : null;
+          const pub = b?.games.find((x) => x.id === g.id);
+          const slot = pub?.slot;
           const board = slot === undefined ? null : slot + 1;
           return {
             filename: pgnFileName(title, round, board),
@@ -116,6 +117,7 @@ export function ReviewView({
               white: g.white.name,
               black: g.black?.name ?? "?",
               status: g.status,
+              resultSource: pub?.resultSource,
               pgn: g.pgn,
             }),
             fen: finalFen(g.pgn),

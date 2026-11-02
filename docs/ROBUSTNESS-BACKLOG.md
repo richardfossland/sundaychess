@@ -234,3 +234,22 @@ Still open, unchanged by runde 2 — same three items this file has carried sinc
 - **Finished-game override policy.** Teacher override on an already-finished game is still not
   auto-changed — correcting a finished result is a legitimate ask, but needs a product decision
   (allow + idempotent vs. require-live), not a code fix.
+
+## Kjent begrensning: samtidig gjette-burst passerer forhåndssjekken (runde E-review, 2026-11)
+
+`code_attempts` (migrasjon 0015) teller bare FEIL kode, og sjekken `isCodeBlocked`
+kjører *før* koden vurderes, mens `registerCodeFailure` kjører *etter*. En burst av
+mange samtidige gjetninger fra samme IP kan derfor alle passere forhåndssjekken før
+noen av feilene er registrert (sjekk-så-skriv er ikke atomisk). Begrenset av:
+
+- `rateLimit` på 120 forespørsler/min/isolat per IP (`lib/server/http.ts`), som
+  tar burst-størrelsen per isolat, og
+- at en PIN bare gir tilgang til lobbyen (innmelding), ikke til vertsfunksjoner.
+  Vertskoden er den sterke koden, og de feilene som faktisk når databasen teller
+  mot grensen (20 / 10 min) og blokkerer deretter.
+
+Akseptert foreløpig. Tett det ved behov ved å la `register_code_failure` bli en
+reservering som gjøres FØR sammenligningen (og angres ved riktig kode), eller ved å
+flytte rate-limiteren til et delt lager (se «Rate limiter → shared store» over).
+"Blokkert" caches i en isolat bare i 30 s (`BLOCK_CACHE_MS`), så en utløpt blokk
+slutter å gjelde raskt, uavhengig av hvilken isolat som først så den.

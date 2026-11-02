@@ -3,7 +3,8 @@
 // ingen koder, PIN eller id-er skrives til fila.
 
 import { Chess } from "chess.js";
-import type { GameStatus } from "@/lib/types";
+import type { GameStatus, ResultSource } from "@/lib/types";
+import { no } from "@/lib/locale/no";
 
 export const PGN_SITE = "chess.sundaysuite.app";
 export const PGN_MIME = "application/x-chess-pgn";
@@ -21,7 +22,9 @@ export interface PgnGameInput {
   /** Lagret PGN (med eller uten headere). */
   pgn: string;
   date?: Date;
-  /** Lagres som Termination-tagg om oppgitt (f.eks. «oppgivelse»). */
+  /** Hvordan partiet ble avgjort (`games.result_source`); styrer Termination-taggen. */
+  resultSource?: ResultSource | null;
+  /** Overstyrer Termination-taggen. Utelatt: utledes av `resultSource` og stillingen. */
   termination?: string;
 }
 
@@ -32,13 +35,75 @@ export function resultToken(status: string): "1-0" | "0-1" | "1/2-1/2" | "*" {
   return "*";
 }
 
-/** Escape for tagg-verdi: `\` og `"` med bakoverskråstrek; linjeskift blir mellomrom. */
+/** Tagg-verdi: PGN-spesifikasjonen escaper `"` og `\` med `\`, men chess.js 1.x
+ * leser ikke `\"` (taggen ender på det første `"`), så en eksportert fil kan ikke
+ * lastes tilbake. Derfor erstattes `"` med typografisk `”` og `\` med `/`, og
+ * det er ingenting igjen å escape. Linjeskift blir mellomrom. */
 export function escapeTag(v: string): string {
-  return v.replace(/[\r\n]+/g, " ").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return v.replace(/[\r\n]+/g, " ").replace(/"/g, "”").replace(/\\/g, "/");
 }
 
 function tag(name: string, value: string): string {
   return `[${name} "${escapeTag(value)}"]`;
+}
+
+/**
+ * Rundenummer i eksporten. Sluttspillrunder har egne nummer fra 1 og ville
+ * kollidert med ligarundene (`Round "1"` to ganger), så sluttspillrunde n
+ * eksporteres som `ligaRunder + n`.
+ */
+export function exportRound(
+  rounds: readonly { id: string; number: number; phase: string }[],
+  roundId: string,
+): number | null {
+  const r = rounds.find((x) => x.id === roundId);
+  if (!r) return null;
+  if (r.phase !== "playoff") return r.number;
+  const league = rounds.reduce((m, x) => (x.phase === "playoff" ? m : Math.max(m, x.number)), 0);
+  return league + r.number;
+}
+
+/** Norsk Termination-tagg ut fra `result_source` og (for «play») stillingen. */
+export function terminationFor(g: {
+  status: string;
+  resultSource?: ResultSource | null;
+  pgn: string;
+}): string | undefined {
+  const t = no.pgn.termination;
+  switch (g.resultSource) {
+    case "teacher_override":
+      return t.teacherOverride;
+    case "walkover":
+      return t.walkover;
+    case "opponent_absent":
+      return t.opponentAbsent;
+    case "timeout_draw":
+      return t.timeoutDraw;
+    case "physical":
+      return t.physical;
+    case "bye":
+      return undefined;
+    default:
+      break;
+  }
+  const win = g.status === "white_win" || g.status === "black_win";
+  if (!win && g.status !== "draw") return undefined;
+  let c: Chess | null = null;
+  try {
+    c = new Chess();
+    if (g.pgn.trim()) c.loadPgn(g.pgn);
+  } catch {
+    c = null;
+  }
+  if (win) {
+    // Ikke matt på brettet, men avgjort = en spiller ga opp.
+    return c?.isCheckmate() ? t.checkmate : t.resignation;
+  }
+  if (c?.isStalemate()) return t.stalemate;
+  if (c?.isInsufficientMaterial()) return t.insufficient;
+  if (c?.isThreefoldRepetition()) return t.repetition;
+  if (c?.isDrawByFiftyMoves()) return t.fiftyMoves;
+  return t.agreement;
 }
 
 export function pgnDate(d: Date): string {
@@ -91,7 +156,8 @@ export function gamePgn(g: PgnGameInput): string {
     tag("Result", result),
   ];
   if (g.board) tags.push(tag("Board", String(g.board)));
-  if (g.termination) tags.push(tag("Termination", g.termination));
+  const termination = g.termination ?? terminationFor(g);
+  if (termination) tags.push(tag("Termination", termination));
   return `${tags.join("\n")}\n\n${movetext(sansFromStored(g.pgn), result)}\n`;
 }
 

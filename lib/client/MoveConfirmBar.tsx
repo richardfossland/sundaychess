@@ -2,11 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import { no } from "@/lib/locale/no";
-import { focusBoardKeys } from "@/lib/client/BoardKeys";
+import { boardKeysId, focusBoardKeys } from "@/lib/client/BoardKeys";
 
 /**
  * E3: «Bekreft / Angre» for et foreløpig trekk. Fokus flytter til Bekreft når
- * linja dukker opp, og tilbake til brettet etter valget, slik at en
+ * linja dukker opp (kun hvis fokus lå i brettets tastaturrutenett), og tilbake til brettet etter valget, slik at en
  * tastaturspiller aldri mister plassen sin. Fokus flyttes bare hvis det faktisk
  * lå i linja, så en mus- eller touchspiller får ingen overraskelser.
  */
@@ -26,9 +26,15 @@ export function MoveConfirmBar({
   const root = useRef<HTMLDivElement | null>(null);
   const confirmBtn = useRef<HTMLButtonElement | null>(null);
 
+  // Bare en tastaturspiller (fokus lå i brettets rutenett da trekket ble lagt
+  // inn) får fokus flyttet til Bekreft. Mus/touch-spillere og alle andre får
+  // ikke fokus stjålet fra det de holder på med.
   useEffect(() => {
-    confirmBtn.current?.focus({ preventScroll: true });
-  }, []);
+    const grid = document.getElementById(boardKeysId(boardId));
+    if (grid && grid.contains(document.activeElement)) {
+      confirmBtn.current?.focus({ preventScroll: true });
+    }
+  }, [boardId]);
 
   const settle = (act: () => void) => {
     const hadFocus = !!root.current && root.current.contains(document.activeElement);

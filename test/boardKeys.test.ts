@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { stepSquare } from "@/lib/client/BoardKeys";
 import { loadConfirmMoves, saveConfirmMoves } from "@/lib/client/confirmMoves";
 
@@ -24,9 +24,45 @@ describe("stepSquare (piltaster følger brettets visuelle retning)", () => {
 });
 
 describe("trekkbekreftelse (lagring)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   it("er av som standard, og tåler at localStorage kaster", () => {
     // node-miljø: ingen window → getItem kaster → standard (av)
     expect(loadConfirmMoves()).toBe(false);
-    expect(() => saveConfirmMoves).not.toThrow();
+  });
+
+  it("saveConfirmMoves lagrer, varsler abonnenter, og minnefallback virker når lagring kaster", () => {
+    const store = new Map<string, string>();
+    const events: string[] = [];
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (k: string) => store.get(k) ?? null,
+        setItem: (k: string, v: string) => void store.set(k, v),
+      },
+      dispatchEvent: (e: Event) => void events.push(e.type),
+    });
+    saveConfirmMoves(true);
+    expect(store.get("chess:confirmMoves")).toBe("1");
+    expect(loadConfirmMoves()).toBe(true);
+    expect(events).toEqual(["chess:confirmMoves-change"]);
+
+    saveConfirmMoves(false);
+    expect(loadConfirmMoves()).toBe(false);
+
+    // Blokkert lagring: setItem/getItem kaster, valget varer i minnet.
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: () => {
+          throw new Error("blocked");
+        },
+        setItem: () => {
+          throw new Error("blocked");
+        },
+      },
+      dispatchEvent: () => true,
+    });
+    expect(() => saveConfirmMoves(true)).not.toThrow();
+    expect(loadConfirmMoves()).toBe(true);
+    saveConfirmMoves(false);
   });
 });

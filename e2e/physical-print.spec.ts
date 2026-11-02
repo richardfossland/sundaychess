@@ -32,7 +32,7 @@ test("utskrifter: 3 runder gir parringsliste, kort, lapper, tabell, krysstabell 
   await createTournament(page, "Utskriftscup");
   for (const n of [1, 2, 3]) await playRound(page, n);
   // Vent på at autolagringen er ferdig (ikke en fast pause): utskriftssidene leser lagret tilstand.
-  await expect(page.getByTestId("save-state")).toHaveText(no.physical.saveSaved);
+  await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "saved");
   const L = no.physicalPrint;
 
   // via menyen
@@ -84,7 +84,7 @@ test("storskjerm oppdateres når resultat føres i arrangørfanen", async ({ pag
   const id = page.url().split("/")[5];
   await page.getByRole("button", { name: no.physical.pairRound(1) }).click();
   await page.getByRole("button", { name: no.physical.publishRound }).click();
-  await expect(page.getByTestId("save-state")).toHaveText(no.physical.saveSaved); // storskjermen leser det lagrede
+  await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "saved"); // storskjermen leser det lagrede
 
   const big = await context.newPage();
   await big.goto(`/arranger/fysisk/${id}/storskjerm`);

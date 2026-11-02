@@ -55,16 +55,20 @@ Den sier hvilken versjon en feil kom fra, ikke noe om brukeren.
 ## Hva som IKKE samles inn
 
 - **Ingen navn.** Verken visningsnavn, klassenavn eller turneringstittel.
-- **Ingen IP-adresser.** IP-en brukes bare flyktig til rate-limiting i minnet og
-  lagres aldri.
+- **Ingen IP-adresser i telemetrien.** IP-en brukes ellers flyktig til
+  rate-limiting i minnet. Eneste sted en IP lagres i appen er `code_attempts`
+  (migrasjon 0015): ved *feil* vertskode/turneringskode lagres IP (IPv6 som /64)
+  med antall feil i ca. ett døgn, for å hindre gjetting. Se `/personvern`.
 - **Ingen user-agent-streng.** Bare `mobile`/`desktop`, avledet av
   `(pointer: coarse)` / `maxTouchPoints`.
 - **Ingen koder.** Ikke gjenopptakskoder, ikke vertskoder, ikke PIN-er.
 - **Ingen URL-er eller fritekst** eleven har skrevet. `js_error` tar med en
   feilmelding (maks 200 tegn) og *øverste* stack-ramme som `sti:linje` — uten
   vert og uten spørrestreng.
-- **Ingen informasjonskapsler**, ingen tredjepart. Dataene forlater aldri appens
-  egen database.
+- **Ingen informasjonskapsler** settes av telemetrien, og den har ingen
+  tredjepart; hendelsene lagres i appens Supabase-database (EU). Hele
+  tjenestens personvern (databehandlere, auth-kapsel for lærer-innlogging,
+  turneringsdata) står på `/personvern`.
 
 ## Oppbevaring
 

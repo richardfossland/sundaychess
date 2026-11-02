@@ -204,3 +204,16 @@ describe("POST /api/telemetry", () => {
     expect(state.inserts).toHaveLength(61);
   });
 });
+
+describe("kontrolltegn i detail", () => {
+  it("fjernes fra strenger og nøkler før lagring (ESC kan ikke skrive om en terminal)", async () => {
+    const res = await POST(
+      jsonReq({ ...EVENT, kind: "js_error", detail: { message: "a\u001b[31mred\r\nb\u0000c\u009fd", "k\u001b": "v\u007fx" } }),
+    );
+    expect(res.status).toBe(204);
+    const row = state.inserts[0] as { detail: Record<string, string> };
+    expect(row.detail.message).toBe("a[31mredbcd");
+    expect(row.detail.k).toBe("vx");
+    expect(JSON.stringify(row.detail)).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/);
+  });
+});

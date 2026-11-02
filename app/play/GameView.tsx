@@ -815,12 +815,17 @@ export const GameView = memo(function GameView({
   // Fire a queued pre-move the instant it becomes my turn: resolve it against
   // the (opponent-moved) position; play it if still legal, else discard with a
   // gentle note. Runs once per turn-flip (it clears the queue immediately).
+  //
+  // E3-beslutning (eier): et forhåndstrekk regnes som ALLEREDE BEKREFTET, også
+  // med «bekreft trekk» på. Eleven bestemte seg da hen la det inn, og klokka går
+  // mens motstanderen tenker; en ny Bekreft-runde ville kostet tid og er ikke
+  // ment. Derfor sendes det direkte (`skipConfirm = true`).
   useEffect(() => {
     if (!isMyTurn || !preMove || pending) return;
     const resolved = resolvePremove(fen, preMove);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPreMove(null);
-    if (resolved) void tryMove(resolved.from, resolved.to);
+    if (resolved) void tryMove(resolved.from, resolved.to, undefined, true);
     else flash(no.player.premoveCancelled);
   }, [isMyTurn, preMove, fen, pending, tryMove]);
 
@@ -1100,6 +1105,7 @@ export const GameView = memo(function GameView({
         </>
       }
       announcement={announcement}
+      reserveConfirm={confirmMoves}
       confirm={
         tentative && !ended ? (
           <MoveConfirmBar

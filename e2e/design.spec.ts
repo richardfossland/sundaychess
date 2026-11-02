@@ -238,6 +238,22 @@ test.describe("designregler uten database", () => {
   }
 });
 
+test.describe("trekkbekreftelse på", () => {
+  for (const vp of [MOBILE, DESKTOP]) {
+    test(`/solo med bekreftelse på · ${size(vp)} px: passer i én skjermhøyde`, async ({ page }) => {
+      await page.addInitScript(() => localStorage.setItem("chess:confirmMoves", "1"));
+      await open(page, "/solo", vp, "light");
+      await page.getByRole("button", { name: new RegExp(`^${no.solo.start}`) }).click();
+      await expect(page.getByTestId("board-shell")).toBeVisible();
+      await expect(page.getByTestId("confirm-slot")).toBeAttached();
+      await expectDesign(page, `/solo med bekreftelse (${vp.width}×${vp.height})`, {
+        targets: vp.width === MOBILE.width,
+        fitsHeight: true,
+      });
+    });
+  }
+});
+
 test.describe("tastatur", () => {
   test("Segmented: piltast flytter både valg og fokus", async ({ page }) => {
     await open(page, "/arranger/fysisk/ny", DESKTOP, "light");
