@@ -3301,6 +3301,7 @@ input[type="radio"] {
 .finish-wrap {
   align-items: center;
   width: 100%;
+  min-width: 0;
   max-width: var(--w-form);
   text-align: center;
 }
@@ -3346,6 +3347,16 @@ input[type="radio"] {
 .finish-block {
   align-items: center;
   width: 100%;
+  min-width: 0;
+}
+/* Sluttspilltreet er bredere enn en telefon: strekk det til boksen (ikke
+   sentrer det) så det blir en egen rullbar flate som starter til venstre. */
+.finish-block > .bracket {
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
 }
 .team-winners {
   flex-wrap: wrap;
