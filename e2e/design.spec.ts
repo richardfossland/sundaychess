@@ -201,6 +201,7 @@ const STATIC_PAGES: { name: string; url: string; ready?: (page: Page) => Promise
   { name: "forsiden", url: "/" },
   { name: "/play", url: "/play" },
   { name: "/versus", url: "/versus" },
+  { name: "/personvern", url: "/personvern" },
   { name: "/arranger", url: "/arranger" },
   { name: "/arranger/fysisk", url: "/arranger/fysisk" },
   { name: "/arranger/fysisk/ny (steg 1)", url: "/arranger/fysisk/ny" },
