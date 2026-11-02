@@ -9,6 +9,11 @@ import { api, ApiError, NON_JSON } from "@/lib/client/api";
 import { apiKind, errDetail, report } from "@/lib/client/telemetry";
 import { applyMove, legalDestinations } from "@/lib/chess/validateMove";
 import { needsPromotion, type PromoPiece } from "@/lib/chess/promotion";
+import { speakIntent } from "@/lib/chess/speak";
+import { BoardKeys } from "@/lib/client/BoardKeys";
+import { MoveConfirmBar } from "@/lib/client/MoveConfirmBar";
+import { useConfirmMoves } from "@/lib/client/confirmMoves";
+import { useMoveAnnouncer } from "@/lib/client/useMoveAnnouncer";
 import { PromotionPicker } from "@/lib/client/PromotionPicker";
 import { resolvePremove, pieceColorAt } from "@/lib/chess/premove";
 import { drawReasonFromPgn } from "@/lib/chess/drawReason";
@@ -233,6 +238,19 @@ export const GameView = memo(function GameView({
   // instant it becomes mine (blitz / online multiplayer). null = none.
   const [preMove, setPreMove] = useState<{ from: string; to: string } | null>(null);
   const [promo, setPromo] = useState<{ from: string; to: string } | null>(null);
+  // E3: valgfri trekkbekreftelse. Et foreløpig trekk eksisterer bare lokalt:
+  // ingenting sendes, `pending` og pending-vakthunden røres ikke, og klokka
+  // går som vanlig (den er serverens). `base` er stillingen trekket gjelder;
+  // se `tentative` under, som forkaster det så snart den ikke lenger stemmer.
+  const [confirmMoves] = useConfirmMoves();
+  const [tentativeRaw, setTentative] = useState<{
+    from: string;
+    to: string;
+    promotion: PromoPiece;
+    base: string;
+    fen: string;
+    text: string;
+  } | null>(null);
   const [confirmResign, setConfirmResign] = useState(false);
   const [acting, setActing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -306,6 +324,35 @@ export const GameView = memo(function GameView({
   const myColor: Color = detail?.black?.id === me.playerId ? "black" : "white";
   const myTurnLetter: Turn = myColor === "white" ? "w" : "b";
   const isMyTurn = status === "live" && turn === myTurnLetter;
+
+  // Det foreløpige trekket gjelder bare så lenge det fortsatt er min tur i
+  // nøyaktig den stillingen det ble gjort i (partiet kan ta slutt, eller
+  // serveren kan sende en annen stilling, mens det venter).
+  const tentative =
+    tentativeRaw && isMyTurn && tentativeRaw.base === fen ? tentativeRaw : null;
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (tentativeRaw && !tentative) setTentative(null);
+  }, [tentativeRaw, tentative]);
+
+  // E3: skjermleser. Opplesningen følger stillingen (se useMoveAnnouncer), så
+  // mitt eget optimistiske trekk, motstanderens kringkastede trekk og pollen
+  // som bekrefter dem leses opp nøyaktig én gang hver.
+  const endAnnouncement =
+    detail && (status === "white_win" || status === "black_win" || status === "draw")
+      ? no.a11y.gameOver(
+          status === "draw"
+            ? no.a11y.draw
+            : (status === "white_win") === (myColor === "white")
+              ? no.player.youWon
+              : no.player.youLost,
+        )
+      : null;
+  const { text: announcement, say } = useMoveAnnouncer({
+    fen,
+    label: (c) => (c === myTurnLetter ? no.a11y.you : no.a11y.opponent),
+    end: endAnnouncement,
+  });
 
   // Background "your turn" cue (title flash, vibration, opt-in notification)
   // — see lib/client/turnCue.ts. A flat no-op while the tab is visible, so
@@ -665,7 +712,7 @@ export const GameView = memo(function GameView({
 
   // Attempt a move: optimistic render, then server reconcile / rollback.
   const tryMove = useCallback(
-    async (from: string, to: string, promotion?: PromoPiece) => {
+    async (from: string, to: string, promotion?: PromoPiece, skipConfirm = false) => {
       if (!isMyTurn || pending) return false;
 
       // Promoting move with no piece chosen yet → open the chooser, defer.
@@ -677,6 +724,20 @@ export const GameView = memo(function GameView({
 
       const local = applyMove(fen, { from, to, promotion: piece });
       if (!local.ok) return false;
+
+      // E3: bekreftelse på → vis trekket som foreløpig og send IKKE. Først
+      // Bekreft (som kaller oss igjen med skipConfirm) går den vanlige veien
+      // under: optimistisk visning, POST, avstemming/tilbakerulling.
+      if (confirmMoves && !skipConfirm) {
+        const text = speakIntent(fen, { from, to, promotion: piece });
+        if (!text) return false;
+        setTentative({ from, to, promotion: piece, base: fen, fen: local.fen, text });
+        setSelected(null);
+        setLegal([]);
+        say(no.a11y.pendingAnnounce(text));
+        return false;
+      }
+      setTentative(null);
       sound.play(moveCue(fen, local.fen, local.san));
 
       setFen(local.fen);
@@ -748,7 +809,7 @@ export const GameView = memo(function GameView({
       }
       return true;
     },
-    [appendSan, fen, gameId, isMyTurn, safeLoad, me.playerId, me.resumeCode, pending, takeClock],
+    [appendSan, confirmMoves, fen, gameId, isMyTurn, safeLoad, me.playerId, me.resumeCode, pending, say, takeClock],
   );
 
   // Fire a queued pre-move the instant it becomes my turn: resolve it against
@@ -767,8 +828,24 @@ export const GameView = memo(function GameView({
    * isn't my turn — chess.js can't generate moves for the side not to move). */
   const myPieceAt = (square: string) => pieceColorAt(fen, square) === myTurnLetter;
 
+  /** Bekreft det foreløpige trekket: nå (og først nå) sendes det. */
+  function confirmTentative() {
+    if (!tentative || pending) return;
+    const { from, to, promotion } = tentative;
+    setTentative(null);
+    void tryMove(from, to, promotion, true);
+  }
+
+  /** Escape / Angre: forkast foreløpig trekk og valg. */
+  function cancelSelection() {
+    setTentative(null);
+    setSelected(null);
+    setLegal([]);
+  }
+
   function onDrop({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean {
     if (!targetSquare) return false;
+    if (tentative) return false;
     if (isMyTurn) {
       void tryMove(sourceSquare, targetSquare);
       return true;
@@ -782,6 +859,7 @@ export const GameView = memo(function GameView({
   }
 
   function onSquareClick({ square, piece }: SquareHandlerArgs) {
+    if (tentative) return;
     if (isMyTurn) {
       if (selected && legal.includes(square)) {
         void tryMove(selected, square);
@@ -822,7 +900,11 @@ export const GameView = memo(function GameView({
   const lastTo = lastMove?.to ?? null;
   const preFrom = preMove?.from ?? null;
   const preTo = preMove?.to ?? null;
+  const tentFrom = tentative?.from ?? null;
+  const tentTo = tentative?.to ?? null;
   const stylesKey = [
+    tentFrom ?? "",
+    tentTo ?? "",
     lastFrom ?? "",
     lastTo ?? "",
     selected ?? "",
@@ -830,21 +912,28 @@ export const GameView = memo(function GameView({
     preFrom ?? "",
     preTo ?? "",
     status,
+    // E3: tryMove (read by the board through a ref, see PlayBoard) branches on
+    // this setting, so flipping it must reach the board like any other input.
+    confirmMoves ? "confirm" : "",
   ].join("|");
   const squareStyles = useMemo(() => {
     const styles = highlightStyles({
-      last: lastFrom && lastTo ? { from: lastFrom, to: lastTo } : null,
+      last: tentFrom && tentTo
+        ? { from: tentFrom, to: tentTo }
+        : lastFrom && lastTo
+          ? { from: lastFrom, to: lastTo }
+          : null,
       selected,
       legal,
     });
     // Queued pre-move — distinct orange so it reads differently from a real move.
     if (preFrom && preTo && status === "live") {
-      const pm = { background: "var(--board-premove)" };
+      const pm = { background: "var(--board-premove)", boxShadow: "var(--board-premove-ring, none)" };
       styles[preFrom] = { ...pm };
       styles[preTo] = { ...pm };
     }
     return styles;
-  }, [lastFrom, lastTo, selected, legal, preFrom, preTo, status]);
+  }, [lastFrom, lastTo, tentFrom, tentTo, selected, legal, preFrom, preTo, status]);
 
   // Another tab on this device took over this player's session. Show a prompt
   // instead of a second live board (two boards → conflicting moves → "can't
@@ -986,17 +1075,40 @@ export const GameView = memo(function GameView({
            lib/client/PlayBoard.tsx for why ignoring the handlers'
            identity is safe (they are routed through refs, and every
            state they read is a function of the props compared here). */
-        <PlayBoard
-          id="play-board"
-          fen={fen}
-          orientation={myColor}
-          // Draggable on my turn AND the opponent's (to queue a pre-move).
-          allowDragging={!ended}
-          squareStyles={squareStyles}
-          stylesKey={stylesKey}
-          onDrop={onDrop}
-          onSquareClick={onSquareClick}
-        />
+        <>
+          <PlayBoard
+            id="play-board"
+            // E3: mens et foreløpig trekk venter, vises stillingen etter det.
+            fen={tentative ? tentative.fen : fen}
+            orientation={myColor}
+            // Draggable on my turn AND the opponent's (to queue a pre-move).
+            allowDragging={!ended && !tentative}
+            squareStyles={squareStyles}
+            stylesKey={stylesKey}
+            onDrop={onDrop}
+            onSquareClick={onSquareClick}
+          />
+          <BoardKeys
+            id="play-board"
+            fen={tentative ? tentative.fen : fen}
+            orientation={myColor}
+            selected={selected}
+            legal={legal}
+            onActivate={(square, piece) => onSquareClick({ square, piece })}
+            onCancel={cancelSelection}
+          />
+        </>
+      }
+      announcement={announcement}
+      confirm={
+        tentative && !ended ? (
+          <MoveConfirmBar
+            boardId="play-board"
+            text={tentative.text}
+            onConfirm={confirmTentative}
+            onCancel={cancelSelection}
+          />
+        ) : undefined
       }
       extra={
         <>

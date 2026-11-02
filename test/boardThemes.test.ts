@@ -40,3 +40,22 @@ describe("brettfarger (D2)", () => {
     expect(isBoardTheme(null)).toBe(false);
   });
 });
+
+describe("høykontrast-brettet (E3)", () => {
+  const c = BOARD_PALETTES.contrast;
+  it("svarte og hvite brikkefyll har minst 4,5:1 mot mørke ruter", () => {
+    expect(ratio("#ffffff", c.dark)).toBeGreaterThanOrEqual(4.5);
+    expect(ratio("#000000", c.dark)).toBeGreaterThanOrEqual(4.5);
+  });
+  it("svarte brikker har minst 4,5:1 mot lyse ruter, og rutene skiller seg tydelig", () => {
+    expect(ratio("#000000", c.light)).toBeGreaterThanOrEqual(4.5);
+    expect(ratio(c.light, c.dark)).toBeGreaterThanOrEqual(4.5);
+  });
+  it("markørene er rammer (svart/hvit) definert i CSS", () => {
+    const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+    const block = css.match(/\[data-board-theme="contrast"\]\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(block).toContain("--board-last-ring");
+    expect(block).toContain("--board-selected-ring");
+    expect(block).toContain("--board-dot: #000000");
+  });
+});

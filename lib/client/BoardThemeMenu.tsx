@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { useConfirmMoves } from "@/lib/client/confirmMoves";
 import { BOARD_PALETTES, BOARD_THEMES, useBoardTheme, type BoardTheme } from "@/lib/client/boardOptions";
 import { Icon } from "@/lib/client/Icon";
 import { Segmented } from "@/lib/client/Segmented";
@@ -14,7 +15,7 @@ export function BoardThemePicker({ labelledBy }: { labelledBy?: string }) {
     <Segmented<BoardTheme>
       aria-labelledby={labelledBy}
       aria-label={labelledBy ? undefined : no.board.theme}
-      className="seg-thirds"
+      className="seg-quarters"
       value={theme}
       onChange={setTheme}
       options={BOARD_THEMES.map((t) => ({
@@ -27,11 +28,33 @@ export function BoardThemePicker({ labelledBy }: { labelledBy?: string }) {
                 background: `linear-gradient(135deg, ${BOARD_PALETTES[t].light} 50%, ${BOARD_PALETTES[t].dark} 50%)`,
               }}
             />
-            {no.board[t]}
+            {t === "contrast" ? no.a11y.themeContrast : no.board[t]}
           </>
         ),
       }))}
     />
+  );
+}
+
+/** Valgfri trekkbekreftelse (E3): av som standard, lagres per enhet. */
+export function ConfirmMovesToggle() {
+  const [on, setOn] = useConfirmMoves();
+  const id = useId();
+  return (
+    <label className="switch-row" htmlFor={id}>
+      <input
+        id={id}
+        type="checkbox"
+        role="switch"
+        className="switch"
+        checked={on}
+        onChange={(e) => setOn(e.target.checked)}
+      />
+      <span className="opt-body">
+        <span className="opt-title">{no.a11y.confirmMoves}</span>
+        <span className="opt-help">{no.a11y.confirmMovesHint}</span>
+      </span>
+    </label>
   );
 }
 
@@ -75,6 +98,7 @@ export function BoardThemeMenu() {
             {no.board.theme}
           </span>
           <BoardThemePicker labelledBy={titleId} />
+          <ConfirmMovesToggle />
         </div>
       )}
     </span>
