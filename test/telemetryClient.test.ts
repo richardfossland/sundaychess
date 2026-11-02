@@ -97,6 +97,16 @@ afterEach(() => {
 });
 
 describe("report()", () => {
+  it("stamps a flat string `build` into detail", () => {
+    report("watchdog", { gameId: GID, ms: 11000, build: "spoofed" });
+    const p = sent();
+    const detail = p.detail as Record<string, unknown>;
+    expect(typeof detail.build).toBe("string");
+    expect(detail.build).not.toBe("spoofed");
+    expect((detail.build as string).length).toBeLessThanOrEqual(40);
+    for (const v of Object.values(detail)) expect(["string", "number", "boolean"]).toContain(typeof v);
+  });
+
   it("posts a text/plain beacon carrying only opaque ids", () => {
     report("watchdog", { gameId: GID, ms: 11000 });
     expect(sendBeacon).toHaveBeenCalledTimes(1);
@@ -108,7 +118,7 @@ describe("report()", () => {
     expect(p.playerId).toBe(PID);
     // gameId is lifted OUT of detail into its own field (its own DB column).
     expect(p.gameId).toBe(GID);
-    expect(p.detail).toEqual({ ms: 11000 });
+    expect(p.detail).toEqual({ ms: 11000, build: "dev" });
     expect(typeof p.sid).toBe("string");
 
     // The privacy contract, asserted on the wire: no name, no resume code.
@@ -142,13 +152,14 @@ describe("report()", () => {
       boundary: "error",
       message: "Cannot read x of undefined",
       digest: "abcd1234",
+      build: "dev",
     });
   });
 
   it("drops an undefined digest from the boundary report instead of sending it as null", () => {
     report("js_error", { boundary: "global", message: "root layout crashed", digest: undefined });
     const detail = sent().detail as Record<string, unknown>;
-    expect(detail).toEqual({ boundary: "global", message: "root layout crashed" });
+    expect(detail).toEqual({ boundary: "global", message: "root layout crashed", build: "dev" });
     expect(detail).not.toHaveProperty("digest");
   });
 
@@ -254,7 +265,7 @@ describe("attribution (R6)", () => {
     expect(p.playerId).toBeUndefined();
     // …and the event itself is still reported. Anonymous, not dropped.
     expect(p.kind).toBe("js_error");
-    expect(p.detail).toEqual({ boundary: "error", message: "boom" });
+    expect(p.detail).toEqual({ boundary: "error", message: "boom", build: "dev" });
   });
 
   it("stamps nothing from /solo, /versus or /host, whatever the kind", () => {
@@ -279,7 +290,7 @@ describe("attribution (R6)", () => {
     expect(p.tournamentId).toBe(TID);
     expect(p.playerId).toBe(PID);
     // The id is lifted into its own field, exactly like gameId.
-    expect(p.detail).toEqual({});
+    expect(p.detail).toEqual({ build: "dev" });
 
     report("watchdog", { gameId: GID }); // no carrier → the pointed-at session
     expect(sent(1).tournamentId).toBe(TID2);

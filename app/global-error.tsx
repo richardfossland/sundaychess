@@ -40,6 +40,13 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           <div style={{ fontSize: 40, color: "#ebb84b" }}>♞</div>
           <h2 style={{ fontWeight: 700 }}>{no.common.error}</h2>
           <p style={{ color: "#9aa0ad" }}>{no.common.errorReload}</p>
+          <p style={{ color: "#9aa0ad", fontSize: 14 }}>
+            {no.privacy.errorNote}{" "}
+            {/* Vanlig <a>: rot-layouten er borte, så ingen klient-ruter her. */}
+            <a href="/personvern" style={{ color: "#ebb84b" }}>
+              {no.privacy.link}
+            </a>
+          </p>
           <button
             onClick={() => reset()}
             style={{
