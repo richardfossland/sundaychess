@@ -20,8 +20,6 @@ async function handlePost(req: Request, device: string): Promise<Response> {
     if (await registerGuessFailure("pin", device, req)) return fail(429, "rate_limited");
     return fail(404, "invalid_pin");
   }
-  // Correct PIN: confirm the block against the DB, not the per-isolate cache (no 200-vs-429 oracle).
-  if (await isGuessBlocked("pin", device, req, true)) return fail(429, "rate_limited");
   if (t.status === "finished") return fail(409, "finished");
   const players = await listPlayers(t.id);
   const names = players

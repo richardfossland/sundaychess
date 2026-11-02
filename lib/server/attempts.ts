@@ -17,22 +17,20 @@ export const CODE_MAX_FAILURES = 20;
 /** Optional per-call override of the failure threshold (default CODE_MAX_FAILURES). */
 export type AttemptOpts = {
   max?: number;
-  /** Skip the per-isolate "not blocked" cache and ask the DB. REQUIRED whenever
-   * the answer is about to be revealed by a CORRECT code: a stale negative entry
-   * on another isolate would otherwise return 200 for the right code while wrong
-   * ones get 429 — an oracle for a guesser who has already hit the block. */
-  fresh?: boolean;
   /** Window length in seconds (default CODE_WINDOW_S). */
   windowS?: number;
 };
 
 const CACHE_MAX = 2000;
-const NOT_BLOCKED_TTL_MS = 30_000;
-const cache = new Map<string, { blocked: boolean; until: number }>();
+// Only "blocked" is cached (until the window lapses). "Not blocked" is NEVER
+// cached: another isolate may have blocked the IP a moment ago, and a stale
+// "clean" answer would give a CORRECT code 200 while wrong ones get 429 — an
+// oracle for a guesser who has already hit the block.
+const cache = new Map<string, { until: number }>();
 
-function remember(key: string, blocked: boolean, ttlMs: number): void {
+function remember(key: string, ttlMs: number): void {
   cache.delete(key);
-  cache.set(key, { blocked, until: Date.now() + ttlMs });
+  cache.set(key, { until: Date.now() + ttlMs });
   while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value as string);
 }
 
@@ -44,7 +42,7 @@ export function __resetAttemptsCache(): void {
 export async function isCodeBlocked(scope: string, req: Request, opts: AttemptOpts = {}): Promise<boolean> {
   const key = `${scope}|${ipKey(req)}`;
   const hit = cache.get(key);
-  if (hit && hit.until > Date.now() && (hit.blocked || !opts.fresh)) return hit.blocked;
+  if (hit && hit.until > Date.now()) return true;
   try {
     const { data, error } = await createServiceClient().rpc("code_blocked", {
       p_scope: scope,
@@ -53,8 +51,10 @@ export async function isCodeBlocked(scope: string, req: Request, opts: AttemptOp
       p_max: opts.max ?? CODE_MAX_FAILURES,
     });
     if (error) throw error;
-    if (data === true) return true; // not cached: re-ask, the window may have lapsed
-    remember(key, false, NOT_BLOCKED_TTL_MS);
+    if (data === true) {
+      remember(key, (opts.windowS ?? CODE_WINDOW_S) * 1000);
+      return true;
+    }
     return false;
   } catch (e) {
     console.error("[code_blocked] fail-open", e);
@@ -72,7 +72,7 @@ export async function registerCodeFailure(scope: string, req: Request, opts: Att
       p_max: opts.max ?? CODE_MAX_FAILURES,
     });
     if (error) throw error;
-    if (data === true) remember(`${scope}|${ipKey(req)}`, true, (opts.windowS ?? CODE_WINDOW_S) * 1000);
+    if (data === true) remember(`${scope}|${ipKey(req)}`, (opts.windowS ?? CODE_WINDOW_S) * 1000);
     return data === true;
   } catch (e) {
     console.error("[register_code_failure] fail-open", e);

@@ -37,9 +37,6 @@ async function handleOpen(req: Request, device: string): Promise<Response> {
     if (await registerGuessFailure("open", device, req)) return fail(429, "rate_limited");
     return fail(404, "not_found");
   }
-  // Correct code: confirm the block against the DB, not the per-isolate
-  // negative cache (see AttemptOpts.fresh) — otherwise 200-vs-429 is an oracle.
-  if (await isGuessBlocked("open", device, req, true)) return fail(429, "rate_limited");
   // pairToken: proof of a correct host code (null when PAIR_SECRET is unset).
   return ok({ id: t.id, pairToken: await signPairToken(t.id, t.host_code) });
 }

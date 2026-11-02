@@ -4,15 +4,17 @@ import type { Tournament } from "@/lib/types";
 // Two-isolate simulation: REAL attempts.ts + REAL authHost against a fake
 // code_attempts table. "Switching isolate" = __resetAttemptsCache() (each
 // isolate has its own in-memory cache; the DB is shared).
-const { getTournament, db } = vi.hoisted(() => ({
+const { getTournament, db, rpcCalls } = vi.hoisted(() => ({
   getTournament: vi.fn(),
   db: { failures: 0 },
+  rpcCalls: [] as string[],
 }));
 vi.mock("@/lib/server/store", () => ({ getPlayer: vi.fn(), getTournament }));
 vi.mock("@/lib/supabase/auth-server", () => ({ createAuthClient: vi.fn() }));
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: () => ({
     rpc: async (fn: string, a: { p_max: number }) => {
+      rpcCalls.push(fn);
       if (fn === "register_code_failure") {
         db.failures += 1;
         return { data: db.failures >= a.p_max, error: null };
@@ -42,14 +44,29 @@ beforeEach(() => {
 });
 
 describe("block oracle across isolates", () => {
-  it("stale 'not blocked' on isolate B: correct code is still 429 after A blocked the IP", async () => {
-    // Isolate B warms a negative cache entry while the IP is clean.
+  it("a block registered by ANOTHER isolate bites immediately: correct code is 429 right after (no negative cache)", async () => {
+    // Isolate B sees a clean IP (nothing may be cached for "not blocked").
     expect(await status("ABCD-12")).toBe(200);
-    // Isolate A (other cache) takes the IP to the limit in the shared DB.
+    // Isolate A (other cache) takes the IP to the limit in the shared DB; B's
+    // cache is NOT reset, so only a missing negative cache lets this through.
     db.failures = CODE_MAX_FAILURES;
-    // Back on B, whose cache still says "not blocked":
     expect(await status("ABCD-12")).toBe(429);
     expect(await status("ZZZZ-99")).toBe(429);
+  });
+
+  it("every check goes to the DB while clean: 'not blocked' is never cached", async () => {
+    rpcCalls.length = 0;
+    await status("ABCD-12");
+    await status("ABCD-12");
+    expect(rpcCalls.filter((f) => f === "code_blocked")).toHaveLength(2);
+  });
+
+  it("'blocked' IS cached: a second check in the window does not hit the DB again", async () => {
+    db.failures = CODE_MAX_FAILURES;
+    expect(await status("ABCD-12")).toBe(429);
+    rpcCalls.length = 0;
+    expect(await status("ABCD-12")).toBe(429);
+    expect(rpcCalls).toHaveLength(0);
   });
 
   it("wrong guesses: 401 until the limit, then consistently 429 (cold or warm cache)", async () => {

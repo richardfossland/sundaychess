@@ -131,6 +131,17 @@ describe("POST /api/game/override", () => {
     expect((await res.json()).error).toBe("cannot_override_bye");
   });
 
+  // B6: a ½-point bye is stored as status "draw", a 0-point bye as "aborted" —
+  // both with black_player_id null — so a status-only check would let them through
+  // and a host override would hand the bye player a played-game result.
+  it.each(["draw", "aborted"] as const)("409 for a %s-status bye (black_player_id null), nothing resolved", async (status) => {
+    getGame.mockResolvedValue(game({ status, black_player_id: null }));
+    const res = await POST(req(good));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe("cannot_override_bye");
+    expect(resolveGameRpc).not.toHaveBeenCalled();
+  });
+
   it("returns a structured 503 (never throws) when the game lookup fails", async () => {
     getGame.mockRejectedValue(new Error("db down"));
     const res = await POST(req(good));
