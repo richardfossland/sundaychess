@@ -14,6 +14,8 @@ import { computeAwards, type Award } from "@/lib/tournament/awards";
 import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
 import { BracketBoard } from "@/lib/client/BracketBoard";
 import { no } from "@/lib/locale/no";
+import { downloadPgn } from "@/lib/client/pgnActions";
+import { pgnFileName, tournamentPgn } from "@/lib/export/pgn";
 import { Icon, MedalIcon, type IconName } from "@/lib/client/Icon";
 import { StandingsTable } from "./StandingsTable";
 import { usePresentasjon } from "@/lib/client/storskjerm/usePresentasjon";
@@ -157,6 +159,38 @@ export function FinishedView({ state }: { state: BoardState }) {
       ),
     [pgnGames],
   );
+
+  const [pgnBusy, setPgnBusy] = useState(false);
+  const [pgnFailed, setPgnFailed] = useState(false);
+  // Henter ferske partier med PGN ved klikk, så filen alltid er komplett.
+  const downloadAllPgn = async () => {
+    setPgnBusy(true);
+    setPgnFailed(false);
+    try {
+      const full = await api.board(tournament.id, { full: true });
+      const roundNo = new Map(full.rounds.map((r) => [r.id, r.number]));
+      const name = new Map(full.players.map((p) => [p.id, p.displayName]));
+      const title = tournament.title || no.appName;
+      const text = tournamentPgn(
+        full.games
+          .filter((g) => g.blackPlayerId && g.pgn)
+          .map((g) => ({
+            event: title,
+            round: roundNo.get(g.roundId) ?? 0,
+            board: (g.slot ?? 0) + 1,
+            white: name.get(g.whitePlayerId) ?? "?",
+            black: name.get(g.blackPlayerId as string) ?? "?",
+            status: g.status,
+            pgn: g.pgn as string,
+          })),
+      );
+      downloadPgn(pgnFileName(title), text);
+    } catch {
+      setPgnFailed(true);
+    } finally {
+      setPgnBusy(false);
+    }
+  };
 
   const teamRows = useMemo(
     () => computeTeamStandings(tournament.config.teams ?? [], players),
@@ -377,6 +411,19 @@ export function FinishedView({ state }: { state: BoardState }) {
             >
               <Icon name="print" size={16} /> {no.host.printResults}
             </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-lg"
+              disabled={pgnBusy}
+              onClick={downloadAllPgn}
+            >
+              {no.pgn.downloadAll}
+            </button>
+            {pgnFailed && (
+              <span className="muted fs-xs" role="status">
+                {no.pgn.failed}
+              </span>
+            )}
           </div>
         )}
       </div>

@@ -1346,6 +1346,16 @@ export const no = {
     hostResetConfirm: (n: string) => `Frigjøre navnet «${n}»? Eleven som har valgt det mister tilgangen, og navnet kan velges på nytt.`,
     hostUnclaimedCount: (n: number) => `${n} navn er ikke valgt ennå. De som ikke møter kan settes som fraværende når runden er i gang.`,
   },
+  // PGN-eksport og FEN-kopiering
+  pgn: {
+    download: "Last ned PGN",
+    downloadAll: "Last ned alle partier (PGN)",
+    copyFen: "Kopier FEN",
+    fenCopied: "FEN kopiert",
+    fenFailed: "Kunne ikke kopiere",
+    failed: "Kunne ikke laste ned partiet.",
+    resignation: "Oppgivelse",
+  },
   // Personvernside (/personvern) og lenker dit.
   privacy: {
     link: "Personvern",
