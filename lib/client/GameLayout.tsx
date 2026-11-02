@@ -28,6 +28,10 @@ export interface GameLayoutProps {
   tools?: ReactNode;
   /** Turneringsparti har flere rader (timer, reaksjoner, varsler) på smal skjerm. */
   rich?: boolean;
+  /** E3: «Bekreft / Angre» for et foreløpig trekk, rett under brettet (MoveConfirmBar). */
+  confirm?: ReactNode;
+  /** E3: teksten skjermleseren leser opp (trekk og partislutt). Se useMoveAnnouncer. */
+  announcement?: string;
   /** Overlegg og dialoger (resultat, bekreftelser). Arver brettfargene. */
   children?: ReactNode;
 }
@@ -52,6 +56,8 @@ export function GameLayout({
   extra,
   tools,
   rich,
+  confirm,
+  announcement,
   children,
 }: GameLayoutProps) {
   const [theme] = useBoardTheme();
@@ -78,6 +84,7 @@ export function GameLayout({
             </div>
           </div>
           <div className="gl-bottom">{bottom}</div>
+          {confirm && <div className="gl-confirm">{confirm}</div>}
         </div>
         <div className="gl-aside">
           {status && <div className="gl-status">{status}</div>}
@@ -89,6 +96,17 @@ export function GameLayout({
             <BoardThemeMenu />
           </div>
         </div>
+      </div>
+      {/* Én live-region per brettvisning (E3): leser både eget og motstanderens
+          trekk og partislutt. Alltid montert, ellers leses første melding ikke. */}
+      <div
+        className="visually-hidden"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="move-announcer"
+      >
+        {announcement}
       </div>
       {children}
     </main>

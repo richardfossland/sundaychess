@@ -4,7 +4,12 @@ import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Chess } from "chess.js";
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
-import { legalDestinations } from "@/lib/chess/validateMove";
+import { applyMove, legalDestinations } from "@/lib/chess/validateMove";
+import { speakIntent } from "@/lib/chess/speak";
+import { BoardKeys } from "@/lib/client/BoardKeys";
+import { MoveConfirmBar } from "@/lib/client/MoveConfirmBar";
+import { useConfirmMoves } from "@/lib/client/confirmMoves";
+import { useMoveAnnouncer } from "@/lib/client/useMoveAnnouncer";
 import { needsPromotion, type PromoPiece } from "@/lib/chess/promotion";
 import { PromotionPicker } from "@/lib/client/PromotionPicker";
 import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
@@ -49,11 +54,33 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
   // A promoting move waiting for the player to choose a piece.
   const [promo, setPromo] = useState<{ from: string; to: string } | null>(null);
   const reducedMotion = useReducedMotion();
+  // E3: valgfri trekkbekreftelse. Mens et foreløpig trekk venter, viser brettet
+  // stillingen ETTER trekket, men chess.js-partiet er urørt til Bekreft.
+  const [confirmMoves] = useConfirmMoves();
+  const [tentative, setTentative] = useState<{
+    from: string;
+    to: string;
+    promotion?: PromoPiece;
+    fen: string;
+    text: string;
+  } | null>(null);
   // "Nytt parti" mid-game asks first — only when there's an actual game in
   // progress to lose (newGame() below resets the board with no way back).
   const [confirmNewGame, setConfirmNewGame] = useState(false);
 
   const turn: Turn = fen.split(" ")[1] === "b" ? "b" : "w";
+  // E3: skjermleser — leser hvert trekk (se useMoveAnnouncer) og partislutt.
+  const { text: announcement, say } = useMoveAnnouncer({
+    fen,
+    end:
+      outcome === "white"
+        ? no.a11y.gameOver(no.a11y.whiteWins)
+        : outcome === "black"
+          ? no.a11y.gameOver(no.a11y.blackWins)
+          : outcome === "draw"
+            ? no.a11y.gameOver(no.a11y.draw)
+            : null,
+  });
   const refresh = () => {
     setFen(chess.current.fen());
     const h = chess.current.history();
@@ -76,11 +103,27 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
     return true;
   }
 
-  function tryMove(from: string, to: string, promotion?: PromoPiece): boolean {
-    if (outcome) return false;
+  function tryMove(
+    from: string,
+    to: string,
+    promotion?: PromoPiece,
+    skipConfirm = false,
+  ): boolean {
+    if (outcome || (tentative && !skipConfirm)) return false;
     // Needs a piece choice and none given yet → open the chooser, defer the move.
     if (!promotion && needsPromotion(chess.current.fen(), from, to)) {
       setPromo({ from, to });
+      return false;
+    }
+    if (confirmMoves && !skipConfirm) {
+      const before = chess.current.fen();
+      const local = applyMove(before, { from, to, promotion: promotion ?? "q" });
+      const text = speakIntent(before, { from, to, promotion: promotion ?? "q" });
+      if (!local.ok || !text) return false;
+      setTentative({ from, to, promotion, fen: local.fen, text });
+      setSelected(null);
+      setLegal([]);
+      say(no.a11y.pendingAnnounce(text));
       return false;
     }
     let captured = false;
@@ -91,6 +134,7 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
     } catch {
       return false;
     }
+    setTentative(null);
     setLastMove({ from, to });
     setSelected(null);
     setLegal([]);
@@ -100,7 +144,15 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
     return true;
   }
 
+  function confirmTentative() {
+    if (!tentative) return;
+    const { from, to, promotion } = tentative;
+    setTentative(null);
+    tryMove(from, to, promotion, true);
+  }
+
   function newGame() {
+    setTentative(null);
     chess.current = new Chess();
     refresh();
     setLastMove(null);
@@ -113,6 +165,7 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
 
   function undo() {
     if (chess.current.history().length === 0) return;
+    setTentative(null);
     chess.current.undo();
     setOutcome(null);
     setSelected(null);
@@ -126,7 +179,7 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
     return tryMove(sourceSquare, targetSquare);
   }
   function onSquareClick({ square, piece }: SquareHandlerArgs) {
-    if (outcome) return;
+    if (outcome || tentative) return;
     if (selected && legal.includes(square)) {
       tryMove(selected, square);
       return;
@@ -140,7 +193,17 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
     }
   }
 
-  const squareStyles = highlightStyles({ last: lastMove, selected, legal });
+  const shownFen = tentative ? tentative.fen : fen;
+  const squareStyles = highlightStyles({
+    last: tentative ? { from: tentative.from, to: tentative.to } : lastMove,
+    selected,
+    legal,
+  });
+  const cancelSelection = () => {
+    setSelected(null);
+    setLegal([]);
+    setTentative(null);
+  };
 
   const outText =
     outcome === "white"
@@ -186,20 +249,42 @@ export function LocalVersus({ onExit }: { onExit: () => void }) {
         />
       }
       board={
-        <Chessboard
-          options={{
-            ...BOARD_BASE_OPTIONS,
-            position: fen,
-            // rotate to the side to move — pass the device to that player
-            boardOrientation: mover,
-            allowDragging: !outcome,
-            showAnimations: !reducedMotion,
-            onPieceDrop: onDrop,
-            onSquareClick,
-            squareStyles,
-            id: "versus-board",
-          }}
-        />
+        <>
+          <Chessboard
+            options={{
+              ...BOARD_BASE_OPTIONS,
+              position: shownFen,
+              // rotate to the side to move — pass the device to that player
+              boardOrientation: mover,
+              allowDragging: !outcome && !tentative,
+              showAnimations: !reducedMotion,
+              onPieceDrop: onDrop,
+              onSquareClick,
+              squareStyles,
+              id: "versus-board",
+            }}
+          />
+          <BoardKeys
+            id="versus-board"
+            fen={shownFen}
+            orientation={mover}
+            selected={selected}
+            legal={legal}
+            onActivate={(square, piece) => onSquareClick({ square, piece })}
+            onCancel={cancelSelection}
+          />
+        </>
+      }
+      announcement={announcement}
+      confirm={
+        tentative && !outcome ? (
+          <MoveConfirmBar
+            boardId="versus-board"
+            text={tentative.text}
+            onConfirm={confirmTentative}
+            onCancel={cancelSelection}
+          />
+        ) : undefined
       }
       moves={<MoveList sans={sans} />}
       actions={

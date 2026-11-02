@@ -20,7 +20,12 @@ import {
   type RatingState,
 } from "@/lib/chess/skill";
 import { identity } from "@/lib/client/identity";
-import { legalDestinations } from "@/lib/chess/validateMove";
+import { applyMove, legalDestinations } from "@/lib/chess/validateMove";
+import { speakIntent } from "@/lib/chess/speak";
+import { BoardKeys } from "@/lib/client/BoardKeys";
+import { MoveConfirmBar } from "@/lib/client/MoveConfirmBar";
+import { useConfirmMoves } from "@/lib/client/confirmMoves";
+import { useMoveAnnouncer } from "@/lib/client/useMoveAnnouncer";
 import { needsPromotion, type PromoPiece } from "@/lib/chess/promotion";
 import { PromotionPicker } from "@/lib/client/PromotionPicker";
 import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
@@ -28,7 +33,7 @@ import { Confetti } from "@/lib/client/Confetti";
 import { EvalBar } from "@/lib/client/EvalBar";
 import { ReplayBoard } from "@/lib/client/ReplayBoard";
 import { BOARD_BASE_OPTIONS, highlightStyles } from "@/lib/client/boardOptions";
-import { BoardThemePicker } from "@/lib/client/BoardThemeMenu";
+import { BoardThemePicker, ConfirmMovesToggle } from "@/lib/client/BoardThemeMenu";
 import { GameLayout } from "@/lib/client/GameLayout";
 import { MoveList } from "@/lib/client/MoveList";
 import { PlayerBar } from "@/lib/client/PlayerBar";
@@ -137,6 +142,16 @@ export default function Solo() {
   const [awaitRetry, setAwaitRetry] = useState(false); // "bli bedre" blunder pause
   const [reviewPgn, setReviewPgn] = useState<string | null>(null);
   const reducedMotion = useReducedMotion();
+  // E3: valgfri trekkbekreftelse. Mens et foreløpig trekk venter, viser brettet
+  // stillingen ETTER trekket, men partiet (chess.js) er urørt til Bekreft.
+  const [confirmMoves] = useConfirmMoves();
+  const [tentative, setTentative] = useState<{
+    from: string;
+    to: string;
+    promotion?: PromoPiece;
+    fen: string;
+    text: string;
+  } | null>(null);
   // "Nytt parti" mid-game asks first — only when there's an actual game in
   // progress to lose (start() below resets the board with no way back).
   const [confirmNewGame, setConfirmNewGame] = useState(false);
@@ -146,6 +161,21 @@ export default function Solo() {
   // Whose turn it is is derived from the rendered fen (not the mutable ref).
   const turn = fen.split(" ")[1] === "b" ? "b" : "w";
   const isMyTurn = !thinking && !outcome && !awaitRetry && turn === myLetter;
+
+  // E3: skjermleser — leser hvert trekk (mitt og datamaskinens, se
+  // useMoveAnnouncer) og partislutt i samme melding.
+  const { text: announcement, say } = useMoveAnnouncer({
+    fen,
+    label: (c) => (c === myLetter ? no.a11y.you : no.a11y.computer),
+    end:
+      outcome === "win"
+        ? no.a11y.gameOver(no.solo.youWon)
+        : outcome === "loss"
+          ? no.a11y.gameOver(no.solo.youLost)
+          : outcome === "draw"
+            ? no.a11y.gameOver(no.solo.draw)
+            : null,
+  });
 
   const refresh = () => {
     setFen(chess.current.fen());
@@ -255,8 +285,9 @@ export default function Solo() {
     to: string,
     promotion?: PromoPiece,
     skipWarn = false,
+    skipConfirm = false,
   ): boolean {
-    if (!isMyTurn) return false;
+    if (!isMyTurn || (tentative && !skipConfirm)) return false;
     // Needs a piece choice and none given yet → open the chooser, defer the move.
     if (!promotion && needsPromotion(chess.current.fen(), from, to)) {
       setPromo({ from, to });
@@ -275,6 +306,18 @@ export default function Solo() {
       return false;
     }
 
+    // E3: valgfri bekreftelse — vis trekket som foreløpig, spill det først ved Bekreft.
+    if (confirmMoves && !skipConfirm) {
+      const local = applyMove(fenBefore, { from, to, promotion: promotion ?? "q" });
+      const text = speakIntent(fenBefore, { from, to, promotion: promotion ?? "q" });
+      if (!local.ok || !text) return false;
+      setTentative({ from, to, promotion, fen: local.fen, text });
+      setSelected(null);
+      setLegal([]);
+      say(no.a11y.pendingAnnounce(text));
+      return false;
+    }
+
     let captured = false;
     try {
       const mv = chess.current.move({ from, to, promotion: promotion ?? "q" });
@@ -283,6 +326,7 @@ export default function Solo() {
     } catch {
       return false;
     }
+    setTentative(null);
     setLastMove({ from, to });
     setSelected(null);
     setLegal([]);
@@ -303,6 +347,14 @@ export default function Solo() {
     if (settle(playerColor)) return true;
     botMove(playerColor);
     return true;
+  }
+
+  function confirmTentative() {
+    if (!tentative) return;
+    const { from, to, promotion } = tentative;
+    setTentative(null);
+    // Advarselen (om noen) er allerede besvart før trekket ble foreløpig.
+    tryMove(from, to, promotion, true, true);
   }
 
   /** Take back the just-played (blundering) move and let the player try again. */
@@ -340,6 +392,7 @@ export default function Solo() {
     // Lock the bot's strength for this game to the player's current rating, so
     // the matchup is an even ~50% (it re-tunes from the post-game rating).
     botSkill.current = botSkillForPlayer(rating);
+    setTentative(null);
     setPhase("game");
     sound.play("start");
     if (color === "black") botMove(color); // computer (white) opens
@@ -349,6 +402,7 @@ export default function Solo() {
     if (thinking) return;
     const c = chess.current;
     if (c.history().length === 0) return;
+    setTentative(null);
     c.undo(); // computer's reply
     if (c.history().length > 0 && c.turn() !== myLetter) c.undo(); // my move
     setOutcome(null);
@@ -368,7 +422,7 @@ export default function Solo() {
     return tryMove(sourceSquare, targetSquare);
   }
   function onSquareClick({ square, piece }: SquareHandlerArgs) {
-    if (!isMyTurn) return;
+    if (!isMyTurn || tentative) return;
     if (selected && legal.includes(square)) {
       tryMove(selected, square);
       return;
@@ -479,6 +533,7 @@ export default function Solo() {
           <div className="sect">
             <span className="sect-title" id="solo-board-theme">{no.board.theme}</span>
             <BoardThemePicker labelledBy="solo-board-theme" />
+            <ConfirmMovesToggle />
           </div>
 
           <div className="btn-stack mt-5">
@@ -495,7 +550,17 @@ export default function Solo() {
   }
 
   // ---------- game ----------
-  const squareStyles = highlightStyles({ last: lastMove, selected, legal });
+  const shownFen = tentative ? tentative.fen : fen;
+  const squareStyles = highlightStyles({
+    last: tentative ? { from: tentative.from, to: tentative.to } : lastMove,
+    selected,
+    legal,
+  });
+  const cancelSelection = () => {
+    setSelected(null);
+    setLegal([]);
+    setTentative(null);
+  };
 
   const outText =
     outcome === "win" ? no.solo.youWon : outcome === "loss" ? no.solo.youLost : no.solo.draw;
@@ -540,19 +605,41 @@ export default function Solo() {
         />
       }
       board={
-        <Chessboard
-          options={{
-            ...BOARD_BASE_OPTIONS,
-            position: fen,
-            boardOrientation: playerColor,
-            allowDragging: isMyTurn,
-            showAnimations: !reducedMotion,
-            onPieceDrop: onDrop,
-            onSquareClick,
-            squareStyles,
-            id: "solo-board",
-          }}
-        />
+        <>
+          <Chessboard
+            options={{
+              ...BOARD_BASE_OPTIONS,
+              position: shownFen,
+              boardOrientation: playerColor,
+              allowDragging: isMyTurn && !tentative,
+              showAnimations: !reducedMotion,
+              onPieceDrop: onDrop,
+              onSquareClick,
+              squareStyles,
+              id: "solo-board",
+            }}
+          />
+          <BoardKeys
+            id="solo-board"
+            fen={shownFen}
+            orientation={playerColor}
+            selected={selected}
+            legal={legal}
+            onActivate={(square, piece) => onSquareClick({ square, piece })}
+            onCancel={cancelSelection}
+          />
+        </>
+      }
+      announcement={announcement}
+      confirm={
+        tentative && !outcome ? (
+          <MoveConfirmBar
+            boardId="solo-board"
+            text={tentative.text}
+            onConfirm={confirmTentative}
+            onCancel={cancelSelection}
+          />
+        ) : undefined
       }
       evalBar={coachCfg?.evalBar ? <EvalBar fen={fen} /> : undefined}
       extra={
