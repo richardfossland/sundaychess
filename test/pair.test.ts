@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { pair, pairKey, type PairablePlayer } from "@/lib/tournament/pair";
 import type { Rng } from "@/lib/codes";
+import { byeCounts } from "@/lib/tournament/score";
+import type { Game } from "@/lib/types";
 
 const constRng = (v: number): Rng => () => v;
 
@@ -230,5 +232,40 @@ describe("league adapter: real colour sequences + forfeits", () => {
     const out = pair({ players, round: 3, history, metBefore: new Set() });
     // nobody has a colour history → p1 (top of the order) keeps white
     expect(out.some((g) => g.whiteId === "p1")).toBe(true);
+  });
+});
+
+// B6: no second free point while someone has had none. Driven through the REAL
+// score.byeCounts (exactly what lib/server/league.ts feeds pair()), including
+// ½-point (status "draw") and 0-point (status "aborted") byes, which count as
+// byes too.
+describe("repeat bye never doubles up while others have none (B6)", () => {
+  it("5 players, 10 rounds: every player has had a bye before anyone gets a second", () => {
+    const ids = players(5);
+    const games: Game[] = [];
+    const met = new Set<string>();
+    const statuses: Game["status"][] = ["bye", "draw", "aborted"]; // full, ½, 0
+    for (let round = 1; round <= 10; round++) {
+      const result = pair({
+        players: ids.map((p) => ({ ...p, score: 0 })),
+        round,
+        metBefore: met,
+        byeCounts: byeCounts(games),
+        rng: constRng(0.3),
+      });
+      const bye = result.find((g) => g.blackId === null)!;
+      const before = byeCounts(games);
+      const minBefore = Math.min(...ids.map((p) => before.get(p.id) ?? 0));
+      // The receiver always holds the minimum count so far.
+      expect(before.get(bye.whiteId) ?? 0).toBe(minBefore);
+      games.push({
+        white_player_id: bye.whiteId,
+        black_player_id: null,
+        status: statuses[round % 3],
+      } as Game);
+      for (const g of result) if (g.blackId) met.add(pairKey(g.whiteId, g.blackId));
+    }
+    const after = byeCounts(games);
+    expect([...after.values()].sort()).toEqual([2, 2, 2, 2, 2]);
   });
 });

@@ -471,6 +471,9 @@ export default function Play() {
         )}
         </div>
       </div>
+      <Link href="/personvern" className="text-link text-link-quiet">
+        {no.privacy.link}
+      </Link>
     </main>
   );
 }

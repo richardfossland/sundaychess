@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { channelConfig } from "@/lib/supabase/channelRegistry";
 import { channels } from "@/lib/realtime";
-import { broadcastMessages, LEGACY_PUBLIC_COPY } from "@/lib/server/broadcast";
+import { broadcastMessages } from "@/lib/server/broadcast";
 
 // The seam between client topics, server sends and migration 0014: topic shapes
 // must be exactly the ones chess_rt_topic_ok accepts, or private subscribes fail
@@ -32,12 +32,9 @@ describe("private realtime channels", () => {
     expect(channelConfig("k").config.presence.key).toBe("k");
   });
 
-  it("server sends the private message first, plus the legacy public copy while on", () => {
+  it("server sends ONLY the private message (no public copy)", () => {
     const msgs = broadcastMessages(channels.lobby(ID), "roster", { a: 1 });
     expect(msgs[0]).toEqual({ topic: `chess:lobby:${ID}`, event: "roster", payload: { a: 1 }, private: true });
-    expect(msgs).toHaveLength(LEGACY_PUBLIC_COPY ? 2 : 1);
-    expect(LEGACY_PUBLIC_COPY).toBe(true);
-    expect(broadcastMessages("t", "e", {}, false)).toHaveLength(1);
-    expect(broadcastMessages("t", "e", {}, true)[1].private).toBe(false);
+    expect(msgs).toHaveLength(1);
   });
 });

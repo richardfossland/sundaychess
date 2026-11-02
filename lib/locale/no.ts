@@ -1356,6 +1356,48 @@ export const no = {
     failed: "Kunne ikke laste ned partiet.",
     resignation: "Oppgivelse",
   },
+  // Personvernside (/personvern) og lenker dit.
+  privacy: {
+    link: "Personvern",
+    errorNote: "Feilen er registrert anonymt, uten navn.",
+    title: "Personvern",
+    lede: "SundayChess er laget for skolen. Vi samler inn så lite som mulig, og ingenting som kan knyttes til et barn.",
+    collectedTitle: "Det vi samler inn",
+    collectedIntro:
+      "Når noe går galt (eleven blir kastet ut, brettet låser seg eller siden krasjer), sender nettleseren en kort, anonym melding til oss. Den inneholder:",
+    collected: [
+      "hva slags feil det var (for eksempel «mistet tilkoblingen»)",
+      "klokkeslett",
+      "tilfeldige id-er appen selv har laget for turneringen, spilleren og partiet (de sier ingenting om hvem eleven er)",
+      "en kort feilkode eller feilmelding, uten innhold fra eleven",
+      "om enheten er mobil eller datamaskin",
+      "hvilken versjon av appen som ble brukt",
+    ],
+    notCollectedTitle: "Det vi IKKE samler inn",
+    notCollected: [
+      "navn: verken elevens navn, klassen eller turneringens tittel",
+      "IP-adresser (de brukes bare et øyeblikk til å stoppe misbruk og lagres aldri)",
+      "hvilken nettleser eller enhet du har, utover «mobil» eller «datamaskin»",
+      "koder og PIN-er",
+      "hva eleven har skrevet",
+      "bruksstatistikk eller annen sporing",
+    ],
+    retentionTitle: "Hvor lenge vi beholder det",
+    retention:
+      "Feilmeldingene slettes automatisk etter 14 dager. Vi bruker dem bare til å finne og rette feil.",
+    cookiesTitle: "Informasjonskapsler og tredjeparter",
+    cookies:
+      "SundayChess bruker ingen informasjonskapsler til sporing, ingen annonser og ingen tredjepartstjenester for analyse. Dataene forlater aldri appens egen database.",
+    physicalTitle: "Fysiske turneringer",
+    physical: [
+      "Når du arrangerer en fysisk turnering, lagres deltakere, runder og resultater lokalt i nettleseren din (IndexedDB). Det forlater ikke enheten med mindre du selv velger å publisere.",
+      "Publiserer du turneringen, får deltakerne en offentlig side. Den viser som standard «Ola N.» (fornavn og forbokstav), uten klubb eller klasse. Arrangøren kan velge å vise fullt navn.",
+      "Publiserte data slettes automatisk 30 dager etter siste publisering.",
+    ],
+    contactTitle: "Spørsmål?",
+    contact: "Spør læreren eller arrangøren som bruker SundayChess, så tar de det videre.",
+    back: "Tilbake",
+  },
 } as const;
 
 export type Locale = typeof no;

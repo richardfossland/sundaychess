@@ -18,7 +18,7 @@ Hver hendelse er én rad i `public.client_events`:
 | `player_id`     | spillerens UUID (samme)                                                  |
 | `game_id`       | partiets UUID (samme)                                                    |
 | `kind`          | én av ti faste verdier (se under)                                       |
-| `detail`        | en flat samling koder/tall, maks 2 KB                                    |
+| `detail`        | en flat samling koder/tall, maks 2 KB. Alltid med `build`                |
 | `sid`           | tilfeldig token per sidelast — knytter hendelser fra samme fane sammen  |
 | `ua_class`      | bokstavelig talt strengen `mobile` eller `desktop`                       |
 
@@ -31,6 +31,11 @@ skal ikke tilskrives en elev som tilfeldigvis har en lagret økt på enheten.
 strenger (maks 200 tegn). Nøstede objekter og lister blir forkastet — både i
 nettleseren og på serveren — så det er ikke mulig å få med seg et helt
 tilstandsobjekt ved et uhell.
+
+`detail.build` er kort commit-SHA for bygget som sendte hendelsen
+(`NEXT_PUBLIC_BUILD_ID`, satt i `next.config.ts` fra `git rev-parse --short HEAD`;
+`dev` lokalt eller uten git). Den settes alltid av `report()`, ingen migrasjon.
+Den sier hvilken versjon en feil kom fra, ikke noe om brukeren.
 
 ### Hendelsestypene
 
@@ -91,6 +96,26 @@ Modalen viser først antall per hendelsestype — det er der mønsteret ligger: 
 `kick` med `reason=resume` spredt over mange spillere er noe annet. Deretter
 kommer de siste 200 hendelsene med klokkeslett, type, spillernavn (koblet på
 lokalt fra tavla — navnet ligger ikke i loggen) og de kompakte detaljene.
+
+## Feiloversikt for eier
+
+Kjør lokalt, med service-rolle-nøkkelen fra `.env.local` (nøkkelen skrives aldri
+ut, og det finnes ingen offentlig rute for dette):
+
+```
+node scripts/errors-report.mjs [--days 14] [--env sti/til/.env.local]
+```
+
+Skriptet leser `NEXT_PUBLIC_SUPABASE_URL` og `SUPABASE_SERVICE_ROLE_KEY` fra
+`--env` (standard `.env.local`) eller miljøet, henter `client_events` lesende, og
+skriver ut:
+
+1. antall hendelser per `kind` per dag,
+2. `js_error` gruppert på melding og øverste stack-ramme, med antall,
+   første/siste tidspunkt og hvilke `build`-er den sees i,
+3. antall hendelser per `build`.
+
+Personvernsiden for brukere ligger på `/personvern`.
 
 ## 👤 Eiersteg: kjør migrasjonen
 

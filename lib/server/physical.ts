@@ -129,8 +129,9 @@ export function fingerprintOf(snap: PublicSnapshot, round: number, board: number
 
 /** Host auth for a physical tournament. Mirrors authHost (lib/server/auth.ts):
  * a valid pair token for the CURRENT host code wins outright; otherwise a
- * blocked IP gets RateLimitedError, a wrong code is counted, and a correct code
- * re-checks the block with `fresh` (no oracle). Scope `phys:<id>`. */
+ * blocked IP gets RateLimitedError (the block is always read from the DB unless
+ * cached as blocked, so the right code is never 200 while wrong ones get 429),
+ * and a wrong code is counted. Scope `phys:<id>`. */
 export async function authPhysicalHost(
   id: unknown,
   hostCode: unknown,
@@ -150,7 +151,6 @@ export async function authPhysicalHost(
   if (token && (await verifyPhysicalToken(row.id, row.host_code, token))) return row;
   if (await (blocked ?? isCodeBlocked(scope, req))) throw new RateLimitedError();
   if (code && row.host_code === normalizeResumeCode(code)) {
-    if (await isCodeBlocked(scope, req, { fresh: true })) throw new RateLimitedError();
     return row;
   }
   if (await registerCodeFailure(scope, req)) throw new RateLimitedError();

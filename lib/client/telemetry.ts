@@ -40,6 +40,9 @@ export type TelemetryKind =
 const ENDPOINT = "/api/telemetry";
 const APP = "sundaychess";
 
+/** Kort commit-SHA fra bygget (next.config.ts). «dev» lokalt / uten git. */
+const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
+
 /** Kinds that are ABOUT a student's tournament session, and may therefore carry
  * the tournament/player ids.
  *
@@ -228,6 +231,8 @@ export function report(
     if (typeof window === "undefined") return; // server render — nothing to do
 
     const clamped = clampDetail(detail);
+    // Versjonen settes ALLTID av oss (overstyrer det kallstedet måtte ha sendt).
+    clamped.build = BUILD_ID.slice(0, 40);
     // Lift a game id out of the detail bag into its own column.
     const rawGameId = clamped.gameId;
     let gameId: string | undefined;
