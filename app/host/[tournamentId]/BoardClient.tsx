@@ -125,10 +125,9 @@ export function BoardClient({ tournamentId }: { tournamentId: string }) {
       ]}
     />
   );
-  // Lobby, liga og resultat passer i én skjermhøyde (100dvh, skalert skrift).
-  // Live-rutenettet og sluttspilltreet er egne, scrollbare flater og beholder
-  // den gamle `zoom`-oppførselen (presentasjon-flow).
-  const tvFit = presentasjon && status !== "playoff" && !(liveable && mode === "live");
+  // Alle tavlevisninger (lobby, liga, live-rutenett, sluttspilltre, resultat)
+  // passer i én skjermhøyde (100dvh, skalert skrift, ingen scroll).
+  const tvFit = presentasjon;
   const visTilkobling = presentasjon ? failures >= 3 : error;
 
   return (

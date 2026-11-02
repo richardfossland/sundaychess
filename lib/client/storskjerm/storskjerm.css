@@ -464,3 +464,148 @@
 .presentasjon-avslutt:focus-visible {
   opacity: 1;
 }
+
+/* ---- Sluttspilltre på storskjerm: én kolonne per runde, fyller flaten ---- */
+.presentasjon-fit .tv-bracket {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.presentasjon-fit .tv-bracket .host-head-tv {
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  gap: calc(var(--tv) * 1.6);
+  margin-bottom: calc(var(--tv) * 1.2);
+}
+.presentasjon-fit .tv-bracket .brandmark {
+  font-size: calc(var(--tv) * 1.8);
+}
+.presentasjon-fit .tv-bracket .host-head-tv .muted,
+.presentasjon-fit .tv-bracket .host-head-tv .badge {
+  font-size: calc(var(--tv) * 1.2);
+}
+.presentasjon-fit .tv-bracket .join-chip {
+  font-size: calc(var(--tv) * 1.1);
+}
+.presentasjon-fit .bracket-fit {
+  --bk: calc(var(--tv) * 1.15);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  gap: calc(var(--tv) * 1.6);
+  font-size: var(--bk);
+}
+.presentasjon-fit .bracket-fit[data-density="l"] { --bk: calc(var(--tv) * 1.9); }
+.presentasjon-fit .bracket-fit[data-density="m"] { --bk: calc(var(--tv) * 1.6); }
+.presentasjon-fit .bracket-fit[data-density="s"] { --bk: calc(var(--tv) * 1.2); }
+.presentasjon-fit .bracket-fit[data-density="xs"] { --bk: max(13px, calc(var(--tv) * 0.85)); }
+.presentasjon-fit .bracket-fit .bracket-col {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  gap: 0;
+  justify-content: flex-start;
+}
+.presentasjon-fit .bracket-fit .bracket-col h3 {
+  flex-shrink: 0;
+  font-size: max(13px, calc(var(--tv) * 0.95));
+  margin: 0 0 calc(var(--tv) * 0.5);
+}
+/* Like høye rader per kamp: runde N+1 får dobbelt så høye rader, så kampene
+   havner midt mellom kampene de springer ut av. */
+.presentasjon-fit .bracket-fit .bracket-match {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+.presentasjon-fit .bracket-fit .bracket-slot {
+  padding: calc(var(--bk) * 0.5) calc(var(--bk) * 0.8);
+  font-size: var(--bk);
+  line-height: 1.2;
+  background: var(--ink-2);
+  border: 1px solid var(--ink-line);
+  min-width: 0;
+}
+.presentasjon-fit .bracket-fit .bracket-slot:first-of-type {
+  border-radius: calc(var(--bk) * 0.7) calc(var(--bk) * 0.7) 0 0;
+}
+.presentasjon-fit .bracket-fit .bracket-slot:last-of-type {
+  border-radius: 0 0 calc(var(--bk) * 0.7) calc(var(--bk) * 0.7);
+  border-top: 0;
+}
+.presentasjon-fit .bracket-fit .bracket-slot.win {
+  background: color-mix(in srgb, var(--gold) 16%, var(--ink-2));
+}
+.presentasjon-fit .bracket-fit .bracket-slot > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.presentasjon-fit .bracket-fit .bracket-slot .seed {
+  font-size: max(13px, calc(var(--bk) * 0.9));
+  width: auto;
+  margin-right: 0.2em;
+}
+
+/* ---- Live-rutenett på storskjerm: kolonner/rader velges i LiveGamesView,
+   hvert brett er største kvadrat som får plass i cellen. ---- */
+.presentasjon-fit .live-tv {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--tv) * 0.6);
+}
+.live-tv-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  gap: calc(var(--tv) * 1.2);
+}
+.live-tv-card {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--tv) * 0.8);
+  container-type: size;
+}
+.live-tv-card .live-head {
+  flex-shrink: 0;
+  font-size: clamp(13px, 4.2cqw, calc(var(--tv) * 1.7));
+  margin-bottom: calc(var(--tv) * 0.5);
+}
+.live-tv-board-area {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  container-type: size;
+}
+.live-tv-board {
+  width: min(100cqw, 100cqh);
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.live-tv-more {
+  flex-shrink: 0;
+  margin: 0;
+  text-align: center;
+  font-size: calc(var(--tv) * 1.3);
+  font-weight: 700;
+  color: var(--txt-dim);
+}
