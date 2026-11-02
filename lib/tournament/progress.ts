@@ -46,22 +46,39 @@ function totalRounds(state: BoardState): number {
   return bracketRounds(size);
 }
 
-/** Is `playerId` out of the running for the CURRENT playoff round — i.e. not
- * present in any of its games? Mirrors WaitingRoom's own (component-local)
- * `isOut`, duplicated rather than imported since that helper lives in a
- * client component and this stays a plain, framework-free module. Always
- * false outside a playoff — league byes/waits are never "eliminated" here. */
+/** Is `playerId` out of the running for the CURRENT playoff round? Either not
+ * present in any of its games (the bracket has moved on without them), or
+ * they LOST their decided game in it — a knockout loss is final, so between
+ * rounds the loser must not be told to wait for the next one. A draw is not a
+ * loss here: knockout draws are settled by a separate rule. Always false
+ * outside a playoff — league byes/waits are never "eliminated". */
 function eliminatedFromRound(
   state: BoardState,
   playerId: string,
   round: Round | undefined,
 ): boolean {
   if (state.tournament.status !== "playoff" || !round) return false;
-  return !state.games.some(
+  const mine = state.games.find(
     (g) =>
       g.roundId === round.id &&
       (g.whitePlayerId === playerId || g.blackPlayerId === playerId),
   );
+  if (!mine) return true;
+  return (
+    (mine.status === "white_win" && mine.blackPlayerId === playerId) ||
+    (mine.status === "black_win" && mine.whitePlayerId === playerId)
+  );
+}
+
+/** The CURRENT playoff round's elimination check, for the waiting room. */
+export function eliminatedFromCurrentPlayoff(
+  state: BoardState,
+  playerId: string,
+): boolean {
+  const round = state.rounds.find(
+    (r) => r.phase === "playoff" && r.number === state.tournament.currentRound,
+  );
+  return eliminatedFromRound(state, playerId, round);
 }
 
 /** What (if anything) the waiting room should tell `me` about the current
