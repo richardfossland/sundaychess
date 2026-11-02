@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { offerSoloWhileWaiting, waitingProgress } from "@/lib/tournament/progress";
+import {
+  eliminatedFromCurrentPlayoff,
+  offerSoloWhileWaiting,
+  waitingProgress,
+} from "@/lib/tournament/progress";
 import type { BoardState, PublicGame, PublicPlayer } from "@/lib/dto";
 import type { TournamentConfig, TournamentStatus } from "@/lib/types";
 
@@ -204,6 +208,47 @@ describe("waitingProgress", () => {
       games: [game({ id: "g3", roundId: "r2", whitePlayerId: "c", blackPlayerId: "d", status: "live" })],
     });
     expect(waitingProgress(s, { playerId: ME })).toBeNull();
+  });
+
+  // Prod 11-02: a cup loser between rounds (next round not created yet) was
+  // told "Venter på runde 2 · Arrangøren starter neste runde snart".
+  describe("playoff — between rounds, after the current round is decided", () => {
+    const between = (status: PublicGame["status"], white = ME, black = "opp") =>
+      state({
+        status: "playoff",
+        currentRound: 1,
+        config: { format: "cup" },
+        players: [player(ME), player("opp"), player("c"), player("d")],
+        rounds: [
+          { id: "r1", number: 1, phase: "playoff", status: "live", startedAt: null, extendedMs: 0 },
+        ],
+        games: [
+          game({ id: "g1", roundId: "r1", whitePlayerId: white, blackPlayerId: black, status }),
+          game({ id: "g2", roundId: "r1", whitePlayerId: "c", blackPlayerId: "d", status: "white_win" }),
+        ],
+      });
+
+    it("lost as white → eliminated: no progress, solo offered", () => {
+      const s = between("black_win");
+      expect(eliminatedFromCurrentPlayoff(s, ME)).toBe(true);
+      expect(waitingProgress(s, { playerId: ME })).toBeNull();
+      expect(offerSoloWhileWaiting(s, ME)).toBe(true);
+    });
+
+    it("lost as black → eliminated", () => {
+      expect(eliminatedFromCurrentPlayoff(between("white_win", "opp", ME), ME)).toBe(true);
+    });
+
+    it("won → still in, waits for the next round", () => {
+      const s = between("white_win");
+      expect(eliminatedFromCurrentPlayoff(s, ME)).toBe(false);
+      expect(waitingProgress(s, { playerId: ME })).not.toBeNull();
+    });
+
+    it("draw or still live → not eliminated (a knockout draw is settled elsewhere)", () => {
+      expect(eliminatedFromCurrentPlayoff(between("draw"), ME)).toBe(false);
+      expect(eliminatedFromCurrentPlayoff(between("live"), ME)).toBe(false);
+    });
   });
 
   it("finished — nothing to report (the final-results card owns that screen)", () => {

@@ -14,7 +14,11 @@ import { PredictPanel } from "@/lib/client/PredictPanel";
 import { BracketBoard } from "@/lib/client/BracketBoard";
 import { variantStartFen } from "@/lib/chess/variants";
 import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
-import { offerSoloWhileWaiting, waitingProgress } from "@/lib/tournament/progress";
+import {
+  eliminatedFromCurrentPlayoff,
+  offerSoloWhileWaiting,
+  waitingProgress,
+} from "@/lib/tournament/progress";
 import { RoundTimer } from "@/lib/client/RoundTimer";
 import { resumeTroubleFromStatus } from "@/lib/client/resumeCopy";
 import { no } from "@/lib/locale/no";
@@ -88,22 +92,12 @@ function myGame(state: BoardState, playerId: string): PublicGame | null {
 
 /** Is the player OUT of the tournament (vs merely waiting for the next round)?
  *  - status "left": marked absent / walkover, or removed from the lobby.
- *  - playoff: eliminated = not present in any game of the CURRENT playoff round
- *    (once the round has advanced past them). */
+ *  - playoff: eliminated from the CURRENT playoff round — not in it, or lost
+ *    their decided game in it (see `eliminatedFromCurrentPlayoff`). */
 function isOut(state: BoardState, playerId: string): boolean {
   const meP = state.players.find((p) => p.id === playerId);
   if (meP?.status === "left") return true;
-  if (state.tournament.status !== "playoff") return false;
-  const cur = state.rounds.find(
-    (r) => r.phase === "playoff" && r.number === state.tournament.currentRound,
-  );
-  if (!cur) return false;
-  const inRound = state.games.some(
-    (g) =>
-      g.roundId === cur.id &&
-      (g.whitePlayerId === playerId || g.blackPlayerId === playerId),
-  );
-  return !inRound;
+  return eliminatedFromCurrentPlayoff(state, playerId);
 }
 
 export function WaitingRoom({
