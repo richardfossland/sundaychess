@@ -62,7 +62,9 @@ export function DiagnosticsModal({
       cardStyle={{ width: "100%", maxWidth: 720, maxHeight: "84vh", overflow: "auto" }}
     >
       <h3 id={titleId} className="modal-title"><Icon name="diag" size={20} /> {no.diag.title}</h3>
-      <p className="muted fs-xs">{no.diag.hint}</p>
+      <div className="tags">
+        <span className="tag"><Icon name="lock" size={14} /> {no.diag.hint}</span>
+      </div>
       <hr className="thread" />
 
       {error ? (

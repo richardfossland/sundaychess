@@ -86,7 +86,7 @@ export function PlayersPanel({ t, apply }: { t: PhysicalTournament; apply: (b: P
                     <input type="checkbox" checked={halfMissed} onChange={(e) => setHalfMissed(e.target.checked)} />
                     <span>{p.lateMissedHalf(t.rounds.length)}</span>
                   </label>
-                  <span className="muted fs-xs">{p.lateEntryNote(t.rounds.length + 1)}</span>
+                  <div className="tags"><span className="tag">{p.lateEntryNote(t.rounds.length + 1)}</span></div>
                 </>
               )}
             </>
@@ -153,7 +153,6 @@ function ByeEditor({ t, pl, apply }: { t: PhysicalTournament; pl: PhysicalPlayer
   if (rounds.length === 0) return <span className="muted">{p.byeNoRounds}</span>;
   return (
     <div className="stack gap-1">
-      <span className="muted fs-xs">{p.byeDialogHelp}</span>
       {rounds.map((r) => {
         const cur = t.byeRequests.find((b) => b.playerId === pl.id && b.round === r)?.byeType ?? null;
         const set = (type: "half" | "zero" | null) =>

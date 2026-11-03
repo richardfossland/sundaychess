@@ -270,8 +270,8 @@ export function LobbyView({
                   {hostCodeCopied ? no.common.copied : no.common.copy}
                 </button>
               </div>
-              <span className="host-code-warn">
-                <Icon name="warn" size={16} /> {no.host.hostCodeWarning}
+              <span className="tag tag-warn">
+                <Icon name="warn" size={14} /> {no.host.hostCodeWarning}
               </span>
             </div>
           ) : (
@@ -318,7 +318,9 @@ export function LobbyView({
             <p className="faint fs-xs">Minst 2 spillere må bli med.</p>
           )}
           {!presentasjon && unclaimed > 0 && (
-            <p className="faint fs-xs" data-testid="unclaimed-hint">{no.continueDigital.hostUnclaimedCount(unclaimed)}</p>
+            <div className="tags" data-testid="unclaimed-hint">
+              <span className="tag"><Icon name="users" size={14} /> {no.continueDigital.hostUnclaimedCount(unclaimed)}</span>
+            </div>
           )}
           {!presentasjon && roundsHint && (
             <p className="faint fs-xs"><Icon name="warn" size={16} /> {roundsHint}</p>

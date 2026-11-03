@@ -3281,17 +3281,6 @@ input[type="radio"] {
 .round-actions .btn-primary {
   flex: 1 1 200px;
 }
-.round-help {
-  display: grid;
-  gap: var(--sp-2);
-  margin-top: var(--sp-3);
-  font-size: var(--fs-xs);
-  color: var(--txt-dim);
-  line-height: 1.45;
-}
-.round-help p {
-  margin: 0;
-}
 .game-row {
   width: 100%;
   min-height: var(--tap);
@@ -3520,10 +3509,6 @@ input[type="radio"] {
 .bracket-note {
   max-width: 480px;
 }
-.round-note {
-  font-size: var(--fs-xs);
-  margin: var(--sp-2) 0 0;
-}
 .host-code-reveal {
   display: flex;
   flex-direction: column;
@@ -3534,10 +3519,6 @@ input[type="radio"] {
   border: 0;
   cursor: pointer;
   min-height: var(--tap);
-}
-.host-code-warn {
-  font-size: var(--fs-xs);
-  color: var(--warn);
 }
 .join-card {
   align-items: center;

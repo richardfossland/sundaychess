@@ -194,7 +194,7 @@ export function Storskjerm({ id }: { id: string }) {
             <div className="ss-labels ss-row-stand" aria-hidden="true">
               <span title={no.physical.rankTitle}>{no.physical.rank}</span>
               <span>{no.physical.name}</span>
-              <span className="ss-pts" title={L.bigPointsHelp}>{no.physical.points}</span>
+              <span className="ss-pts">{no.physical.points}</span>
             </div>
             <div className="ss-rows">
               {(standPages[standPage] ?? []).map((r) => (

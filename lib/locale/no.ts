@@ -19,7 +19,7 @@ export const no = {
     error: "Noe gikk galt",
     retry: "Prøv igjen",
     notFoundTitle: "Fant ikke siden",
-    notFoundBody: "Lenken kan være utløpt eller feil. Sjekk PIN-en, eller gå tilbake.",
+    notFoundBody: "Sjekk lenken eller PIN-en.",
     home: "Til forsiden",
     // Fixed-corner toggles (SoundToggle/FullscreenToggle) — same two labels on
     // every screen that renders them, so they live here rather than per-page.
@@ -29,7 +29,7 @@ export const no = {
     exitFullscreen: "Avslutt fullskjerm",
     offlineRetrying: "Ingen kontakt med serveren – prøver på nytt …",
     offlineSince: (t: string) => `Ingen kontakt med serveren siden ${t} – prøver på nytt …`,
-    errorRetryBody: "Prøv igjen – framgangen din er trygt lagret på serveren.",
+    errorRetryBody: "Prøv igjen.",
     errorReload: "Last inn siden på nytt.",
     toLogin: "Til innlogging",
     themeToLight: "Bytt til lyst tema",
@@ -54,11 +54,10 @@ export const no = {
   pwa: {
     description: "Sjakkturnering for skole og klubb – liga, sluttspill, lag og lynsjakk.",
     offlineTitle: "Du er frakoblet",
-    offlineBody:
-      "Denne siden er ikke lagret på enheten ennå. Koble til nettet og prøv igjen. Fysisk turneringsmodus (under Arrangør) fungerer uten nett etter at du har åpnet den én gang med nett.",
+    offlineBody: "Siden er ikke lagret på enheten. Koble til nettet og prøv igjen.",
     offlineRetry: "Prøv igjen",
     updateAvailable: "Ny versjon – last inn på nytt",
-    updateHint: "Ny versjon er klar. Last inn når ingen runde pågår.",
+    updateHint: "Last inn når ingen runde pågår",
   },
 
   board: {
@@ -146,15 +145,10 @@ export const no = {
     showFewerGames: "Vis færre",
     playRematch: "Spill omkamp",
     advanceBySeed: "Send høyest rangert videre",
-    drawChoiceHint:
-      "Uavgjort i runden — spill omkamp, eller send den høyest rangerte videre.",
     rematchStarted: "Omkamp startet — spilles nå.",
     forceResolve: "Avslutt gjenstående partier",
-    forceResolveHelp:
-      "Partiene som fortsatt pågår settes til remis (½–½), så du kan gå videre til neste runde.",
     forceResolveConfirm:
       "Avslutte alle partier som fortsatt pågår? De settes til remis (½–½), og det kan ikke angres.",
-    nextRoundHelp: "Alle partier må være ferdige før neste runde.",
     inProgress: "Pågår",
     finished: "Ferdig",
     bye: "Frirunde",
@@ -183,14 +177,14 @@ export const no = {
     absentSuffix: "er borte",
     showCodes: "Spillerkoder",
     codesTitle: "Spillerkoder",
-    codesHint: "Les koden til en spiller som har mistet sin.",
     // CodesModal: masked-by-default roster (UX-3).
-    codesWarning: "Koder gir tilgang til elevens økt — ikke vis på storskjerm",
+    codesWarning: "Ikke på storskjerm",
+    gamesLive: (n: number) => `${n} pågår`,
     tapToReveal: "Trykk for å vise",
     tapToHide: "Trykk for å skjule",
     // LobbyView: the host code is never shown by default (UX-2).
     revealHostCode: "Vis arrangørkode",
-    hostCodeWarning: "Ikke vis på storskjerm",
+    hostCodeWarning: "Ikke på storskjerm",
     join: "Bli med",
     more: "Mer",
     liveToggle: "Live",
@@ -240,10 +234,6 @@ export const no = {
     timeUpSuggestion: "Tiden er ute – vil du avslutte runden?",
     endRound: "Avslutt runden",
     crownChampion: "Kår mester",
-    // Shared between league and bracket "can't advance yet" hints — kept as
-    // one key so the two boards never drift apart. LeagueView still has its
-    // own literal copy of this sentence pending a sibling copy-pass PR.
-    awaitAllGames: "Alle partier må være ferdige før neste runde.",
 
     // Finished-screen print / save-as-PDF (window.print()).
     printResults: "Skriv ut / lagre som PDF",
@@ -272,14 +262,14 @@ export const no = {
     // without play (walkover / fraværende / overstyrt) — a fair-play readout,
     // not a comment on ordinary byes or time-forced draws.
     resultSourceLegend: (n: number) =>
-      `${n} ${n === 1 ? "parti" : "partier"} avgjort uten spill (walkover/fravær/overstyring).`,
+      `${n} avgjort uten spill`,
   },
 
   // Arrangørens avlesning av klient-telemetrien (T5). Se docs/TELEMETRY.md.
   diag: {
     open: "Diagnostikk",
     title: "Diagnostikk",
-    hint: "Hva som faktisk skjedde med elevene i denne turneringen. Ingen navn, ingen IP-adresser – bare hendelsestyper og koder. Slettes automatisk etter 14 dager.",
+    hint: "Anonymt · slettes etter 14 d",
     empty: "Ingen hendelser registrert. Det er et godt tegn.",
     unavailable:
       "Telemetri-tabellen er ikke opprettet ennå – kjør migrasjon 0012 i Supabase-dashbordet.",
@@ -309,7 +299,6 @@ export const no = {
   // Players/joiners are untouched — they still use codes.
   hostAuth: {
     loginTitle: "Logg inn som arrangør",
-    loginLede: "Logg inn med Sunday-kontoen din for å samle turneringene dine.",
     emailLabel: "E-post",
     emailPlaceholder: "deg@skolen.no",
     sendLink: "Send innloggingslenke",
@@ -322,7 +311,6 @@ export const no = {
     or: "eller",
     // Dashboard
     dashTitle: "Mine turneringer",
-    dashLede: "Turneringene du har laget mens du var innlogget.",
     signedInAs: "Innlogget som",
     signOut: "Logg ut",
     createNew: "Ny turnering",
@@ -840,7 +828,7 @@ export const no = {
       exportCsv: "Eksporter CSV (tabell)",
       exportGamesCsv: "Eksporter CSV (partier)",
       exportFailed: "Kunne ikke lage filen.",
-      openedInTab: "Filen er åpnet i en ny fane. Bruk «Del» eller «Arkiver» der.",
+      openedInTab: "Åpnet i ny fane – bruk «Del»",
       trfNote: "TRF16 inneholder bare fullførte runder. Norske tegn er skrevet om (æ → ae, ø → oe, å → aa).",
       csvRound: "Runde",
       csvResults: { "1-0": "1-0", "0-1": "0-1", "½-½": "½-½", "+-": "1-0 (walkover)", "-+": "0-1 (walkover)", "=": "0-0 (begge uteble)", "0-0": "0-0 (spilt)" },
@@ -900,15 +888,16 @@ export const no = {
     walkoverBlack: "Walkover: svart vinner",
     doubleForfeit: "Begge uteble (0–0)",
     clearResult: "Fjern resultat",
+    keyboardLabel: "Hurtigtaster",
     keyboardHint: "Tastatur: ↑↓ velger brett · 1 = 1–0 · 0 = 0–1 · = eller H = ½–½ · + / − = walkover · Backspace fjerner · Ctrl/⌘+Z angrer",
-    draftLockNote: "Utkast – sjekk parringene og publiser. Etter publisering er parringene låst.",
-    publishedLockNote: "Runden er publisert. Parringene er låst.",
+    draftLockNote: "Utkast · låses ved publisering",
+    publishedLockNote: "Parringene er låst",
     editPairing: "Endre parring",
     editPairingTitle: "Endre parring?",
     editPairingConfirm: "Runden er publisert. Når du bytter spillere nullstilles resultatene på brettene som berøres.",
     editPairingStart: "Endre",
-    editPairingHelp: "Trykk på en spiller og så på en annen for å bytte plass. Trykk Ferdig når du er fornøyd.",
-    editPairingPicked: (name: string) => `Valgt: ${name} – trykk på spilleren som skal bytte plass`,
+    editPairingHelp: "Trykk to spillere for å bytte",
+    editPairingPicked: (name: string) => `${name} – trykk spilleren å bytte med`,
     editPairingDone: "Ferdig",
     completeBlocked: (n: number) => `Fullfør runde (${n === 1 ? "1 mangler" : `${n} mangler`})`,
     saveSaving: "Lagrer…",
@@ -935,13 +924,12 @@ export const no = {
     // Spillere
     lateEntryTitle: "Meld på spiller",
     lateEntryOff: "Sen påmelding er ikke slått på for denne turneringen.",
-    lateEntryNote: (r: number) => `Spilleren settes opp fra runde ${r}.`,
+    lateEntryNote: (r: number) => `Fra runde ${r}`,
     lateMissedHalf: (n: number) => `Gi ½ poeng for ${n === 1 ? "runden" : `de ${n} rundene`} som er spilt (ellers 0)`,
     lateBadge: (r: number, half: boolean) => `Meldt på fra runde ${r}${half ? " (½ for tapte runder)" : ""}`,
     playerGroupHeader: "Klubb",
     byeButton: "Bye",
     byeDialogTitle: (n: string) => `Ønsket bye – ${n}`,
-    byeDialogHelp: "Velg ½ eller 0 poeng for hver framtidig runde spilleren ikke kan spille.",
     byeNone: "Ingen",
     byeOptHalf: "½",
     byeOptZero: "0",
@@ -963,7 +951,7 @@ export const no = {
     pointsTitle: "Poeng",
     startNoTitle: "Startnummer",
     crosstableTitle: "Krysstabell",
-    crosstableLegend: "Motstanderens nr, farge (H hvit, S svart) og poeng. + = walkover · ½ = remis/frirunde · – = ikke med",
+    crosstableLegend: ["H hvit", "S svart", "+ walkover", "½ remis/frirunde", "– ikke med"],
     crosstableEmpty: "Krysstabellen vises når første runde er publisert.",
     colourW: "H",
     colourB: "S",
@@ -1081,14 +1069,14 @@ export const no = {
     namesNote: (full: boolean) => (full ? "Siden viser fulle navn og klubb/klasse." : "Siden viser kun fornavn og initial."),
     // Én skriver om gangen
     lockedTitle: "Turneringen er åpen i en annen fane",
-    lockedBody: "Bare én fane kan endre turneringen om gangen, så ingenting overskrives. Denne fanen er skrivebeskyttet.",
+    lockedBody: "Skrivebeskyttet her",
     lockTakeOver: "Ta over",
     lockTakeOverConfirm: "Ta over redigeringen? Den andre fanen blir skrivebeskyttet.",
     lockLost: "En annen fane tok over redigeringen. Denne fanen er nå skrivebeskyttet.",
     saveConflict: "Turneringen er endret et annet sted (annen fane). Last siden på nytt før du fortsetter.",
     // Eksportpåminnelse
-    exportReminder: (rounds: number) => `Du har fullført ${rounds} ${rounds === 1 ? "runde" : "runder"} siden sist du eksporterte. Lagre en sikkerhetskopi: Fil → Eksporter.`,
-    exportReminderIos: "Denne nettleseren (iPhone/iPad) kan slette lokale data uten varsel. Eksporter turneringsfila nå og ofte: Fil → Eksporter.",
+    exportReminder: (rounds: number) => `${rounds} ${rounds === 1 ? "runde" : "runder"} uten sikkerhetskopi · Fil → Eksporter`,
+    exportReminderIos: "Nettleseren kan slette lokale data · Fil → Eksporter",
     exportReminderDismiss: "Skjul",
     // Åpne på ny enhet
     openTitle: "Åpne publisert turnering",
@@ -1122,7 +1110,7 @@ export const no = {
     pubRound: (n: number, total: number) => `Runde ${n} av ${total}`,
     pubStandings: "Stilling",
     pubPairings: "Parringer",
-    pubNoRounds: "Første runde er ikke lagt ut ennå. Siden oppdateres av seg selv.",
+    pubNoRounds: "Første runde er ikke lagt ut ennå.",
     pubBye: "Frirunde",
     pubBoard: "Brett",
     pubWhite: "Hvit",
@@ -1141,8 +1129,8 @@ export const no = {
     repPickResult: "Hva ble resultatet?",
     repSend: "Send melding",
     repSending: "Sender …",
-    repRetrying: "Ingen nett akkurat nå. Prøver igjen av seg selv – ikke lukk siden.",
-    repThanks: "Takk! Meldingen er sendt til arrangøren, som bekrefter resultatet.",
+    repRetrying: "Ingen nett – prøver igjen. Ikke lukk siden.",
+    repThanks: "Sendt!",
     repChange: "Meld på nytt",
     repConfirmLine: (r: string) => `Du melder: ${r}`,
     repPairingChanged: "Parringen på dette brettet er endret. Last siden på nytt og sjekk navnene.",
@@ -1224,7 +1212,6 @@ export const no = {
     bigNoRound: "Venter på første runde",
     bigColBoard: "Brett",
     bigColResult: "Resultat",
-    bigPointsHelp: "Poeng: 1 for seier, ½ for remis",
     bigNoStandings: "Tabellen vises etter første fullførte runde",
     bigNoStorage: "Denne nettleseren lagrer ikke turneringen. Storskjermen må åpnes fra samme nettleser som arrangørsiden.",
     bigFullscreen: "Fullskjerm",
@@ -1264,7 +1251,7 @@ export const no = {
     importAndContinue: "Åpne og fortsett digitalt",
     created: "Digital turnering opprettet.",
     openHost: "Åpne arrangørvisning",
-    continuedBanner: "Denne turneringen fortsetter digitalt. Den fysiske kopien er skrivebeskyttet.",
+    continuedBanner: "Fortsetter digitalt · skrivebeskyttet",
     continuedLink: "Gå til den digitale turneringen",
     continuedPin: (pin: string) => `PIN ${pin}`,
     errors: {
@@ -1300,14 +1287,14 @@ export const no = {
     hostClaimed: "valgt",
     hostResetClaim: "Nullstill navnevalg",
     hostResetConfirm: (n: string) => `Frigjøre navnet «${n}»? Eleven som har valgt det mister tilgangen, og navnet kan velges på nytt.`,
-    hostUnclaimedCount: (n: number) => `${n} navn er ikke valgt ennå. De som ikke møter kan settes som fraværende når runden er i gang.`,
+    hostUnclaimedCount: (n: number) => `${n} ikke valgt`,
   },
 
   // E3: tilgjengelighet (skjermleser, tastatur, trekkbekreftelse, høy kontrast)
   a11y: {
     themeContrast: "Høy kontrast",
     confirmMoves: "Bekreft trekk",
-    confirmMovesHint: "Trekket vises først som foreløpig, og spilles først når du trykker Bekreft.",
+    confirmMovesHint: "Trykk Bekreft for å spille trekket",
     confirm: "Bekreft",
     undo: "Angre",
     pendingLabel: "Foreløpig trekk",
@@ -1352,7 +1339,6 @@ export const no = {
   // Personvernside (/personvern) og lenker dit.
   privacy: {
     link: "Personvern",
-    errorNote: "Feilen er registrert uten navn.",
     title: "Personvern",
     lede: "SundayChess er laget for skolen. Vi lagrer så lite som mulig, og her står det helt konkret hva, hvor og hvor lenge.",
     whoTitle: "Hvem bestemmer over dataene?",

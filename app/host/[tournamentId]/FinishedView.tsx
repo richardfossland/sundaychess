@@ -305,7 +305,9 @@ export function FinishedView({ state }: { state: BoardState }) {
               />
             </div>
             {nonPlayCount > 0 && (
-              <p className="tiebreak-note">{no.host.resultSourceLegend(nonPlayCount)}</p>
+              <div className="tags tags-center">
+                <span className="tag">{no.host.resultSourceLegend(nonPlayCount)}</span>
+              </div>
             )}
           </div>
         </div>

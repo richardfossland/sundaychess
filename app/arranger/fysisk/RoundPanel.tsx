@@ -4,6 +4,7 @@ import { BoardReports, ReportsPanel } from "./cloud/ReportsPanel";
 import { Fragment, useRef, useState } from "react";
 import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { Icon } from "@/lib/client/Icon";
+import { InfoTip } from "@/lib/client/InfoTip";
 import { no } from "@/lib/locale/no";
 import { totalRounds } from "@/lib/physical/reducer";
 import { nextMissingBoard, resultForKey, roundProgress } from "@/lib/physical/roundView";
@@ -130,9 +131,11 @@ export function RoundPanel({ t, apply, run }: { t: PhysicalTournament; apply: Ap
             </div>
           )}
 
-          {isCurrent && round.status === "draft" && <div className="banner banner-warn text-left">{p.draftLockNote}</div>}
+          {isCurrent && round.status === "draft" && (
+            <div className="tags"><span className="tag tag-warn"><Icon name="lock" size={14} /> {p.draftLockNote}</span></div>
+          )}
           {isCurrent && round.status === "published" && !editing && (
-            <span className="muted fs-xs"><Icon name="lock" size={13} /> {p.publishedLockNote}</span>
+            <div className="tags"><span className="tag"><Icon name="lock" size={14} /> {p.publishedLockNote}</span></div>
           )}
           {editing && <div className="banner banner-warn text-left" role="status">{picked ? p.editPairingPicked(names(picked.side === "white" ? round.pairings.find((g) => g.board === picked.board)!.white : round.pairings.find((g) => g.board === picked.board)!.black)) : p.editPairingHelp}</div>}
 
@@ -164,7 +167,9 @@ export function RoundPanel({ t, apply, run }: { t: PhysicalTournament; apply: Ap
               </Fragment>
             ))}
           </div>
-          {canEditResults && <span className="pr-hint">{p.keyboardHint}</span>}
+          {canEditResults && (
+            <span className="pr-hint"><InfoTip icon="keyboard" label={p.keyboardLabel} align="start">{p.keyboardHint}</InfoTip></span>
+          )}
 
           {running && isCurrent && (
             <div className="row flex-wrap">

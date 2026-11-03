@@ -46,16 +46,14 @@ export function StandingsPanel({ t }: { t: PhysicalTournament }) {
         </table>
       </div>
       <div className="px-legend">
-        <p className="m-0 muted fs-xs">{p.tableHelpIntro}</p>
-        {tbs.length > 0 && (
-          <div className="tags">
-            {tbs.map((k) => (
-              <span key={k} className="tag">
-                {no.tiebreaks[k].label} <InfoTip align="start">{no.tiebreaks[k].help}</InfoTip>
-              </span>
-            ))}
-          </div>
-        )}
+        <div className="tags">
+          <InfoTip align="start">{p.tableHelpIntro}</InfoTip>
+          {tbs.map((k) => (
+            <span key={k} className="tag">
+              {no.tiebreaks[k].label} <InfoTip align="start">{no.tiebreaks[k].help}</InfoTip>
+            </span>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -105,7 +103,9 @@ export function CrosstablePanel({ t }: { t: PhysicalTournament }) {
           </tbody>
         </table>
       </div>
-      <p className="muted fs-xs m-0">{p.crosstableLegend}</p>
+      <div className="tags">
+        {p.crosstableLegend.map((l) => <span key={l} className="tag">{l}</span>)}
+      </div>
     </section>
   );
 }

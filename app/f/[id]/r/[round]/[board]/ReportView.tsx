@@ -160,7 +160,7 @@ export function ReportView({ id, round, board }: { id: string; round: number; bo
 
         {phase === "sent" && (
           <div className="stack gap-3">
-            <div className="banner banner-ok" role="status" data-testid="report-sent">{L.repThanks}</div>
+            <div className="banner banner-ok" role="status" data-testid="report-sent"><Icon name="check" size={16} /> {L.repThanks}</div>
             {!alreadyDone && rd?.status !== "completed" && (
               <button type="button" className="btn btn-ghost" onClick={again}>{L.repChange}</button>
             )}
