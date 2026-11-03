@@ -57,6 +57,12 @@ import {
   Star,
   Flame,
   Palette,
+  Info,
+  QrCode,
+  Monitor,
+  WifiOff,
+  Keyboard,
+  Users,
   type LucideProps,
 } from "lucide-react";
 
@@ -127,6 +133,12 @@ const icons = {
   star: Star,
   flame: Flame,
   palette: Palette,
+  info: Info,
+  qr: QrCode,
+  monitor: Monitor,
+  offline: WifiOff,
+  keyboard: Keyboard,
+  users: Users,
 } as const;
 
 export type IconName = keyof typeof icons;

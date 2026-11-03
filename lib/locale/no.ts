@@ -6,6 +6,7 @@ export const no = {
   tagline: "Sjakkturnering for hele gruppa",
 
   common: {
+    moreInfo: "Mer informasjon",
     next: "Neste",
     back: "Tilbake",
     create: "Opprett",
@@ -39,17 +40,15 @@ export const no = {
 
   landing: {
     teacher: "Jeg arrangerer",
-    teacherSub: "Lag en turnering og vis den på storskjermen",
+    teacherSub: "Lag turnering på storskjerm",
     student: "Jeg spiller",
     studentSub: "Bli med med en PIN",
     versus: "Spill mot hverandre",
-    // "Slik funker det" 3-step strip + reassurance line on the landing page.
+    // "Slik funker det": three icon tiles on the landing page.
     howTitle: "Slik funker det",
-    step1: "Lag turnering",
-    step2: "Elevene skanner QR eller taster PIN",
-    step3: "Følg storskjermen",
-    reassurance:
-      "Gratis · ingen elevkontoer · funker på Chromebook og mobil · ~20 min",
+    step1: "Lag",
+    step2: "Bli med",
+    step3: "Følg",
   },
 
   pwa: {
@@ -107,10 +106,10 @@ export const no = {
     createTitle: "Ny turnering",
     quickStart: "Rask start",
     customize: "Tilpass turnering",
-    // Én linje under hvert valg på /arranger: hva det betyr for en ny arrangør.
-    quickStartSub: "Lager turneringen med en gang, med vanlige valg (liga, 5 runder)",
-    customizeSub: "Velg selv format, runder, tid og lag, steg for steg",
-    enterSub: "Gå tilbake til en turnering du har laget, med arrangørkoden",
+    // Kort meta-linje under hvert valg på /arranger.
+    quickStartSub: "Liga · 5 runder",
+    customizeSub: "Format · tid · lag",
+    enterSub: "Med arrangørkode",
     // Auto-title for "Rask start" — becomes "Turnering DD.MM" (see
     // app/arranger/page.tsx). Kept as a plain prefix so the date formatting
     // (which isn't language content) stays out of the locale file.
@@ -312,9 +311,6 @@ export const no = {
   // Sunday Account host login + "mine turneringer"-oversikt (arrangør only).
   // Players/joiners are untouched — they still use codes.
   hostAuth: {
-    // Discreet entry point from the landing page to the optional Sunday
-    // Account host dashboard — anonymous arrangører never need it.
-    landingLink: "Arrangør med Sunday-konto →",
     loginTitle: "Logg inn som arrangør",
     loginLede: "Logg inn med Sunday-kontoen din for å samle turneringene dine.",
     emailLabel: "E-post",
@@ -732,7 +728,7 @@ export const no = {
   /** Fysisk turneringsmodus (lokal-først, uten nett). */
   physical: {
     entryTitle: "Fysisk turnering",
-    entrySub: "Brett og brikker i klasserommet, uten nett. Du fører resultatene selv",
+    entrySub: "Brett og brikker · uten nett",
     pageTitle: "Fysiske turneringer",
     pageIntro: "Lagres i denne nettleseren og virker uten nett. Ingenting sendes til en server.",
     newTournament: "Ny fysisk turnering",
