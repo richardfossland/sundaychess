@@ -7,6 +7,7 @@ export const no = {
 
   common: {
     moreInfo: "Mer informasjon",
+    aboutX: (x: string) => `Om ${x}`,
     next: "Neste",
     back: "Tilbake",
     create: "Opprett",

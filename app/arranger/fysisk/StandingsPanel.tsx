@@ -50,7 +50,7 @@ export function StandingsPanel({ t }: { t: PhysicalTournament }) {
           <InfoTip align="start">{p.tableHelpIntro}</InfoTip>
           {tbs.map((k) => (
             <span key={k} className="tag">
-              {no.tiebreaks[k].label} <InfoTip align="start">{no.tiebreaks[k].help}</InfoTip>
+              {no.tiebreaks[k].label} <InfoTip align="start" label={no.common.aboutX(no.tiebreaks[k].label)}>{no.tiebreaks[k].help}</InfoTip>
             </span>
           ))}
         </div>

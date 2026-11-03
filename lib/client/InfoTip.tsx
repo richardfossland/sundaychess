@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Icon, type IconName } from "@/lib/client/Icon";
 import { no } from "@/lib/locale/no";
 
@@ -21,8 +21,24 @@ export function InfoTip({
   align?: "start" | "center" | "end";
 }) {
   const [open, setOpen] = useState(false);
+  const [shift, setShift] = useState(0);
   const wrap = useRef<HTMLSpanElement>(null);
+  const pop = useRef<HTMLSpanElement>(null);
   const id = useId();
+
+  // Keep the popover inside the viewport on narrow screens: measure after it
+  // opens and nudge it sideways by however much it sticks out.
+  useLayoutEffect(() => {
+    if (!open || !pop.current) {
+      setShift(0);
+      return;
+    }
+    const gutter = 12;
+    const r = pop.current.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    if (r.right > vw - gutter) setShift(vw - gutter - r.right);
+    else if (r.left < gutter) setShift(gutter - r.left);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -53,7 +69,13 @@ export function InfoTip({
         <Icon name={icon} size={16} />
       </button>
       {open && (
-        <span id={id} role="note" className={`infotip-pop infotip-${align}`}>
+        <span
+          id={id}
+          ref={pop}
+          role="note"
+          className={`infotip-pop infotip-${align}`}
+          style={shift ? { translate: `${shift}px 0` } : undefined}
+        >
           {children}
         </span>
       )}

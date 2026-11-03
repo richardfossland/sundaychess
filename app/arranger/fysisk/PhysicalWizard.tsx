@@ -191,8 +191,8 @@ export function PhysicalWizard() {
                   </span>
                 </label>
                 <div className="field">
-                  <span className="wz-q" id="bye-label">
-                    {t.byePointsLabel} <InfoTip align="start">{t.byeHelp}</InfoTip>
+                  <span className="wz-q">
+                    <span id="bye-label">{t.byePointsLabel}</span> <InfoTip align="start">{t.byeHelp}</InfoTip>
                   </span>
                   <Segmented
                     aria-labelledby="bye-label"
@@ -233,7 +233,7 @@ export function PhysicalWizard() {
                   <li key={k} className="rule">
                     <span className="rule-no" aria-hidden="true">{i + 1}</span>
                     <span className="rule-body">
-                      <b>{no.tiebreaks[k].label} <InfoTip align="start">{no.tiebreaks[k].help}</InfoTip></b>
+                      <b>{no.tiebreaks[k].label} <InfoTip align="start" label={no.common.aboutX(no.tiebreaks[k].label)}>{no.tiebreaks[k].help}</InfoTip></b>
                     </span>
                     <span className="rule-actions">
                       <button type="button" className="icon-btn" aria-label={t.ruleAria(no.tiebreaks[k].label, t.moveUp)} disabled={i === 0} onClick={() => moveTb(i, -1)}>
@@ -257,7 +257,7 @@ export function PhysicalWizard() {
                   {unusedTb.map((k) => (
                     <li key={k} className="rule rule-add">
                       <span className="rule-body">
-                        <b>{no.tiebreaks[k].label} <InfoTip align="start">{no.tiebreaks[k].help}</InfoTip></b>
+                        <b>{no.tiebreaks[k].label} <InfoTip align="start" label={no.common.aboutX(no.tiebreaks[k].label)}>{no.tiebreaks[k].help}</InfoTip></b>
                       </span>
                       <button type="button" className="btn btn-sm" aria-label={t.ruleAria(no.tiebreaks[k].label, t.addRule)} onClick={() => setTiebreaks((x) => [...x, k])}>
                         <Icon name="more" size={16} /> {t.addRule}
