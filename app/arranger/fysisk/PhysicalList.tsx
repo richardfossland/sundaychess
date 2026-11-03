@@ -47,10 +47,10 @@ export function PhysicalList() {
         <PageHeader backHref="/arranger" />
         <div className="card-head">
           <p className="eyebrow">{t.pageTitle}</p>
-          <p className="muted fs-xs">{t.pageIntro}</p>
+          <div className="tags tags-center"><span className="tag"><Icon name="lock" size={12} /> {t.pageIntro}</span></div>
         </div>
         {kind === "memory" && <div className="banner banner-error">{t.storageMemoryWarn}</div>}
-        {kind === "localStorage" && <div className="muted text-center fs-xs">{t.storageLocalWarn}</div>}
+        {kind === "localStorage" && <div className="tags tags-center"><span className="tag tag-warn"><Icon name="warn" size={12} /> {t.storageLocalWarn}</span></div>}
 
         <NavLink href="/arranger/fysisk/ny" className="btn btn-primary btn-block btn-lg">
           <Icon name="more" size={16} /> {t.newTournament}

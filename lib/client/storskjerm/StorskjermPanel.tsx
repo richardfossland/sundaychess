@@ -88,7 +88,6 @@ export function StorskjermPanel({ onClose }: { onClose: () => void }) {
   const alleKort = {
     fullskjerm: (
       <section key="full" className="storskjerm-kort">
-        <h4>{tekst.fullskjerm.tittel}</h4>
         <p className="muted">{tekst.fullskjerm.hjelp}</p>
         <button type="button" className="btn btn-primary" onClick={fullskjermHer}>
           {tekst.fullskjerm.knapp}
@@ -97,7 +96,6 @@ export function StorskjermPanel({ onClose }: { onClose: () => void }) {
     ),
     eget: (
       <section key="eget" className="storskjerm-kort">
-        <h4>{tekst.eget.tittel}</h4>
         <p className="muted">{tekst.eget.hjelp}</p>
         <button type="button" className="btn btn-primary" onClick={eget}>
           {tekst.eget.knapp}
@@ -121,11 +119,14 @@ export function StorskjermPanel({ onClose }: { onClose: () => void }) {
           {tekst.chromecast.tittel}
           {enhet.chromium && <span className="storskjerm-merke">{tekst.anbefalt}</span>}
         </h4>
-        <ol>
-          <li>{tekst.chromecast.steg1}</li>
-          <li>{tekst.chromecast.steg2}</li>
-          <li>{tekst.chromecast.steg3}</li>
-        </ol>
+        <details>
+          <summary>{tekst.visHvordan}</summary>
+          <ol>
+            <li>{tekst.chromecast.steg1}</li>
+            <li>{tekst.chromecast.steg2}</li>
+            <li>{tekst.chromecast.steg3}</li>
+          </ol>
+        </details>
         {!enhet.chromium && <p className="muted">{tekst.chromecast.ikkeChromium}</p>}
       </section>
     ),
@@ -138,19 +139,22 @@ export function StorskjermPanel({ onClose }: { onClose: () => void }) {
           {tekst.apple.tittel}
           {enhet.apple && <span className="storskjerm-merke">{tekst.anbefalt}</span>}
         </h4>
-        {!enhet.ios && (
-          <ol>
-            <li>{tekst.apple.mac1}</li>
-            <li>{tekst.apple.mac2}</li>
-            <li>{tekst.apple.mac3}</li>
-          </ol>
-        )}
-        {(enhet.ios || !enhet.apple) && (
-          <ol>
-            <li>{tekst.apple.ios1}</li>
-            <li>{tekst.apple.ios2}</li>
-          </ol>
-        )}
+        <details>
+          <summary>{tekst.visHvordan}</summary>
+          {!enhet.ios && (
+            <ol>
+              <li>{tekst.apple.mac1}</li>
+              <li>{tekst.apple.mac2}</li>
+              <li>{tekst.apple.mac3}</li>
+            </ol>
+          )}
+          {(enhet.ios || !enhet.apple) && (
+            <ol>
+              <li>{tekst.apple.ios1}</li>
+              <li>{tekst.apple.ios2}</li>
+            </ol>
+          )}
+        </details>
       </section>
     ),
   };
@@ -173,7 +177,6 @@ export function StorskjermPanel({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
       >
         <h3 id={titleId}>{tekst.tittel}</h3>
-        <p className="muted">{tekst.intro}</p>
         {rekkefolge}
         <button type="button" className="btn btn-ghost" onClick={onClose}>
           {tekst.lukk}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { Icon } from "@/lib/client/Icon";
 import { Modal } from "@/lib/client/Modal";
 import { api, ApiError } from "@/lib/client/api";
 import { identity } from "@/lib/client/identity";
@@ -61,7 +62,7 @@ export function ContinueDigital({ t }: { t: PhysicalTournament }) {
             ) : (
               <>
                 <p>{L.intro}</p>
-                <p className="muted fs-xs">{L.onlineNote}</p>
+                <div className="tags"><span className="tag"><Icon name="offline" size={12} /> {L.onlineNote}</span></div>
               </>
             )}
             {error && <div className="banner banner-error" role="alert">{error}</div>}

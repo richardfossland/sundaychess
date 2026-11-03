@@ -133,12 +133,15 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
-            <span className="wz-help">{t.titleHint}</span>
           </div>
           {/* Private note-to-self — optional, ≤280 chars, NEVER shown to
               students (see lib/dto.ts's toBoardTournament). */}
           <div className="field">
-            <label htmlFor="wn" className="wz-q">{t.notesLabel}</label>
+            <label htmlFor="wn" className="wz-q">
+              {t.notesLabel}{" "}
+              <Icon name="lock" size={14} />
+              <span className="sr-only">({t.notesPrivate})</span>
+            </label>
             <textarea
               id="wn"
               className="input wz-textarea"
@@ -190,9 +193,9 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
                     hero
                   />
                 </div>
-                <span className="wz-help">
-                  {t.roundsHint}. {t.roundsRuleOfThumb}.
-                </span>
+                <div className="tags tags-center">
+                  <span className="tag">{t.roundsRecommended}</span>
+                </div>
               </div>
 
               <div className="field">
@@ -221,7 +224,6 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
                       { value: 16, label: "16" },
                     ]}
                   />
-                  <span className="wz-help">{t.playoffSizeHint}</span>
                 </div>
               )}
             </>
@@ -244,19 +246,16 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
                 </label>
               ))}
             </div>
-            <span className="wz-help">{t.variantHint}</span>
           </div>
 
           <div className="field">
             <span className="wz-q" id="timer-label">{t.timerStep}</span>
             <Segmented aria-labelledby="timer-label" value={timerMin} onChange={setTimerMin} options={timerOptions} />
-            <span className="wz-help">{t.timerHint}</span>
           </div>
 
           <div className="field">
             <span className="wz-q" id="clock-label">{t.clockStep}</span>
             <Segmented aria-labelledby="clock-label" value={clockMin} onChange={setClockMin} options={clockOptions} />
-            <span className="wz-help">{t.clockHint}</span>
           </div>
         </div>
       )}
@@ -281,7 +280,6 @@ export function Wizard({ onExit }: { onExit?: () => void }) {
                 { value: "on", label: <><Icon name="thumbsUp" size={16} /> {t.reactionsOn}</> },
               ]}
             />
-            <span className="wz-help">{t.reactionsHint}</span>
           </div>
         </div>
       )}

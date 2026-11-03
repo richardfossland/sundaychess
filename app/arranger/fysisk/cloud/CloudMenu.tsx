@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { no } from "@/lib/locale/no";
+import { Icon } from "@/lib/client/Icon";
+import { InfoTip } from "@/lib/client/InfoTip";
 import { replay } from "@/lib/physical/reducer";
 import { publicUrl } from "@/lib/physical/cloudMeta";
 import { DEFAULT_PUBLIC_NAMES, type PublicNames } from "@/lib/physical/cloudTypes";
@@ -110,18 +112,21 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
         <div className="card stack pm-pop pm-pop-wide">
           {!published && (
             <>
-              <p className="muted fs-xs m-0">{L.publishIntro}</p>
+              <div className="tags">
+                <span className="tag"><Icon name="live" size={12} /> {L.tagLive}</span>
+                <span className="tag"><Icon name="qr" size={12} /> {L.tagQr}</span>
+                <span className="tag"><Icon name="offline" size={12} /> {L.tagOffline}</span>
+              </div>
               <fieldset className="stack gap-2 cm-fieldset" data-testid="public-names">
-                <legend className="cm-legend">{L.namesTitle}</legend>
+                <legend className="cm-legend">{L.namesTitle} <InfoTip align="start">{L.namesHelp}</InfoTip></legend>
                 <label className="opt cm-opt">
                   <input type="radio" name="public-names" checked={names === "initials"} onChange={() => setNames("initials")} />
-                  <span>{L.namesInitials}</span>
+                  <span>{L.namesInitials} <span className="badge badge-live">{no.physical.systemRecommended}</span></span>
                 </label>
                 <label className="opt cm-opt">
                   <input type="radio" name="public-names" checked={names === "full"} onChange={() => setNames("full")} />
                   <span>{L.namesFull}</span>
                 </label>
-                <span className="muted fs-xs">{L.namesHelp}</span>
               </fieldset>
               <button type="button" className="btn btn-primary" disabled={busy} onClick={publish}>
                 {busy ? L.publishing : L.publish}
@@ -130,7 +135,6 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
           )}
           {published && (
             <>
-              <p className="muted fs-xs m-0">{L.publishedNote}</p>
               {st.status === "conflict" && (
                 <div className="banner banner-error stack gap-2" role="alert">
                   <b>{L.conflictTitle}</b>
@@ -152,7 +156,7 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
                 <div className="stack gap-1">
                   <span className="muted fs-xs">{L.codeLabel}</span>
                   <b data-testid="cloud-host-code" className="cm-code">{meta.hostCode}</b>
-                  <span className="muted fs-xs">{L.codeHelp}</span>
+                  <span className="tag tag-warn"><Icon name="lock" size={12} /> {L.codeHelp}</span>
                 </div>
               )}
               <button type="button" className="btn btn-sm btn-ghost pm-item" disabled={busy} onClick={unpublish}>{L.unpublish}</button>

@@ -6,6 +6,7 @@ import { crosstableByRound } from "@/lib/physical/roundView";
 import type { PhysicalTournament } from "@/lib/physical/schema";
 import { standings } from "@/lib/physical/selectors";
 import { Icon } from "@/lib/client/Icon";
+import { InfoTip } from "@/lib/client/InfoTip";
 
 const p = no.physical;
 const fmt = (n: number | null) => (n === null ? "–" : Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, ""));
@@ -45,16 +46,15 @@ export function StandingsPanel({ t }: { t: PhysicalTournament }) {
         </table>
       </div>
       <div className="px-legend">
-        <p className="m-0 muted fs-xs">{p.tableHelpIntro}{tbs.length > 0 ? ` ${p.tiebreakIntro}` : ""}</p>
+        <p className="m-0 muted fs-xs">{p.tableHelpIntro}</p>
         {tbs.length > 0 && (
-          <dl className="px-explain">
+          <div className="tags">
             {tbs.map((k) => (
-              <div key={k}>
-                <dt>{no.tiebreaks[k].label}</dt>
-                <dd>{no.tiebreaks[k].help}</dd>
-              </div>
+              <span key={k} className="tag">
+                {no.tiebreaks[k].label} <InfoTip align="start">{no.tiebreaks[k].help}</InfoTip>
+              </span>
             ))}
-          </dl>
+          </div>
         )}
       </div>
     </section>
