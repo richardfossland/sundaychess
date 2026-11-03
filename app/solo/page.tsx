@@ -43,6 +43,8 @@ import { sound } from "@/lib/client/sound";
 import { no } from "@/lib/locale/no";
 import { SoloReview } from "./SoloReview";
 import { Lessons } from "./Lessons";
+import { LESSONS } from "@/lib/coach/lessons";
+import { InfoTip } from "@/lib/client/InfoTip";
 import { Icon } from "@/lib/client/Icon";
 import { PageHeader } from "@/lib/client/PageHeader";
 import { Segmented } from "@/lib/client/Segmented";
@@ -449,7 +451,6 @@ export default function Solo() {
           <PageHeader backHref="/" />
           <div className="card-head">
             <p className="eyebrow">{no.solo.title}</p>
-            <p className="faint fs-xs">{no.solo.subtitle}</p>
           </div>
 
           {/* play with or without a coach */}
@@ -501,8 +502,8 @@ export default function Solo() {
               />
               {level === "adaptive" && (
                 <p className="faint fs-xs">
-                  {no.solo.adaptiveHint}
-                  {` · ${no.solo.yourLevel}: ${rating.rating}`}
+                  {no.solo.yourLevel}: {rating.rating}{" "}
+                  <InfoTip align="start">{no.solo.adaptiveHint}</InfoTip>
                 </p>
               )}
             </div>
@@ -542,6 +543,7 @@ export default function Solo() {
             </button>
             <button className="btn btn-ghost btn-block" onClick={() => setShowLessons(true)}>
               <Icon name="lessons" size={16} /> {no.coach.lessons}
+              <span className="badge">{LESSONS.length}</span>
             </button>
           </div>
         </div>
@@ -567,8 +569,6 @@ export default function Solo() {
 
   const outText =
     outcome === "win" ? no.solo.youWon : outcome === "loss" ? no.solo.youLost : no.solo.draw;
-  const outSub =
-    outcome === "win" ? no.solo.wonSub : outcome === "loss" ? no.solo.lostSub : no.solo.drawSub;
 
   const oppColor: Color = playerColor === "white" ? "black" : "white";
   const colorName = (c: Color) => (c === "white" ? no.solo.white : no.solo.black);
@@ -728,7 +728,6 @@ export default function Solo() {
                 <Icon name={outcome === "win" ? "party" : outcome === "draw" ? "draw" : "bot"} size={84} strokeWidth={1.4} />
               </div>
               <h1 className="result-title">{outText}</h1>
-              <p className="muted">{outSub}</p>
               {level === "adaptive" && ratingDelta !== null && (
                 <p className="faint fs-xs">
                   {ratingDelta > 0

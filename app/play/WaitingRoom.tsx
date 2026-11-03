@@ -345,7 +345,6 @@ export function WaitingRoom({
       headline = no.player.waitingFinish;
     } else if (progress && progress.live === 0) {
       headline = no.player.waitingRound(progress.round + 1);
-      sub = no.player.waitingRoundHint;
     } else {
       headline = no.player.waitingNext;
       sub = progress?.label ?? null;
@@ -457,10 +456,14 @@ export function WaitingRoom({
             screen (and, mid-game, the presence heartbeat). */}
         {showSoloWhileWaiting && (
           <div className="card stack pl-aside">
-            <p className="eyebrow">{no.player.soloWhileWaitingTitle}</p>
-            <p className="pl-aside-body">{no.player.soloWhileWaitingBody}</p>
-            <a href="/solo" target="_blank" rel="noopener" className="btn btn-ghost btn-block">
-              {no.player.soloWhileWaitingCta}
+            <a
+              href="/solo"
+              target="_blank"
+              rel="noopener"
+              className="btn btn-ghost btn-block"
+              aria-label={no.player.soloWhileWaitingAria}
+            >
+              <Icon name="bot" size={16} /> {no.player.soloWhileWaitingCta}
             </a>
           </div>
         )}

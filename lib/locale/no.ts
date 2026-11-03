@@ -71,17 +71,14 @@ export const no = {
     whiteName: "Hvit",
     blackName: "Svart",
     title: "Spill mot hverandre",
-    subtitle: "To spillere – uten en hel turnering",
     sameScreen: "Samme skjerm",
-    sameScreenSub: "Del én enhet, bytt på å trekke",
     online: "Hver sin enhet",
-    onlineSub: "Del en kode, spill fra hver sin telefon",
     create: "Lag et parti",
     join: "Bli med med kode",
     yourName: "Navnet ditt",
     namePlaceholder: "F.eks. Ada",
     opponentCode: "Kode fra motspilleren",
-    shareCode: "Del denne koden med motspilleren",
+    shareCode: "Del koden",
     waiting: "Venter på at motspilleren blir med …",
     whiteTurn: "Hvit sin tur",
     blackTurn: "Svart sin tur",
@@ -451,7 +448,7 @@ export const no = {
     title: "Velg brikke",
     // Esc used to default to dronning; it now cancels the trekket (see
     // PromotionPicker), so the hint must say that instead.
-    hint: "Trykk en brikke · Esc = avbryt",
+    hint: "Esc = avbryt",
     q: "Dronning",
     r: "Tårn",
     b: "Løper",
@@ -470,7 +467,7 @@ export const no = {
   },
 
   puzzle: {
-    title: "Sjakknøtt mens du venter",
+    title: "Sjakknøtt",
     prompt: "Sett sjakkmatt i ett trekk",
     toMoveWhite: "Hvit sin tur",
     toMoveBlack: "Svart sin tur",
@@ -489,7 +486,7 @@ export const no = {
 
   predict: {
     title: "Tipp resultatene",
-    hint: "Hvem vinner de andre partiene? 1 poeng per riktig svar.",
+    hint: "1 poeng per riktig",
     white: "Hvit",
     draw: "Uavgjort",
     black: "Svart",
@@ -504,9 +501,8 @@ export const no = {
     join: "Bli med",
     nameTitle: "Hva heter du?",
     namePlaceholder: "Visningsnavn",
-    nameHint: "Bruk gjerne bare fornavn",
     resumeTitle: "Koden din",
-    resumeHint: "Skriv den ned! Du trenger den hvis fanen lukkes.",
+    resumeHint: "Skriv den ned!",
     resumeAck: "Jeg har skrevet ned koden",
     haveCode: "Har du en kode?",
     resumePlaceholder: "f.eks. KOLE-7F",
@@ -517,13 +513,10 @@ export const no = {
     // (replaces "Venter på neste motstander" + "Venter på at arrangøren starter
     // runde n" saying the same thing twice).
     waitingRound: (n: number) => `Venter på runde ${n}`,
-    waitingRoundHint: "Arrangøren starter neste runde snart.",
     waitingFinish: "Venter på at arrangøren avslutter turneringen",
     pointsOf: (total: number, score: number) => `av ${total} · ${score} poeng`,
-    waitingBye:
-      "Du har frirunde denne runden og får 1 poeng gratis. Slapp av til neste runde.",
-    outOfTournament:
-      "Du er ute av turneringen — godt spilt! Si fra til arrangøren hvis dette er feil, så kan arrangøren ta deg inn igjen.",
+    waitingBye: "Frirunde +1",
+    outOfTournament: "Du er ute – godt spilt!",
     tournamentFinished: "Turneringen er ferdig",
     showMyCode: "Vis koden min",
     // Shared classroom device: hand the iPad to the next student without
@@ -541,7 +534,7 @@ export const no = {
     notifyBody: "Motstanderen din har trukket – bli med igjen for å spille.",
     boardLabel: "Sjakkbrett",
     otherTabTitle: "Du spiller i en annen fane",
-    otherTabBody: "Spillet er åpent i en annen fane på denne enheten. For å unngå trøbbel spiller bare én fane om gangen.",
+    otherTabBody: "Spillet er åpent i en annen fane.",
     otherTabResume: "Spill her",
     youAre: "Du spiller",
     white: "hvit",
@@ -584,12 +577,11 @@ export const no = {
     resumeBusy: "Mange kobler til samtidig. Vent noen sekunder og prøv igjen.",
     resumeServer: "Serveren svarer ikke akkurat nå. Økten din er trygg – prøv igjen.",
     tournamentGone: "Turneringen finnes ikke lenger",
-    tournamentGoneBody:
-      "Arrangøren har avsluttet eller slettet den. Logg ut, så kan du bli med i en ny.",
-    // Kept to ONE line at 390px width (the turn banner reserves exactly one
-    // line's height — see .turn-slot in globals.css) — the full explanation
-    // moves to a `title` attribute (premoveSetTitle) instead of wrapping here.
-    premoveSet: "Forhåndstrekk klart – trykk tomt felt for å avbryte",
+    tournamentGoneBody: "Arrangøren har avsluttet den.",
+    // Kept to ONE line (the turn banner reserves exactly one line's height —
+    // see .turn-slot in globals.css) — the full explanation lives in a `title`
+    // attribute (premoveSetTitle).
+    premoveSet: "Forhåndstrekk klart",
     premoveSetTitle:
       "Forhåndstrekket spilles automatisk når det blir din tur. Trykk et tomt felt på brettet for å avbryte det.",
     premoveCancelled: "Forhåndstrekket ble forkastet",
@@ -598,8 +590,7 @@ export const no = {
     // Removed from the lobby (usually the ghost-sweep after a locked phone).
     // Never silence: say it happened, and give them the one button that fixes it.
     removedLobbyTitle: "Fjernet fra lobbyen",
-    removedLobbyBody:
-      "Du ble borte en stund, så arrangøren tok deg ut av lobbyen. Trykk under, så er du med igjen.",
+    removedLobbyBody: "Du ble borte en stund.",
     rejoinLobby: "Bli med igjen",
     rejoinFailed: "Klarte ikke å bli med igjen. Prøv en gang til.",
     // Removed after the tournament started — the pairings are set, so a silent
@@ -607,8 +598,7 @@ export const no = {
     // screen that just dead-ends in `alreadyStarted` below: the teacher is the
     // one who can actually undo this (app/api/game/reinstate/route.ts).
     removedTitle: "Du ble fjernet fra turneringen",
-    removedBody:
-      "Arrangøren har tatt deg ut av denne turneringen. Si fra til arrangøren, så kan arrangøren ta deg inn igjen.",
+    removedBody: "Si fra til arrangøren.",
     // The button stays: it's the right move for joining a DIFFERENT, still-open
     // tournament — just not a way back into this one.
     rejoinNew: "Bli med i en annen turnering",
@@ -626,9 +616,8 @@ export const no = {
     // Waiting-room card for a player who's eliminated (playoff), has a bye, or
     // finished their game early while others are still playing — links to
     // /solo in a NEW tab, so opening it never loses the tournament screen.
-    soloWhileWaitingTitle: "Venter du?",
-    soloWhileWaitingBody: "Spill mot datamaskinen mens du venter.",
-    soloWhileWaitingCta: "♟️ Spill solo (åpner i ny fane)",
+    soloWhileWaitingCta: "Spill solo",
+    soloWhileWaitingAria: "Spill solo (åpner i ny fane)",
     drawReason: {
       agreement: "Remis ved avtale",
       threefold: "Remis – trekkgjentakelse",
@@ -642,7 +631,6 @@ export const no = {
   solo: {
     cta: "Solo-spill",
     title: "Solo-spill",
-    subtitle: "Øv deg når som helst – ingen PIN nødvendig",
     chooseColor: "Velg farge",
     white: "Hvit",
     black: "Svart",
@@ -665,11 +653,8 @@ export const no = {
     youWon: "Du vant!",
     youLost: "Datamaskinen vant",
     draw: "Remis",
-    wonSub: "Sterkt spilt mot maskinen!",
-    lostSub: "Prøv igjen – du klarer det!",
-    drawSub: "Jevnt parti.",
     adaptive: "Tilpasset",
-    adaptiveHint: "Maskinen justerer seg til ditt nivå",
+    adaptiveHint: "Maskinen justerer seg til ditt nivå etter hvert parti.",
     yourLevel: "Ditt nivå",
     levelUp: "Nivået ditt steg!",
     levelDown: "Nivået ditt sank litt",
@@ -679,14 +664,14 @@ export const no = {
   coach: {
     modeNormal: "♟ Vanlig spill",
     modeCoach: "Med coach",
-    lessons: "Lær sjakk – 18 oppgaver",
+    lessons: "Lær sjakk",
     level: "Hva vil du?",
     laer: "Lære å spille",
     ovning: "Bli bedre",
     mester: "Bli verdensmester",
-    laerSub: "Hjelp til å unngå tabber underveis",
-    ovningSub: "Tilbakemelding + angre og prøv igjen",
-    mesterSub: "Sterkeste motstander + full analyse etterpå",
+    laerSub: "Med hjelp",
+    ovningSub: "Tilbakemelding",
+    mesterSub: "Sterkest + analyse",
     warn: "Pass på – dette trekket ser ut til å tape materiell. Vil du flytte likevel?",
     moveAnyway: "Flytt likevel",
     tagGood: "Godt trekk!",
@@ -696,7 +681,6 @@ export const no = {
     keep: "Spill videre",
     review: "Trenerens gjennomgang",
     lessonsTitle: "Lær sjakk",
-    lessonsIntro: "18 små oppgaver – fra hvordan brikkene går til matt i ett trekk.",
     hint: "Hint",
     lessonDone: "Riktig!",
     lessonRetry: "Ikke helt – les hintet og prøv igjen.",
@@ -1308,11 +1292,9 @@ export const no = {
     } as Record<string, string>,
     // Navnevalg
     pickTitle: "Velg navnet ditt",
-    pickHint: "Trykk på ditt eget navn. Hvert navn kan bare velges én gang.",
     pickNotListed: "Navnet mitt står ikke her",
     pickTaken: "Dette navnet er allerede tatt. Be arrangøren om hjelp hvis det er ditt.",
     pickBack: "Tilbake",
-    pickNoFresh: "Bare navnene i lista kan bli med i denne turneringen.",
     // Arrangør
     hostUnclaimed: "ikke valgt",
     hostClaimed: "valgt",

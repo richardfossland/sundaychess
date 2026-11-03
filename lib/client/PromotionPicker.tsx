@@ -76,7 +76,7 @@ export function PromotionPicker({
           </button>
         ))}
       </div>
-      <p className="promo-hint">{no.promo.hint}</p>
+      <p className="promo-hint"><kbd className="tag">{no.promo.hint}</kbd></p>
     </Modal>
   );
 }

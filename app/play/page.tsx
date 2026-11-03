@@ -358,9 +358,6 @@ export default function Play() {
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && name.trim() && doJoin()}
               />
-              <span className="muted fs-xs">
-                {no.player.nameHint}
-              </span>
             </div>
             {error && (
               <div className="banner banner-error" role="alert">
@@ -380,7 +377,6 @@ export default function Play() {
         {screen === "pick" && (
           <>
             <p className="eyebrow">{no.continueDigital.pickTitle}</p>
-            <p className="muted fs-xs">{no.continueDigital.pickHint}</p>
             {error && (
               <div className="banner banner-error" role="alert">
                 {error}
@@ -400,12 +396,10 @@ export default function Play() {
                 </button>
               ))}
             </div>
-            {canFresh ? (
+            {canFresh && (
               <button className="btn btn-ghost btn-block" onClick={() => setScreen("name")}>
                 {no.continueDigital.pickNotListed}
               </button>
-            ) : (
-              <p className="faint fs-xs">{no.continueDigital.pickNoFresh}</p>
             )}
           </>
         )}
