@@ -6,7 +6,7 @@ export const no = {
   tagline: "Sjakkturnering for hele gruppa",
 
   common: {
-    moreInfo: "Mer informasjon",
+    moreInfo: "Vis forklaring",
     aboutX: (x: string) => `Om ${x}`,
     next: "Neste",
     back: "Tilbake",
