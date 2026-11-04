@@ -3887,26 +3887,44 @@ input[type="checkbox"].switch:focus-visible { outline: none; }
   display: inline-flex;
   vertical-align: middle;
 }
+/* Treffflaten er 40 px (designregelen i e2e/design.spec.ts); den synlige
+   sirkelen er 28 px og tegnes av ::before. Negative marger holder linjehøyden. */
 .infotip-btn {
+  position: relative;
   display: inline-grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  margin: -6px -4px;
+  width: 40px;
+  height: 40px;
+  margin: -10px -8px;
   border-radius: 50%;
   color: var(--txt-faint);
   background: transparent;
   border: 0;
   cursor: pointer;
-  transition: color 0.15s, background 0.15s;
+  transition: color 0.15s;
+}
+.infotip-btn::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.infotip-btn .icon {
+  position: relative;
 }
 .infotip-btn:hover,
 .infotip-btn[aria-expanded="true"] {
   color: var(--gold-ink);
+}
+.infotip-btn:hover::before,
+.infotip-btn[aria-expanded="true"]::before {
   background: var(--s-05);
 }
 .infotip-btn:focus-visible {
   outline: none;
+}
+.infotip-btn:focus-visible::before {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 50%, transparent);
 }
 .infotip-pop {
