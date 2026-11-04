@@ -210,16 +210,10 @@ export function BracketView({
             </button>
           )}
         </div>
-        {hasUndecidedDraw ? (
-          <p className="muted round-note bracket-note">
-            {no.host.drawChoiceHint}
-          </p>
-        ) : (
-          !allResolved && (
-            <p className="muted round-note">
-              {no.host.awaitAllGames}
-            </p>
-          )
+        {!hasUndecidedDraw && liveCount > 0 && (
+          <div className="tags mt-3">
+            <span className="tag"><Icon name="live" size={14} /> {no.host.gamesLive(liveCount)}</span>
+          </div>
         )}
         {notice && <div className="banner banner-wait bracket-note mt-3">{notice}</div>}
         {error && <div className="banner banner-error bracket-note mt-3">{error}</div>}

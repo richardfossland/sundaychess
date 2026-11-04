@@ -3,17 +3,15 @@
 export const tekst = {
   knapp: "Vis på storskjerm",
   tittel: "Vis på storskjerm",
-  intro: "Velg hvordan storskjermen skal vises på projektor eller TV. Storskjermen har ingen knapper for arrangøren.",
+  visHvordan: "Vis hvordan",
   lukk: "Lukk",
   anbefalt: "Anbefalt for din enhet",
   fullskjerm: {
-    tittel: "Fullskjerm her",
-    hjelp: "Bruk denne med HDMI-kabel, eller når skjermen speiles (for eksempel fra iPad). Arrangørknappene skjules i dette vinduet.",
+    hjelp: "For HDMI eller speiling",
     knapp: "Fullskjerm her",
   },
   eget: {
-    tittel: "Åpne storskjermen i eget vindu",
-    hjelp: "Du beholder kontrollene i dette vinduet. Storskjerm-vinduet kan flyttes til projektoren eller castes.",
+    hjelp: "Kontrollene blir her",
     knapp: "Åpne storskjermen i eget vindu",
     flyttet: "Storskjermen ble flyttet til den andre skjermen. Trykk F for fullskjerm.",
     flyttHint: "Dra vinduet til prosjektoren og trykk F for fullskjerm.",

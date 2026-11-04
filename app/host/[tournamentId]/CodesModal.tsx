@@ -76,9 +76,8 @@ export function CodesModal({
       cardStyle={{ width: "100%", maxWidth: 460, maxHeight: "80vh", overflow: "auto" }}
     >
       <h3 id={titleId} className="modal-title">{no.host.codesTitle}</h3>
-      <p className="muted fs-xs">{no.host.codesHint}</p>
-      <div className="banner banner-warn fs-xs">
-        <Icon name="warn" size={16} /> {no.host.codesWarning}
+      <div className="tags">
+        <span className="tag tag-warn"><Icon name="warn" size={14} /> {no.host.codesWarning}</span>
       </div>
       <hr className="thread" />
       {error ? (

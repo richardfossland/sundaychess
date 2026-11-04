@@ -73,7 +73,8 @@ export function PredictPanel({
           </span>
         )}
       </div>
-      <p className="pl-aside-body">{no.predict.hint}</p>
+
+      <p className="tags"><span className="tag">{no.predict.hint}</span></p>
 
       {tippable.map((g) => {
         // Pick by PLAYER NAME, not colour — not every spectator knows who is

@@ -60,7 +60,6 @@ export function Lessons({ onExit }: { onExit: () => void }) {
         <div className="card card-narrow stack scale-in" style={{ alignItems: "stretch", maxWidth: 460 }}>
           <div className="text-center stack" style={{ gap: 4 }}>
             <p className="eyebrow">{no.coach.lessonsTitle}</p>
-            <p className="faint" style={{ fontSize: 13 }}>{no.coach.lessonsIntro}</p>
             <p className="faint" style={{ fontSize: "var(--fs-xs)" }}>
               {fill(no.coach.lessonsProgress, { n: done.length, total: LESSONS.length })}
             </p>

@@ -4,6 +4,7 @@ import { NavLink, navigate } from "./nav";
 import { useMemo, useState } from "react";
 import { no } from "@/lib/locale/no";
 import { Icon } from "@/lib/client/Icon";
+import { InfoTip } from "@/lib/client/InfoTip";
 import { NumberField } from "@/lib/client/NumberField";
 import { PageHeader } from "@/lib/client/PageHeader";
 import { Segmented } from "@/lib/client/Segmented";
@@ -139,7 +140,6 @@ export function PhysicalWizard() {
             <div className="field">
               <label htmlFor="pn" className="wz-q">{t.nameLabel}</label>
               <input id="pn" className="input" autoFocus maxLength={80} placeholder={t.namePlaceholder} value={title} onChange={(e) => setTitle(e.target.value)} />
-              <span className="wz-help">{t.nameHelp}</span>
             </div>
             <div className="field">
               <span className="wz-q" id="grp-label">{t.groupLabelLabel}</span>
@@ -149,17 +149,13 @@ export function PhysicalWizard() {
                 onChange={setGroupLabel}
                 options={[{ value: "Klubb", label: t.groupClub }, { value: "Klasse", label: t.groupClass }]}
               />
-              <span className="wz-help">{t.groupHelp}</span>
             </div>
           </div>
         )}
 
         {key === "system" && (
           <div className="stack">
-            <div className="field">
-              <span className="wz-q" id="sys-label">{t.systemLabel}</span>
-              <span className="wz-help">{t.systemRecommend}</span>
-            </div>
+            <span className="wz-q" id="sys-label">{t.systemLabel}</span>
             <div className="opt-list" role="radiogroup" aria-labelledby="sys-label">
               {PHYSICAL_SYSTEMS.map((s) => (
                 <label key={s} className="opt" data-checked={system === s}>
@@ -186,24 +182,24 @@ export function PhysicalWizard() {
                   <div role="group" aria-labelledby="rounds-label" className="wz-center">
                     <NumberField value={rounds} onChange={setRounds} min={1} max={15} aria-label={t.roundsLabel} className="numfield-hero-wrap" hero />
                   </div>
-                  <span className="wz-help">{t.roundsHint}</span>
+                  <div className="tags tags-center"><span className="tag">{t.roundsHint}</span></div>
                 </div>
                 <label className="switch-row">
                   <input type="checkbox" role="switch" className="switch" checked={lateEntry} onChange={(e) => setLateEntry(e.target.checked)} />
                   <span className="opt-body">
                     <span className="opt-title">{t.allowLateEntry}</span>
-                    <span className="opt-help">{t.lateEntryHelp}</span>
                   </span>
                 </label>
                 <div className="field">
-                  <span className="wz-q" id="bye-label">{t.byePointsLabel}</span>
+                  <span className="wz-q">
+                    <span id="bye-label">{t.byePointsLabel}</span> <InfoTip align="start">{t.byeHelp}</InfoTip>
+                  </span>
                   <Segmented
                     aria-labelledby="bye-label"
                     value={byeHalf ? "half" : "full"}
                     onChange={(v) => setByeHalf(v === "half")}
                     options={[{ value: "full", label: t.byeFull }, { value: "half", label: t.byeHalf }]}
                   />
-                  <span className="wz-help">{t.byeHelp}</span>
                 </div>
               </>
             )}
@@ -216,10 +212,10 @@ export function PhysicalWizard() {
                     <span className="opt-help">{t.doubleRoundRobinHelp}</span>
                   </span>
                 </label>
-                <span className="wz-help">{roster.length >= 2 ? t.roundsAuto(totalRounds) : t.roundsAutoLater}</span>
+                <div className="tags"><span className="tag">{roster.length >= 2 ? t.roundsAuto(totalRounds) : t.roundsAutoLater}</span></div>
               </>
             )}
-            {system === "knockout" && <span className="wz-help">{roster.length >= 2 ? t.roundsAuto(totalRounds) : t.roundsAutoLater}</span>}
+            {system === "knockout" && <div className="tags"><span className="tag">{roster.length >= 2 ? t.roundsAuto(totalRounds) : t.roundsAutoLater}</span></div>}
           </div>
         )}
 
@@ -237,8 +233,7 @@ export function PhysicalWizard() {
                   <li key={k} className="rule">
                     <span className="rule-no" aria-hidden="true">{i + 1}</span>
                     <span className="rule-body">
-                      <b>{no.tiebreaks[k].label}</b>
-                      <span className="opt-help">{no.tiebreaks[k].help}</span>
+                      <b>{no.tiebreaks[k].label} <InfoTip align="start" label={no.common.aboutX(no.tiebreaks[k].label)}>{no.tiebreaks[k].help}</InfoTip></b>
                     </span>
                     <span className="rule-actions">
                       <button type="button" className="icon-btn" aria-label={t.ruleAria(no.tiebreaks[k].label, t.moveUp)} disabled={i === 0} onClick={() => moveTb(i, -1)}>
@@ -262,8 +257,7 @@ export function PhysicalWizard() {
                   {unusedTb.map((k) => (
                     <li key={k} className="rule rule-add">
                       <span className="rule-body">
-                        <b>{no.tiebreaks[k].label}</b>
-                        <span className="opt-help">{no.tiebreaks[k].help}</span>
+                        <b>{no.tiebreaks[k].label} <InfoTip align="start" label={no.common.aboutX(no.tiebreaks[k].label)}>{no.tiebreaks[k].help}</InfoTip></b>
                       </span>
                       <button type="button" className="btn btn-sm" aria-label={t.ruleAria(no.tiebreaks[k].label, t.addRule)} onClick={() => setTiebreaks((x) => [...x, k])}>
                         <Icon name="more" size={16} /> {t.addRule}
@@ -280,7 +274,6 @@ export function PhysicalWizard() {
           <div className="stack">
             <div className="field">
               <h2 className="wz-q">{t.playersLabel}</h2>
-              <span className="wz-help">{t.playersModeLabel}</span>
               <Segmented
                 aria-label={t.playersModeLabel}
                 value={mode}
@@ -292,11 +285,9 @@ export function PhysicalWizard() {
               <div className="field">
                 <label htmlFor="paste">{t.pasteLabel}</label>
                 <textarea id="paste" className="input wz-textarea" rows={6} placeholder={t.pastePlaceholder} value={paste} onChange={(e) => setPaste(e.target.value)} />
-                <span className="wz-help">{t.pasteHelp}</span>
               </div>
             ) : (
               <div className="stack gap-3">
-                <span className="wz-help">{t.singleHelp}</span>
                 <div className="pp-form">
                   <input className="input" aria-label={t.playerName} placeholder={t.playerName} value={pName} onChange={(e) => setPName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addOne()} />
                   <input className="input" inputMode="numeric" aria-label={t.playerRating} placeholder={t.playerRating} value={pRating} onChange={(e) => setPRating(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addOne()} />
@@ -348,10 +339,7 @@ export function PhysicalWizard() {
 
         {key === "confirm" && (
           <div className="stack">
-            <div className="field">
-              <h2 className="wz-q">{t.confirmTitle}</h2>
-              <span className="wz-help">{t.confirmHelp}</span>
-            </div>
+            <h2 className="wz-q">{t.confirmTitle}</h2>
             <dl className="sum-list">
               <SumRow label={t.rowName} value={title.trim()} onChange={() => goTo(0)} />
               <SumRow label={t.rowGroup} value={groupLabel} onChange={() => goTo(0)} />

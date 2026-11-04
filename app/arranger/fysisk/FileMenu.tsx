@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/lib/client/Icon";
+import { InfoTip } from "@/lib/client/InfoTip";
 import { gamesCsv, standingsCsv } from "@/lib/export/csv";
 import { markExported } from "@/lib/physical/exportReminder";
 import { downloadText, safeFileName } from "@/lib/export/download";
@@ -54,9 +55,12 @@ export function FileMenu({ t }: { t: PhysicalTournament }) {
           <button type="button" className="btn btn-sm btn-ghost pm-item" onClick={() => text(FILE_EXT, () => tournamentFileText(t), "application/json", false, true)}>
             {f.downloadJson}
           </button>
-          <button type="button" className="btn btn-sm btn-ghost pm-item" title={f.trfNote} onClick={() => text(".trf", () => trf16Text(t), "text/plain")}>
-            {f.exportTrf}
-          </button>
+          <div className="spread">
+            <button type="button" className="btn btn-sm btn-ghost pm-item" onClick={() => text(".trf", () => trf16Text(t), "text/plain")}>
+              {f.exportTrf}
+            </button>
+            <InfoTip align="end">{f.trfNote}</InfoTip>
+          </div>
           <button type="button" className="btn btn-sm btn-ghost pm-item" onClick={() => text(".csv", () => standingsCsv(t), "text/csv", false)}>
             {f.exportCsv}
           </button>

@@ -36,7 +36,7 @@ function ExportReminder({ t }: { t: PhysicalTournament }) {
   if (hidden || !shouldRemindExport(t)) return null;
   return (
     <div className={`banner ${weak ? "banner-error" : ""} spread gap-3 pr-reminder`} role="status" data-testid="export-reminder">
-      <span>{weak ? L.exportReminderIos : L.exportReminder(done)}</span>
+      <span className="row gap-2"><Icon name="warn" size={16} /> {weak ? L.exportReminderIos : L.exportReminder(done)}</span>
       <button type="button" className="btn btn-sm btn-ghost" onClick={() => { dismissReminder(t); setHidden(true); }}>{L.exportReminderDismiss}</button>
     </div>
   );
@@ -133,7 +133,7 @@ export function PhysicalBoard({ id }: { id: string }) {
         )}
         {digital && (
           <div className="banner stack gap-2" role="status" data-testid="continued-digital-banner">
-            <b>{no.continueDigital.continuedBanner}</b>
+            <b><Icon name="lock" size={16} /> {no.continueDigital.continuedBanner}</b>
             <a className="btn btn-sm" href={`/host/${digital.digitalId}`}>
               {no.continueDigital.continuedLink} ({no.continueDigital.continuedPin(digital.joinPin)})
             </a>

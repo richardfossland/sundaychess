@@ -1,9 +1,10 @@
 import type { BoardState } from "@/lib/dto";
 import { teamColor } from "@/lib/tournament/teams";
+import { InfoTip } from "@/lib/client/InfoTip";
 import { no } from "@/lib/locale/no";
 
-/** Stillingstabell med forklaring av Buchholz rett under — brukt i runde-,
- * sluttspill- og resultatvisning, så ingen tabell står uten forklaring. */
+/** Stillingstabell med Buchholz-forklaring bak ⓘ i kolonnehodet — brukt i runde-,
+ * sluttspill- og resultatvisning. */
 export function StandingsTable({
   standings,
   teamById,
@@ -28,6 +29,7 @@ export function StandingsTable({
             </th>
             <th scope="col" className="num" title={no.host.tiebreakHelp}>
               {no.host.tiebreak}
+              <InfoTip align="end">{no.host.tiebreakHelp}</InfoTip>
             </th>
           </tr>
         </thead>
@@ -59,9 +61,6 @@ export function StandingsTable({
         </tbody>
       </table>
       {rest > 0 && <p className="tiebreak-note">+{rest} {no.host.moreRows}</p>}
-      <p className="tiebreak-note">
-        <b>{no.host.tiebreak}</b>: {no.host.tiebreakHelp}
-      </p>
     </>
   );
 }

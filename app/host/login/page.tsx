@@ -55,7 +55,6 @@ export default function HostLoginPage() {
 
         <div className="card-head">
           <p className="eyebrow">{no.hostAuth.loginTitle}</p>
-          <p className="muted fs-sm">{no.hostAuth.loginLede}</p>
         </div>
 
         {sent ? (

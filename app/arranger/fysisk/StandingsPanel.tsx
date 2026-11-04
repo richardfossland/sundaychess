@@ -6,6 +6,7 @@ import { crosstableByRound } from "@/lib/physical/roundView";
 import type { PhysicalTournament } from "@/lib/physical/schema";
 import { standings } from "@/lib/physical/selectors";
 import { Icon } from "@/lib/client/Icon";
+import { InfoTip } from "@/lib/client/InfoTip";
 
 const p = no.physical;
 const fmt = (n: number | null) => (n === null ? "–" : Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, ""));
@@ -45,17 +46,14 @@ export function StandingsPanel({ t }: { t: PhysicalTournament }) {
         </table>
       </div>
       <div className="px-legend">
-        <p className="m-0 muted fs-xs">{p.tableHelpIntro}{tbs.length > 0 ? ` ${p.tiebreakIntro}` : ""}</p>
-        {tbs.length > 0 && (
-          <dl className="px-explain">
-            {tbs.map((k) => (
-              <div key={k}>
-                <dt>{no.tiebreaks[k].label}</dt>
-                <dd>{no.tiebreaks[k].help}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
+        <div className="tags">
+          <InfoTip align="start">{p.tableHelpIntro}</InfoTip>
+          {tbs.map((k) => (
+            <span key={k} className="tag">
+              {no.tiebreaks[k].label} <InfoTip align="start" label={no.common.aboutX(no.tiebreaks[k].label)}>{no.tiebreaks[k].help}</InfoTip>
+            </span>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -105,7 +103,9 @@ export function CrosstablePanel({ t }: { t: PhysicalTournament }) {
           </tbody>
         </table>
       </div>
-      <p className="muted fs-xs m-0">{p.crosstableLegend}</p>
+      <div className="tags">
+        {p.crosstableLegend.map((l) => <span key={l} className="tag">{l}</span>)}
+      </div>
     </section>
   );
 }

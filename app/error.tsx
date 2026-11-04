@@ -36,12 +36,9 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         <div className="status-glyph">♟️</div>
         <h2 className="fs-xl">{no.common.error}</h2>
         <p className="muted status-copy">{no.common.errorRetryBody}</p>
-        <p className="faint status-copy">
-          {no.privacy.errorNote}{" "}
-          <Link href="/personvern" className="text-link-inline">
-            {no.privacy.link}
-          </Link>
-        </p>
+        <Link href="/personvern" className="text-link-inline fs-xs">
+          {no.privacy.link}
+        </Link>
         <div className="row status-actions">
           <button className="btn btn-primary btn-lg" onClick={() => reset()}>
             {no.common.retry}

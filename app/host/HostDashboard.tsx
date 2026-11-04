@@ -59,10 +59,6 @@ export function HostDashboard({ initial }: { initial: Item[] }) {
 
   return (
     <div className="stack" style={{ gap: 14, width: "100%" }}>
-      <p className="muted text-center" style={{ fontSize: 13 }}>
-        {no.hostAuth.dashLede}
-      </p>
-
       <div className="row" style={{ justifyContent: "center", gap: 10 }}>
         <Link href="/arranger" className="btn btn-primary">
           + {no.hostAuth.createNew}

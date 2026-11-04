@@ -250,7 +250,6 @@ export default function Versus() {
           <>
             <div className="card-head">
               <p className="eyebrow">{no.versus.title}</p>
-              <p className="faint fs-xs">{no.versus.subtitle}</p>
             </div>
             <button
               className="card entrance entrance-card entrance-btn"
@@ -258,7 +257,6 @@ export default function Versus() {
             >
               <span className="entrance-glyph"><Icon name="versus" size={56} /></span>
               <b className="entrance-title">{no.versus.sameScreen}</b>
-              <span className="entrance-sub">{no.versus.sameScreenSub}</span>
             </button>
             <button
               className="card entrance entrance-card entrance-btn"
@@ -266,7 +264,6 @@ export default function Versus() {
             >
               <span className="entrance-glyph">⧉</span>
               <b className="entrance-title">{no.versus.online}</b>
-              <span className="entrance-sub">{no.versus.onlineSub}</span>
             </button>
           </>
         )}

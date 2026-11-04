@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Icon } from "@/lib/client/Icon";
 import { no } from "@/lib/locale/no";
 import type { PublicSnapshot } from "@/lib/physical/snapshot";
 import { useTabHidden } from "@/lib/client/useTabHidden";
@@ -119,7 +120,7 @@ export function PublicView({ id }: { id: string }) {
             </table>
           </div>
         </section>
-        <p className="muted fs-xs m-0">{L.pubUpdated}</p>
+        <div className="tags"><span className="tag"><Icon name="live" size={14} /> {L.pubUpdated}</span></div>
       </div>
     </main>
   );

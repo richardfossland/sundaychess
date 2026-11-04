@@ -458,10 +458,11 @@ export function LeagueView({
                   </button>
                 )}
               </div>
-              <div className="round-help">
-                {!allResolved && <p>{no.host.nextRoundHelp}</p>}
-                {liveCount > 0 && <p>{no.host.forceResolveHelp}</p>}
-              </div>
+              {liveCount > 0 && (
+                <div className="tags mt-3">
+                  <span className="tag"><Icon name="live" size={14} /> {no.host.gamesLive(liveCount)}</span>
+                </div>
+              )}
             </>
           )}
           {!presentasjon && error && <div className="banner banner-error mt-3">{error}</div>}
