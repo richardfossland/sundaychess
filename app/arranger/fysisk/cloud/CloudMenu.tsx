@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { no } from "@/lib/locale/no";
 import { Icon } from "@/lib/client/Icon";
 import { InfoTip } from "@/lib/client/InfoTip";
+import { CopyLinkDialog } from "@/lib/client/CopyLinkDialog";
+import { useConfirm } from "@/lib/client/useConfirm";
 import { replay } from "@/lib/physical/reducer";
 import { publicUrl } from "@/lib/physical/cloudMeta";
 import { DEFAULT_PUBLIC_NAMES, type PublicNames } from "@/lib/physical/cloudTypes";
@@ -28,6 +30,8 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
   const [showCode, setShowCode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [copyUrl, setCopyUrl] = useState<string | null>(null);
+  const [confirm, confirmDialog] = useConfirm();
   const [names, setNames] = useState<PublicNames>(DEFAULT_PUBLIC_NAMES);
   const ref = useRef<HTMLDivElement>(null);
   const published = st.status !== "unpublished";
@@ -63,7 +67,7 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
     if (!r.ok) setMsg(cloudErrorText(r.code));
   }
   async function unpublish() {
-    if (!window.confirm(L.unpublishConfirm)) return;
+    if (!(await confirm(L.unpublishConfirm, { confirmLabel: L.unpublish, danger: true }))) return;
     setBusy(true);
     const r = await cloud.unpublish();
     setBusy(false);
@@ -74,11 +78,11 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
       await navigator.clipboard.writeText(publicUrl(t.id));
       setMsg(L.linkCopied);
     } catch {
-      window.prompt(L.copyLink, publicUrl(t.id));
+      setCopyUrl(publicUrl(t.id));
     }
   }
   async function loadCloud() {
-    if (!window.confirm(L.loadCloudConfirm)) return;
+    if (!(await confirm(L.loadCloudConfirm, { confirmLabel: L.loadCloud, danger: true }))) return;
     setBusy(true);
     const got = await cloud.fetchCloudLog();
     setBusy(false);
@@ -93,7 +97,7 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
     }
   }
   async function overwrite() {
-    if (!window.confirm(L.overwriteConfirm)) return;
+    if (!(await confirm(L.overwriteConfirm, { confirmLabel: L.overwriteCloud, danger: true }))) return;
     setBusy(true);
     await cloud.overwriteCloud();
     setBusy(false);
@@ -165,6 +169,8 @@ export function CloudMenu({ t, run }: { t: PhysicalTournament; run: (fn: (cur: P
           {msg && <span role="status" className="muted fs-xs">{msg}</span>}
         </div>
       )}
+      {confirmDialog}
+      {copyUrl && <CopyLinkDialog title={L.copyLink} url={copyUrl} onClose={() => setCopyUrl(null)} />}
     </div>
   );
 }

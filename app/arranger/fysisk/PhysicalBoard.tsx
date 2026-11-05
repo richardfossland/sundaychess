@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "@/lib/client/Icon";
+import { useConfirm } from "@/lib/client/useConfirm";
 import { no } from "@/lib/locale/no";
 import { dismissReminder, completedRounds, isIos, shouldRemindExport } from "@/lib/physical/exportReminder";
 import { canUndo } from "@/lib/physical/reducer";
@@ -44,6 +45,7 @@ function ExportReminder({ t }: { t: PhysicalTournament }) {
 
 export function PhysicalBoard({ id }: { id: string }) {
   const { state: t, status, error, setError, apply, run, undo, readOnly, takeOver, storeKind, saveState, toast, dismissToast } = usePhysicalTournament(id);
+  const [confirm, confirmDialog] = useConfirm();
   const [tab, setTab] = useState<Tab>("round");
   const [digital, setDigital] = useState<DigitalMeta | null>(null);
   useEffect(() => {
@@ -125,7 +127,7 @@ export function PhysicalBoard({ id }: { id: string }) {
             <button
               type="button"
               className="btn btn-sm"
-              onClick={() => { if (window.confirm(no.physicalCloud.lockTakeOverConfirm)) void takeOver(); }}
+              onClick={async () => { if (await confirm(no.physicalCloud.lockTakeOverConfirm, { confirmLabel: no.physicalCloud.lockTakeOver })) void takeOver(); }}
             >
               {no.physicalCloud.lockTakeOver}
             </button>
@@ -174,6 +176,7 @@ export function PhysicalBoard({ id }: { id: string }) {
           <button type="button" className="btn btn-sm btn-ghost" aria-label={p.toastClose} onClick={dismissToast}><Icon name="close" size={14} /></button>
         </div>
       )}
+      {confirmDialog}
     </main>
   );
 }

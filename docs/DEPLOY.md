@@ -5,6 +5,28 @@ subdomain `chess.sundaysuite.app` (the `sundaysuite.app` zone is already on
 Cloudflare). The main SundaySuite site is static HTML and cannot host a Next.js
 route segment, so there is no `/sjakk` subpath proxy — `basePath` stays root.
 
+## ⚠️ Never build production from a dirty checkout
+
+`NEXT_PUBLIC_*` values are inlined into the bundle at build time and
+`.env.local` takes part in `next build` / `opennextjs-cloudflare build`. On
+**2026-11-04 a deploy shipped `localhost` as the join address** because a dev
+`.env.local` was present during the build. Always:
+
+1. Build from a **clean worktree** of the commit being shipped (`git worktree
+   add ../wt-chess-deploy <sha>`), never from the main clone.
+2. Make sure that worktree has **no `.env.local`** (or `.env*.local`). Provide the
+   production values explicitly: `NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_BASE_URL=https://chess.sundaysuite.app`,
+   `NEXT_PUBLIC_SUNDAY_AUTH_URL`, `NEXT_PUBLIC_SUNDAY_AUTH_ANON_KEY`,
+   `NEXT_PUBLIC_COOKIE_DOMAIN=.sundaysuite.app`.
+3. After building, `grep -r localhost .open-next/assets/_next/static | head`
+   should find nothing app-specific.
+
+> The Worker is still named **`sundaysjakk`** in `wrangler.jsonc`. That is
+> intentionally legacy: the name is the deploy target in Cloudflare (and what
+> `wrangler rollback` and secrets are bound to). Renaming it would create a NEW
+> Worker with no secrets. Do not "fix" it.
+
 ## Cloudflare Workers via OpenNext (verified pipeline)
 
 Next 16 SSR is deployed to a **Cloudflare Worker** using `@opennextjs/cloudflare`
@@ -36,8 +58,9 @@ npx opennextjs-cloudflare build
 #    full SSR render on every request (the exact cost this config removes).
 npx opennextjs-cloudflare deploy        # = wrangler deploy + populateCache
 
-# 3. Server-only runtime secret (NOT inlined):
+# 3. Server-only runtime secrets (NOT inlined):
 npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+npx wrangler secret put PAIR_SECRET        # see docs/MIGRATIONS-0014.md §2
 
 # 4. Attach the custom domain (sundaysuite.app zone is on this account):
 #    wrangler.jsonc `routes`, or Dashboard → Workers → sundaysjakk → Domains →
@@ -47,7 +70,13 @@ npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 Env summary:
 - **Build-time (inlined):** `NEXT_PUBLIC_SUPABASE_URL`,
   `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_BASE_URL=https://chess.sundaysuite.app`
-- **Runtime secret:** `SUPABASE_SERVICE_ROLE_KEY` (`wrangler secret put`)
+- **Runtime secrets:** `SUPABASE_SERVICE_ROLE_KEY`, `PAIR_SECRET`
+  (`wrangler secret put`). Optional: `ANTHROPIC_API_KEY`.
+- **Service worker:** `/sw.js` is served by `app/sw.js/route.ts` with the build id
+  (git short SHA) stamped into its cache names, so every deploy gets a fresh
+  worker and old caches are deleted when the new one activates (after the
+  in-app «Ny versjon» prompt, never mid-round). Build from a git checkout, or
+  all builds share the fallback id `dev`.
 
 > Note: the in-memory rate-limiter and draw-offer store assume a single
 > instance. Cloudflare may run multiple isolates — see the hardening backlog in
@@ -59,6 +88,19 @@ The owner runs `supabase/migrations/*.sql` by hand in the Supabase Dashboard SQL
 editor (this project shares a Supabase instance with SundayTicTacToe — chess
 lives in `public`, TTT in schema `tictactoe` — so there is no automated
 `supabase db push` to prod). Each file is written to be idempotent/re-runnable.
+Run them in numeric order; `0001`–`0013` are covered by the file headers, and
+`0014` onward have a runbook each:
+
+| Migration | Runbook | Order vs. deploy |
+|---|---|---|
+| `0014_realtime_private` + `0015_code_attempts` | [MIGRATIONS-0014.md](MIGRATIONS-0014.md) (also `PAIR_SECRET`) | **before** code |
+| `0016_physical_cloud` | [MIGRATIONS-0016.md](MIGRATIONS-0016.md) | before code (physical cloud sync) |
+| `0017_physical_continue` | [MIGRATIONS-0017.md](MIGRATIONS-0017.md) | before code |
+| `0018_atomic_rounds_lockdown` | [MIGRATIONS-0018.md](MIGRATIONS-0018.md) | **MUST run before deploy** — without `start_round`, «Start turnering» / «Neste runde» fail with 500 |
+| `0019_player_kicked` | [MIGRATIONS-0019.md](MIGRATIONS-0019.md) | before or after; before recommended |
+
+Check each runbook's own order/rollback section; never deploy code ahead of its
+migration.
 
 👤 **Run `0013_revoke_cleanup_exec_casual_guard.sql` after `0012_client_events.sql`.**
 It revokes the anon/authenticated `EXECUTE` grant that Postgres implicitly gave

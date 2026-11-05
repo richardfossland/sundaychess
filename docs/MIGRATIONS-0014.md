@@ -102,9 +102,11 @@ secreten, må lærerne åpne turneringen på nytt (token fornyes ved `/open`).
 
 ## 3. Hva som endres for brukerne
 
-- Klienter abonnerer med `private: true`. Serveren sender hver hint to ganger i
-  én release-syklus (`LEGACY_PUBLIC_COPY = true` i `lib/server/broadcast.ts`) slik
-  at åpne faner med gammel bunt fortsatt får live-oppdateringer. Flagget og kopien er fjernet (E4).
+- Klienter abonnerer med `private: true`, og serveren sender hver hint bare på
+  private kanaler (`lib/server/broadcast.ts`). Overgangsflagget `LEGACY_PUBLIC_COPY`
+  (som sendte hver hint to ganger, også offentlig, for faner med gammel bunt) er
+  fjernet (E4): det finnes ikke noe å sette. Faner med gammel bunt faller tilbake
+  til polling til de lastes på nytt.
 - `hostRateLimit` (per-isolate, 90/min) er erstattet av DB-basert telling av
   FEIL koder (20 feil / 10 min per tournament og IP; IPv6 per /64). Riktige
   koder telles aldri, og lærerens enhet (token) blir aldri utestengt av elever

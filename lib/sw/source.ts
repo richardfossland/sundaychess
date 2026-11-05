@@ -1,4 +1,25 @@
-/* SundayChess service worker — hand-written, no dependencies.
+// Service worker source, stamped with the build id at serve time.
+//
+// WHY A ROUTE AND NOT public/sw.js: a file in public/ is copied verbatim, so its
+// VERSION had to be hand-bumped (and was not, so old /_next/static chunks piled
+// up forever and a deploy produced a byte-identical worker that never
+// re-installed). app/sw.js/route.ts serves this string with the build id baked
+// in, which works the same under `next build` and the OpenNext build because
+// NEXT_PUBLIC_BUILD_ID (next.config.ts) is inlined by both.
+
+export const SW_VERSION_PLACEHOLDER = "__BUILD_VERSION__";
+
+// Only [A-Za-z0-9._-] may end up inside the cache-name string literal.
+export function safeVersion(buildId: string | undefined): string {
+  const v = (buildId ?? "").replace(/[^A-Za-z0-9._-]/g, "").slice(0, 40);
+  return v || "dev";
+}
+
+export function swSource(buildId: string | undefined): string {
+  return SW_TEMPLATE.replace(SW_VERSION_PLACEHOLDER, safeVersion(buildId));
+}
+
+const SW_TEMPLATE = String.raw`/* SundayChess service worker — hand-written, no dependencies.
  *
  * Goals: (1) installable PWA, (2) the physical tournament mode under
  * /arranger/fysisk opens WITHOUT network after one online visit.
@@ -8,11 +29,14 @@
  *    handled here: network only, nothing cached.
  *  - A new worker WAITS. It only takes over when the page posts SKIP_WAITING
  *    (the in-app "Ny versjon – last inn på nytt" button) — never mid-round.
- *  - Bump VERSION to invalidate every cache; old ones are deleted on activate.
+ *  - VERSION is stamped from the build id when /sw.js is served (lib/sw/source.ts),
+ *    so every deploy gets a byte-different worker, re-precaches, and the old
+ *    versioned caches are deleted on activate (which only happens after the
+ *    SKIP_WAITING prompt, or once all tabs are closed — never mid-round).
  */
 "use strict";
 
-const VERSION = "v1";
+const VERSION = "__BUILD_VERSION__";
 const PREFIX = "sundaychess-";
 const SHELL = PREFIX + "shell-" + VERSION; // HTML documents we serve offline
 const STATIC = PREFIX + "static-" + VERSION; // /_next/static/* (immutable, hashed)
@@ -178,3 +202,4 @@ self.addEventListener("fetch", (event) => {
   }
   // everything else (RSC payloads, images, ...): default network behaviour
 });
+`;

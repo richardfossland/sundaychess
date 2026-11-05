@@ -14,6 +14,7 @@ import { computeAwards, type Award } from "@/lib/tournament/awards";
 import { computeTeamStandings, teamColor } from "@/lib/tournament/teams";
 import { BracketBoard } from "@/lib/client/BracketBoard";
 import { no } from "@/lib/locale/no";
+import { formatDate } from "@/lib/format";
 import { downloadPgn } from "@/lib/client/pgnActions";
 import { exportRound, pgnFileName, tournamentPgn } from "@/lib/export/pgn";
 import { Icon, MedalIcon, type IconName } from "@/lib/client/Icon";
@@ -232,7 +233,7 @@ export function FinishedView({ state }: { state: BoardState }) {
       <div className="print-only">
         <h1 className="print-title">{tournament.title || no.appName}</h1>
         <p className="print-small">
-          {new Date().toLocaleDateString("no", { day: "2-digit", month: "long", year: "numeric" })}
+          {formatDate(new Date(), { day: "2-digit", month: "long", year: "numeric" })}
         </p>
         {/* Teacher's own reminder (class, lesson, …) — never shown to
             students on the projector; this print-only block is host-only
