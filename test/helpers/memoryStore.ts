@@ -118,6 +118,28 @@ export async function createGame(g: {
   db.games.push(row);
   return row;
 }
+/** Speiler start_round (0018): atomisk (alt eller ingenting), exists → complete-flagg. */
+export async function startRoundRpc(a: {
+  tournamentId: string; number: number; phase: Round["phase"]; prevRoundId?: string | null;
+  games: { whitePlayerId: string; blackPlayerId: string | null; startFen: string; slot: number; status?: Game["status"]; resultSource?: Game["result_source"] }[];
+  setStatus?: Tournament["status"] | null;
+}) {
+  const t = db.tournaments.find((x) => x.id === a.tournamentId)!;
+  const ex = db.rounds.find((r) => r.tournament_id === a.tournamentId && r.phase === a.phase && r.number === a.number);
+  if (ex) {
+    const has = db.games.some((g) => g.round_id === ex.id);
+    const complete = has && (a.phase === "league" ? t.current_round >= a.number : ["playoff", "finished"].includes(t.status) && t.current_round >= a.number);
+    return { ok: false, conflict: "exists", roundId: ex.id, complete };
+  }
+  if (a.games.length === 0) return { ok: false, conflict: "no_games" };
+  if (a.prevRoundId) await setRoundStatus(a.prevRoundId, "done");
+  const r = await createRound(a.tournamentId, a.number, a.phase, "live");
+  for (const g of a.games) await createGame({ tournamentId: a.tournamentId, roundId: r.id, ...g });
+  t.current_round = a.number;
+  if (a.setStatus) t.status = a.setStatus;
+  await recomputeScores(a.tournamentId);
+  return { ok: true, roundId: r.id };
+}
 export async function insertFinishedGames(tid: string, games: { roundId: string; whitePlayerId: string; blackPlayerId: string | null; status: Game["status"]; resultSource: Game["result_source"]; slot: number }[], fen = START) {
   for (const g of games) await createGame({ tournamentId: tid, ...g, startFen: fen });
 }

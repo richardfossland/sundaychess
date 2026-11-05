@@ -1,8 +1,6 @@
 import "server-only";
 
 import {
-  createGame,
-  createRound,
   listGames,
   listGamesForRound,
   listPlayers,
@@ -10,8 +8,10 @@ import {
   recomputeScores,
   resolveGameRpc,
   setRoundStatus,
+  type RoundGameSpec,
   updateTournament,
 } from "@/lib/server/store";
+import { commitRound } from "@/lib/server/roundCommit";
 import { afterGameResolved } from "@/lib/server/gameEvents";
 import { broadcast } from "@/lib/server/broadcast";
 import { channels, events } from "@/lib/realtime";
@@ -74,27 +74,29 @@ export function enginePairings(
 }
 
 /** Build pairings for a league round from current standings + history, then
- * create the round and its games (including a bye game when odd). */
+ * create the round, ALL its games (incl. bye games) and bump current_round in ONE
+ * DB transaction (start_round, 0018) — a Worker dying midway can no longer leave a
+ * half-built round. `prevRoundId` is marked done in the same transaction. Returns
+ * "exists" when a concurrent request already created a complete round. */
 async function pairLeagueRound(
   tournament: Tournament,
   roundNumber: number,
-): Promise<void> {
+  prevRoundId: string | null = null,
+  setStatus: Tournament["status"] | null = null,
+): Promise<"created" | "exists"> {
   const [players, games, rounds] = await Promise.all([
     listPlayers(tournament.id),
     listGames(tournament.id),
     listRounds(tournament.id),
   ]);
   const startFen = variantStartFen(tournament.config.variant);
+  let specs: RoundGameSpec[];
 
   if (tournament.config.pairingSystem) {
     const pairings = enginePairings(tournament, players, games, rounds, roundNumber);
-    const round = await createRound(tournament.id, roundNumber, "league", "live");
-    for (let i = 0; i < pairings.length; i++) {
-      const p = pairings[i];
+    specs = pairings.map((p, i) => {
       const bt = p.byeType;
-      await createGame({
-        tournamentId: tournament.id,
-        roundId: round.id,
+      return {
         whitePlayerId: p.white,
         blackPlayerId: p.black,
         startFen,
@@ -105,48 +107,46 @@ async function pairLeagueRound(
               resultSource: "physical" as const,
             }
           : {}),
-      });
-    }
-    await recomputeScores(tournament.id);
-    return;
-  }
+      };
+    });
+  } else {
+    const active = players.filter((p) => p.status === "active");
+    const standings = computeStandings(active, games);
+    const scoreById = new Map(standings.map((s) => [s.playerId, s]));
 
-  const active = players.filter((p) => p.status === "active");
-  const standings = computeStandings(active, games);
-  const scoreById = new Map(standings.map((s) => [s.playerId, s]));
+    const pairable: PairablePlayer[] = active.map((p) => ({
+      id: p.id,
+      score: scoreById.get(p.id)?.score ?? 0,
+      tiebreak: scoreById.get(p.id)?.tiebreak ?? 0,
+    }));
 
-  const pairable: PairablePlayer[] = active.map((p) => ({
-    id: p.id,
-    score: scoreById.get(p.id)?.score ?? 0,
-    tiebreak: scoreById.get(p.id)?.tiebreak ?? 0,
-  }));
-
-  const pairings = pair({
-    players: pairable,
-    round: roundNumber,
-    metBefore: metBeforeSet(games),
-    byeCounts: byeCounts(games),
-    colors: colorCounts(games),
-    // Real colour sequences (round numbers + forfeit flag) so "never 3 of the
-    // same colour in a row" holds in the league, and forfeits give no colour.
-    history: gamesToHistory(games, rounds),
-  });
-
-  const round = await createRound(tournament.id, roundNumber, "league", "live");
-
-  for (let i = 0; i < pairings.length; i++) {
-    const p = pairings[i];
-    await createGame({
-      tournamentId: tournament.id,
-      roundId: round.id,
+    const pairings = pair({
+      players: pairable,
+      round: roundNumber,
+      metBefore: metBeforeSet(games),
+      byeCounts: byeCounts(games),
+      colors: colorCounts(games),
+      // Real colour sequences (round numbers + forfeit flag) so "never 3 of the
+      // same colour in a row" holds in the league, and forfeits give no colour.
+      history: gamesToHistory(games, rounds),
+    });
+    specs = pairings.map((p, i) => ({
       whitePlayerId: p.whiteId,
       blackPlayerId: p.blackId,
       startFen,
       slot: i,
-    });
+    }));
   }
-  // Byes immediately award a point.
-  await recomputeScores(tournament.id);
+
+  // recompute_scores (frirunder gir poeng) kjøres inne i RPC-en.
+  return commitRound({
+    tournamentId: tournament.id,
+    number: roundNumber,
+    phase: "league",
+    prevRoundId,
+    games: specs,
+    setStatus,
+  });
 }
 
 /** Start the league: lobby → league, pair the next round (round 1, or — for a
@@ -154,8 +154,10 @@ async function pairLeagueRound(
  * ones), broadcast. */
 export async function startLeague(tournament: Tournament): Promise<void> {
   const next = (tournament.current_round ?? 0) + 1;
-  await pairLeagueRound(tournament, next);
-  await updateTournament(tournament.id, { status: "league", current_round: next });
+  // Runde, partier, current_round og status "league" i én transaksjon.
+  const res = await pairLeagueRound(tournament, next, null, "league");
+  // Dobbeltklikk: den andre forespørselen startet turneringen allerede.
+  if (res === "exists") throw new Error("already_started");
   await broadcast(channels.lobby(tournament.id), events.tournament, {
     started: true,
     round: next,
@@ -193,7 +195,12 @@ export async function forceResolveRound(tournament: Tournament): Promise<void> {
   let resolvedAny = false;
   for (const g of games) {
     if (g.status === "live") {
-      await resolveGameRpc(g.id, "draw", "timeout_draw");
+      // requireLive: et parti som ble ferdig mellom lesingen og nå (spiller
+      // avsluttet det) skal IKKE overskrives med remis, og skal ikke få
+      // etterbehandling (feil varsel/avanse) for et resultat som ikke ble satt.
+      const res = await resolveGameRpc(g.id, "draw", "timeout_draw", true);
+      if (!res.ok) continue;
+      
       // skipRecompute: the full-tournament score aggregate is run ONCE below
       // instead of once per board (it was firing N identical writes per round).
       await afterGameResolved(g, "draw", "timeout_draw", { skipRecompute: true });
@@ -208,12 +215,10 @@ export async function forceResolveRound(tournament: Tournament): Promise<void> {
 export async function advanceRound(
   tournament: Tournament,
 ): Promise<"league" | "playoff" | "finished"> {
-  // Mark the current league round done.
   const rounds = await listRounds(tournament.id);
   const cur = rounds.find(
     (r) => r.number === tournament.current_round && r.phase === "league",
   );
-  if (cur) await setRoundStatus(cur.id, "done");
 
   const next = tournament.current_round + 1;
 
@@ -224,19 +229,26 @@ export async function advanceRound(
       (p) => p.status === "active",
     );
     if (active.length < 2) {
+      if (cur) await setRoundStatus(cur.id, "done");
       await updateTournament(tournament.id, { status: "finished" });
       await broadcast(channels.lobby(tournament.id), events.tournament, {
         finished: true,
       });
       return "finished";
     }
-    await pairLeagueRound(tournament, next);
-    await updateTournament(tournament.id, { current_round: next });
-    await broadcast(channels.lobby(tournament.id), events.tournament, {
-      round: next,
-    });
+    // Forrige runde -> done, ny runde + partier + current_round: atomisk.
+    const res = await pairLeagueRound(tournament, next, cur?.id ?? null);
+    // "exists": en samtidig forespørsel (dobbeltklikk) laget hele runden først.
+    if (res === "created") {
+      await broadcast(channels.lobby(tournament.id), events.tournament, {
+        round: next,
+      });
+    }
     return "league";
   }
+
+  // Ligaen er ferdig: runden settes done (idempotent enkeltskriving).
+  if (cur) await setRoundStatus(cur.id, "done");
 
   // League exhausted → playoff (if configured) or finish.
   const startedPlayoff = await maybeStartPlayoff(tournament);

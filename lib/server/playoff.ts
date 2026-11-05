@@ -2,7 +2,6 @@ import "server-only";
 
 import {
   createGame,
-  createRound,
   listGames,
   listGamesForRound,
   listPlayers,
@@ -11,6 +10,7 @@ import {
   setRoundStatus,
   updateTournament,
 } from "@/lib/server/store";
+import { commitRound } from "@/lib/server/roundCommit";
 import { broadcast } from "@/lib/server/broadcast";
 import { channels, events } from "@/lib/realtime";
 import { computeStandings } from "@/lib/tournament/score";
@@ -63,21 +63,23 @@ export async function maybeStartPlayoff(
   await Promise.all(seeded.map((s) => setPlayerSeed(s.playerId, s.seed)));
 
   const matches = buildFirstRound(seeded);
-  const round = await createRound(tournament.id, 1, "playoff", "live");
   const startFen = variantStartFen(tournament.config.variant);
-  for (const m of matches) {
-    if (!m.topPlayerId || !m.bottomPlayerId) continue;
-    await createGame({
-      tournamentId: tournament.id,
-      roundId: round.id,
-      whitePlayerId: m.topPlayerId,
-      blackPlayerId: m.bottomPlayerId,
-      startFen,
-      slot: m.slot, // bracket position — advance pairs slot-adjacent winners
-    });
-  }
-
-  await updateTournament(tournament.id, { status: "playoff", current_round: 1 });
+  // Runde + alle partier + current_round + status i én transaksjon (0018).
+  // "exists" = samtidig dobbeltklikk laget bracketen først; da er alt gjort.
+  await commitRound({
+    tournamentId: tournament.id,
+    number: 1,
+    phase: "playoff",
+    games: matches
+      .filter((m) => m.topPlayerId && m.bottomPlayerId)
+      .map((m) => ({
+        whitePlayerId: m.topPlayerId!,
+        blackPlayerId: m.bottomPlayerId!,
+        startFen,
+        slot: m.slot, // bracket position — advance pairs slot-adjacent winners
+      })),
+    setStatus: "playoff",
+  });
   return true;
 }
 
@@ -102,21 +104,22 @@ export async function startCup(tournament: Tournament): Promise<void> {
   await Promise.all(seeded.map((s) => setPlayerSeed(s.playerId, s.seed)));
 
   const matches = buildFirstRound(seeded, size);
-  const round = await createRound(tournament.id, 1, "playoff", "live");
   const startFen = variantStartFen(tournament.config.variant);
-  for (const m of matches) {
-    if (!m.topPlayerId) continue; // can't happen (top seeds always present)
-    await createGame({
-      tournamentId: tournament.id,
-      roundId: round.id,
-      whitePlayerId: m.topPlayerId,
-      blackPlayerId: m.bottomPlayerId, // null → bye, auto-advances
-      startFen,
-      slot: m.slot,
-    });
-  }
-
-  await updateTournament(tournament.id, { status: "playoff", current_round: 1 });
+  const res = await commitRound({
+    tournamentId: tournament.id,
+    number: 1,
+    phase: "playoff",
+    games: matches
+      .filter((m) => m.topPlayerId) // can't happen (top seeds always present)
+      .map((m) => ({
+        whitePlayerId: m.topPlayerId!,
+        blackPlayerId: m.bottomPlayerId, // null → bye, auto-advances
+        startFen,
+        slot: m.slot,
+      })),
+    setStatus: "playoff",
+  });
+  if (res === "exists") throw new Error("already_started");
   await broadcast(channels.lobby(tournament.id), events.tournament, {
     started: true,
     cup: true,
@@ -214,10 +217,9 @@ export async function advancePlayoff(
     return "tiebreak";
   }
 
-  await setRoundStatus(cur.id, "done");
-
   // Final decided → champion is the lone winner.
   if (winners.length === 1) {
+    await setRoundStatus(cur.id, "done");
     await updateTournament(tournament.id, { status: "finished" });
     await broadcast(channels.lobby(tournament.id), events.tournament, {
       finished: true,
@@ -227,20 +229,27 @@ export async function advancePlayoff(
   }
 
   // Pair adjacent winners (preserves bracket structure from seedOrder).
+  // Forrige runde -> done, neste runde, alle partier og current_round: atomisk.
   const nextNumber = tournament.current_round + 1;
-  const round = await createRound(tournament.id, nextNumber, "playoff", "live");
   const startFen = variantStartFen(tournament.config.variant);
+  const games = [];
   for (let i = 0; i < winners.length; i += 2) {
-    await createGame({
-      tournamentId: tournament.id,
-      roundId: round.id,
+    games.push({
       whitePlayerId: winners[i],
       blackPlayerId: winners[i + 1],
       startFen,
       slot: i / 2,
     });
   }
-  await updateTournament(tournament.id, { current_round: nextNumber });
+  const res = await commitRound({
+    tournamentId: tournament.id,
+    number: nextNumber,
+    phase: "playoff",
+    prevRoundId: cur.id,
+    games,
+  });
+  // Dobbeltklikk: den første forespørselen laget runden og varslet allerede.
+  if (res === "exists") return "playoff";
   await broadcast(channels.lobby(tournament.id), events.tournament, {
     playoffRound: nextNumber,
   });

@@ -1,5 +1,5 @@
 import { authHost } from "@/lib/server/auth";
-import { isUniqueViolation, listPlayers } from "@/lib/server/store";
+import { listPlayers } from "@/lib/server/store";
 import { startLeague } from "@/lib/server/league";
 import { startCup } from "@/lib/server/playoff";
 import { fail, ok, readJson, withApi } from "@/lib/server/http";
@@ -27,9 +27,13 @@ async function handlePost(req: Request): Promise<Response> {
     await startLeague(t);
     return ok({ status: "league" });
   } catch (err) {
-    // Double-fire: the other request created round 1 first (unique constraint
-    // on rounds). The tournament IS starting — tell the client that, not 500.
-    if (isUniqueViolation(err)) return fail(409, "already_started");
+    // Dobbeltklikk: den andre forespørselen laget runde 1 først (start_round, 0018).
+    if (err instanceof Error && err.message === "already_started") {
+      return fail(409, "already_started");
+    }
+    if (err instanceof Error && err.message === "round_incomplete") {
+      return fail(409, "round_incomplete");
+    }
     console.error("[round/start]", err);
     return fail(500, "start_failed");
   }
