@@ -1,12 +1,23 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { no } from "@/lib/locale/no";
+import { resetPublishBudget } from "./helpers/publishBudget";
 
 // M5b: fysisk turnering -> «Fortsett digitalt» -> to elever velger navn -> runde 2 i
 // spillmotoren (arrangør setter resultat) -> turneringsfil -> import i fysisk modus.
 // Kjører mot lokal Supabase med migr. 0017.
 const C = no.continueDigital;
 test.use({ acceptDownloads: true });
+test.beforeEach(resetPublishBudget);
+
+/** På smal skjerm ligger arrangørens handlinger bak «Mer». */
+async function revealHostAction(page: Page, testId: string) {
+  const action = page.getByTestId(testId);
+  const more = page.getByRole("button", { name: no.host.more });
+  await expect(action.or(more).filter({ visible: true }).first()).toBeVisible();
+  if (await more.isVisible()) await more.click();
+  return action;
+}
 
 async function claim(page: Page, pin: string, name: string) {
   await page.goto("/play");
@@ -80,7 +91,8 @@ test("fysisk → digital → runde 2 → fil → fysisk igjen", async ({ page, b
 
   // Tilbake til fil
   await page.goto(`/host/${tid}`);
-  const [dl] = await Promise.all([page.waitForEvent("download"), page.getByTestId("host-download-file").click()]);
+  const downloadFile = await revealHostAction(page, "host-download-file");
+  const [dl] = await Promise.all([page.waitForEvent("download"), downloadFile.click()]);
   expect(dl.suggestedFilename()).toMatch(/\.sundaychess\.json$/);
   const path = info.outputPath("tilbake.sundaychess.json");
   await dl.saveAs(path);

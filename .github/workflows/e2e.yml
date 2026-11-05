@@ -199,6 +199,11 @@ jobs:
             echo "NEXT_PUBLIC_SUPABASE_URL=$url"
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$anon"
             echo "SUPABASE_SERVICE_ROLE_KEY=$secret"
+            # /host and /host/login run middleware against the Sunday Account
+            # issuer. Without these it throws and the design spec measures a 500
+            # page. No sign-in happens in the suite, so the local project will do.
+            echo "NEXT_PUBLIC_SUNDAY_AUTH_URL=$url"
+            echo "NEXT_PUBLIC_SUNDAY_AUTH_ANON_KEY=$anon"
             # The QR/join links read this and fall back to window.location.origin;
             # pinning it keeps the copy deterministic under `next start`.
             echo "NEXT_PUBLIC_BASE_URL=http://localhost:3000"
@@ -236,6 +241,8 @@ jobs:
             echo "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL"
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY"
             echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY"
+            echo "NEXT_PUBLIC_SUNDAY_AUTH_URL=$NEXT_PUBLIC_SUNDAY_AUTH_URL"
+            echo "NEXT_PUBLIC_SUNDAY_AUTH_ANON_KEY=$NEXT_PUBLIC_SUNDAY_AUTH_ANON_KEY"
             echo "NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL"
             echo "PAIR_SECRET=$PAIR_SECRET"
           } > .dev.vars

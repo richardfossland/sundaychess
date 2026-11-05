@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { dispatch } from "@/lib/physical/reducer";
-import { localJournal } from "@/lib/physical/journal";
+import { loadWithJournal, localJournal } from "@/lib/physical/journal";
 import { createSaveQueue } from "@/lib/physical/saveQueue";
 import { memoryStore, type PhysicalStore } from "@/lib/physical/storage";
 import type { StoredTournament } from "@/lib/physical/schema";
@@ -55,5 +55,67 @@ describe("saveQueue: omlasting rett etter siste resultat (journal-race)", () => 
     expect(maxActive).toBe(1);
     expect((await mem.get(a.id))!.events).toHaveLength(b.events.length);
     expect(journal.read(a.id)).toBeNull(); // nå kan den ryddes
+  });
+
+  describe("omlasting mens A skrives og B bare er i journalen: B skal vinne", () => {
+    afterEach(() => vi.useRealTimers());
+
+    /** Kø der getStore og put holdes igjen, så omlastingen skjer etter A og før B er lagret. */
+    function rig() {
+      const m = new Map<string, string>();
+      const journal = localJournal({
+        getItem: (k) => m.get(k) ?? null,
+        setItem: (k, v) => void m.set(k, v),
+        removeItem: (k) => void m.delete(k),
+      });
+      const mem = memoryStore();
+      let releaseStore = () => {};
+      const storeReady = new Promise<void>((r) => (releaseStore = r));
+      let puts = 0;
+      const store: PhysicalStore = {
+        ...mem,
+        put: async (rec: StoredTournament) => {
+          // Bare A når lageret: B ble aldri skrevet før siden lastet om.
+          if (puts++ === 0) await mem.put(rec);
+          else await new Promise(() => {});
+        },
+      };
+      const q = createSaveQueue(async () => (await storeReady, store), undefined, journal);
+      const a = newTournament({}, 3);
+      const b = dispatch(a, { type: "addPlayer", playerId: "zz-ny", name: "Siste resultat" }, meta());
+      return { q, a, b, mem, journal, releaseStore };
+    }
+
+    it("A får ikke senere tidsstempel enn B selv om A skrives etter at B ble lagt i køen", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      const { q, a, b, mem, journal, releaseStore } = rig();
+      vi.setSystemTime(1_000);
+      q.enqueue(a);
+      vi.setSystemTime(2_000);
+      q.enqueue(b);
+      vi.setSystemTime(3_000); // A når lageret først nå
+      releaseStore();
+      await tick();
+      await tick();
+
+      expect((await mem.get(a.id))!.events).toHaveLength(a.events.length);
+      const { tournament, recovered } = await loadWithJournal(mem, journal, a.id);
+      expect(tournament!.events).toHaveLength(b.events.length);
+      expect(recovered).toBe(true);
+    });
+
+    it("to tilstander i samme millisekund: den siste vinner", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      const { q, a, b, mem, journal, releaseStore } = rig();
+      vi.setSystemTime(1_000);
+      q.enqueue(a);
+      q.enqueue(b);
+      releaseStore();
+      await tick();
+      await tick();
+
+      const { tournament } = await loadWithJournal(mem, journal, a.id);
+      expect(tournament!.events).toHaveLength(b.events.length);
+    });
   });
 });
