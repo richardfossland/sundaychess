@@ -229,9 +229,9 @@ test("a student kicked by the teacher cannot undo it", async ({ browser, request
     await studentPage.goto("/play");
     await expect(studentPage.getByTestId("waiting-room")).toBeVisible({ timeout: 25_000 });
 
-    // The teacher's kick: no `reason`.
+    // The teacher's kick is the only final one.
     const kicked = await request.post("/api/lobby/kick", {
-      data: { tournamentId: lobby.tournamentId, hostCode: lobby.hostCode, playerId: eli.playerId },
+      data: { tournamentId: lobby.tournamentId, hostCode: lobby.hostCode, playerId: eli.playerId, reason: "teacher" },
     });
     expect(kicked.status(), await kicked.text()).toBe(200);
 

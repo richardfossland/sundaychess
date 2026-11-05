@@ -37,6 +37,9 @@ async function handlePost(req: Request): Promise<Response> {
   const player = await getPlayer(body.playerId);
   if (!player || player.tournament_id !== t.id) return fail(404, "no_player");
 
+  // Et sveip fra en fane med utdatert liste skal ikke gjøre et lærer-kick angrebart.
+  if (player.status === "kicked" && body.reason !== "teacher") return ok({ ok: true });
+
   const status = body.reason === "teacher" ? "kicked" : "left";
   try {
     await setPlayerStatus(player.id, status);
