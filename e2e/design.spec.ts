@@ -146,7 +146,9 @@ async function expectDesign(
 async function open(page: Page, url: string, size: { width: number; height: number }, scheme: Scheme) {
   await page.setViewportSize(size);
   await page.emulateMedia({ colorScheme: scheme });
-  await page.goto(url);
+  const res = await page.goto(url);
+  // En feilside kan fint bestå designreglene; da har vi ikke testet siden.
+  expect(res?.status() ?? 0, `${url} svarte med serverfeil`).toBeLessThan(500);
   // Fonter og første tegning må være ferdig før noe måles.
   await page.evaluate(() => document.fonts.ready);
   // Innfadingen ved sidelasting (opacity 0 → 1) skal være ferdig, ellers måler

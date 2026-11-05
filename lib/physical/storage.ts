@@ -167,9 +167,9 @@ export async function openBestStore(env: StorageEnv = browserEnv()): Promise<Phy
 // ---- høynivå ----
 
 /** Lagre med autosave-semantikk: aldri kast. Returnerer true hvis lagringen lyktes. */
-export async function saveTournament(store: PhysicalStore, t: PhysicalTournament): Promise<boolean> {
+export async function saveTournament(store: PhysicalStore, t: PhysicalTournament, updatedAt?: string): Promise<boolean> {
   try {
-    await store.put(toStored(t));
+    await store.put(toStored(t, updatedAt));
     notifyChanged(t.id);
     return true;
   } catch {

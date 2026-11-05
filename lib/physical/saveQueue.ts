@@ -44,9 +44,17 @@ export function createSaveQueue(
   // De siste kjente lagerinnholdene (flush() kan avslutte parallelle skrivinger i annen rekkefølge).
   let bases: string[][] = [];
   let blocked = false;
-  let pending: PhysicalTournament | null = null;
+  let pending: { t: PhysicalTournament; updatedAt: string } | null = null;
   /** Nyeste tilstand lagt i køen. Journalen rydder bare for denne. */
   let latest: PhysicalTournament | null = null;
+  // Lasting velger mellom lager og journal etter `updatedAt`, så stempelet må følge rekkefølgen
+  // tilstandene ble lagt i køen, ikke når skrivingen rakk fram: en eldre tilstand som skrives sent
+  // ville ellers slå en nyere i journalen. Strengt stigende, også innenfor samme millisekund.
+  let lastStamp = 0;
+  const nextStamp = () => {
+    lastStamp = Math.max(Date.now(), lastStamp + 1);
+    return new Date(lastStamp).toISOString();
+  };
   let inflight: Promise<void> | null = null;
   let state: SaveState = "idle";
   let failed = false;
@@ -55,7 +63,7 @@ export function createSaveQueue(
     onState(s);
   };
 
-  async function write(t: PhysicalTournament): Promise<void> {
+  async function write(t: PhysicalTournament, updatedAt: string): Promise<void> {
     if (blocked) return;
     const store = await getStore();
     // Defensivt vern: lageret må fortsatt være det vi selv skrev/lastet. Ellers har en annen fane
@@ -79,7 +87,7 @@ export function createSaveQueue(
         return;
       }
     }
-    const ok = await saveTournament(store, t);
+    const ok = await saveTournament(store, t, updatedAt);
     if (ok) bases = [...bases, idsOf(t)].slice(-3);
     if (!ok) failed = true;
     // Journalen kan ryddes når lageret har bekreftet DEN NYESTE tilstanden (ikke bare en eldre
@@ -101,7 +109,7 @@ export function createSaveQueue(
         while (pending) {
           const next = pending;
           pending = null;
-          await write(next);
+          await write(next.t, next.updatedAt);
         }
       } finally {
         inflight = null;
@@ -122,9 +130,10 @@ export function createSaveQueue(
     },
     enqueue(t) {
       if (blocked) return;
-      pending = t;
+      const updatedAt = nextStamp();
+      pending = { t, updatedAt };
       latest = t;
-      journal?.write(toStored(t));
+      journal?.write(toStored(t, updatedAt));
       set("saving");
       void pump();
     },

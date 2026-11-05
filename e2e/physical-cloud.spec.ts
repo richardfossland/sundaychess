@@ -1,10 +1,13 @@
 import { expect, test } from "@playwright/test";
 
 import { no } from "@/lib/locale/no";
+import { resetPublishBudget } from "./helpers/publishBudget";
 
 // Fysisk modus M5a: publiser -> QR-rapport fra en annen enhet -> arrangøren godkjenner
 // -> resultatet står i den offentlige siden. Kjører mot lokal Supabase (migr. 0016).
 const L = no.physicalCloud;
+
+test.beforeEach(resetPublishBudget);
 
 test("publiser → spiller melder via QR-side → arrangør godkjenner → offentlig side viser resultatet", async ({ page, browser }) => {
   test.setTimeout(120_000);
