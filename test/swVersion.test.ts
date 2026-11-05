@@ -21,7 +21,7 @@ function boot(buildId: string, existing: string[]) {
     delete: async (k: string) => (deleted.push(k), true),
     open: async () => ({ put: async () => {}, match: async () => undefined }),
   };
-  const ctx = vm.createContext({ self, caches, fetch: async () => ({ ok: false }), URL, Response, Promise });
+  const ctx = vm.createContext({ self, caches, fetch: async () => ({ ok: false, status: 404 }), URL, Response, Promise });
   vm.runInContext(swSource(buildId), ctx);
   const run = async (type: string, data?: unknown) => {
     let p: Promise<unknown> = Promise.resolve();
@@ -30,6 +30,69 @@ function boot(buildId: string, existing: string[]) {
   };
   return { run, deleted, skipped: () => skipped, claimed: () => claimed };
 }
+
+// Install against a fake network, with a working cache, then report what happened.
+async function install(respond: (path: string) => Promise<{ ok: boolean; status: number; redirected?: boolean; html?: string }>) {
+  const listeners: Record<string, (e: unknown) => void> = {};
+  const stored: string[] = [];
+  const self = {
+    location: { origin: "https://x.test" },
+    addEventListener: (t: string, fn: (e: unknown) => void) => (listeners[t] = fn),
+    skipWaiting: () => {},
+    clients: { claim: async () => {} },
+  };
+  const caches = {
+    keys: async () => [],
+    delete: async () => true,
+    open: async () => ({ put: async (k: string) => void stored.push(k), match: async () => undefined }),
+  };
+  const fetch = async (path: string) => {
+    const r = await respond(path);
+    const res = { redirected: false, ...r, text: async () => r.html ?? "", clone: () => res };
+    return res;
+  };
+  vm.runInContext(swSource("new1"), vm.createContext({ self, caches, fetch, URL, Response, Promise, Set, Error }));
+  let p: Promise<unknown> = Promise.resolve();
+  listeners.install({ waitUntil: (x: Promise<unknown>) => (p = x) });
+  return { done: p, stored };
+}
+
+const HTML = '<script src="/_next/static/chunks/a.js"></script>';
+
+describe("service worker install: an incomplete precache must not replace a working shell", () => {
+  it("rejects when the network is down, so activate never evicts the old caches", async () => {
+    const { done } = await install(async () => {
+      throw new Error("offline");
+    });
+    await expect(done).rejects.toThrow("offline");
+  });
+
+  it("rejects on a 5xx document", async () => {
+    const { done } = await install(async () => ({ ok: false, status: 503 }));
+    await expect(done).rejects.toThrow("503");
+  });
+
+  it("rejects when a chunk the shell needs is missing", async () => {
+    const { done } = await install(async (p) =>
+      p.startsWith("/_next/") ? { ok: false, status: 500 } : { ok: true, status: 200, html: HTML },
+    );
+    await expect(done).rejects.toThrow("a.js");
+  });
+
+  it("still skips a route that does not exist or redirects", async () => {
+    const { done, stored } = await install(async (p) =>
+      p === "/offline" ? { ok: false, status: 404 } : { ok: true, status: 200, redirected: true },
+    );
+    await expect(done).resolves.toBeDefined();
+    expect(stored).toEqual([]);
+  });
+
+  it("caches the shell and its chunks when everything answers", async () => {
+    const { done, stored } = await install(async () => ({ ok: true, status: 200, html: HTML }));
+    await done;
+    expect(stored).toEqual(expect.arrayContaining(["/offline", "/arranger/fysisk", "/_next/static/chunks/a.js"]));
+  });
+});
 
 describe("service worker versioning", () => {
   it("stamps the build id; different builds give different workers", () => {

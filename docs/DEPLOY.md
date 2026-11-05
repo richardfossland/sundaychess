@@ -102,6 +102,11 @@ Run them in numeric order; `0001`–`0013` are covered by the file headers, and
 Check each runbook's own order/rollback section; never deploy code ahead of its
 migration.
 
+**Rollback across the host-code change:** tournaments created after it have 10-character
+host codes. Code from before it (`0a53499` and older) rejects those on reopen with 400
+`invalid_code`, though a teacher's already-open tab keeps working. Roll back only if you
+accept that, and check for such tournaments first.
+
 👤 **Run `0013_revoke_cleanup_exec_casual_guard.sql` after `0012_client_events.sql`.**
 It revokes the anon/authenticated `EXECUTE` grant that Postgres implicitly gave
 `public.cleanup_old_tournaments()` / `public.cleanup_client_events()` (both

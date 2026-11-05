@@ -34,6 +34,7 @@ const resolveGameRpc = vi.fn();
 const getRound = vi.fn();
 const listMoveStamps = vi.fn();
 
+const setDrawOffer = vi.fn();
 vi.mock("@/lib/server/store", () => ({
   getGame: (...a: unknown[]) => getGame(...a),
   applyMoveRpc: (...a: unknown[]) => applyMoveRpc(...a),
@@ -41,7 +42,7 @@ vi.mock("@/lib/server/store", () => ({
   getTournament: (...a: unknown[]) => getTournament(...a),
   getRound: (...a: unknown[]) => getRound(...a),
   listMoveStamps: (...a: unknown[]) => listMoveStamps(...a),
-  setDrawOffer: vi.fn(),
+  setDrawOffer: (...a: unknown[]) => setDrawOffer(...a),
 }));
 vi.mock("@/lib/server/auth", () => ({
   authPlayer: (...a: unknown[]) => authPlayer(...a),
@@ -154,6 +155,16 @@ describe("POST /api/move", () => {
     const res = await POST(req({ gameId: GAME_ID, from: "e2", to: "e4", playerId: "white", resumeCode: "AAAA-AA" }));
     expect(res.status).toBe(503);
     expect((await res.json()).error).toBe("server_error");
+  });
+
+  it("a committed move still succeeds and broadcasts when clearing the draw offer fails", async () => {
+    authPlayer.mockResolvedValue(makePlayer("white"));
+    getGame.mockResolvedValue(makeGame({ draw_offered_by: "black" }));
+    setDrawOffer.mockRejectedValueOnce(new Error("db blip"));
+    const res = await POST(req({ gameId: GAME_ID, from: "e2", to: "e4", playerId: "white", resumeCode: "AAAA-AA" }));
+    expect(res.status).toBe(200);
+    await drainDeferred();
+    expect(broadcastPosition).toHaveBeenCalledOnce();
   });
 
   it("applies a legal move atomically and broadcasts", async () => {

@@ -44,8 +44,11 @@ const ASSETS = PREFIX + "assets-" + VERSION; // icons, fonts, manifest (SWR)
 const CURRENT = [SHELL, STATIC, ASSETS];
 
 // ONE place that lists the routes whose HTML is precached at install. The M1
-// physical-mode route(s) go here. A route that does not exist (404) or
-// redirects is simply skipped — install must never fail because of it.
+// physical-mode route(s) go here. A route that does not exist (404) or redirects
+// is simply skipped. Anything else that fails (no network, 5xx, a missing chunk)
+// REJECTS the install: activate deletes the previous version's caches, so an
+// incomplete install must never replace a working offline shell. The old worker
+// stays in charge and the browser tries again on a later visit.
 const PRECACHE_ROUTES = ["/offline", "/arranger/fysisk"];
 
 // Navigations under this prefix fall back to the cached shell when offline.
@@ -62,30 +65,24 @@ function isOfflineAppPath(p) {
 }
 
 async function precacheRoute(path) {
-  try {
-    const res = await fetch(path, { credentials: "same-origin", cache: "reload" });
-    if (!res.ok || res.redirected) return;
-    const html = await res.clone().text();
-    const shell = await caches.open(SHELL);
-    await shell.put(path, res);
-    // Pull in the hashed chunks this document references so the shell actually
-    // boots offline.
-    const urls = new Set(html.match(/\/_next\/static\/[^"'\\\s)<>]+/g) || []);
-    const st = await caches.open(STATIC);
-    await Promise.all(
-      [...urls].map(async (u) => {
-        try {
-          if (await st.match(u)) return;
-          const r = await fetch(u, { credentials: "same-origin" });
-          if (r.ok) await st.put(u, r);
-        } catch (_) {
-          /* best effort */
-        }
-      }),
-    );
-  } catch (_) {
-    /* offline during install / route missing: skip */
-  }
+  const res = await fetch(path, { credentials: "same-origin", cache: "reload" });
+  if (res.status === 404 || res.redirected) return;
+  if (!res.ok) throw new Error("precache " + path + ": " + res.status);
+  const html = await res.clone().text();
+  const shell = await caches.open(SHELL);
+  await shell.put(path, res);
+  // Pull in the hashed chunks this document references so the shell actually
+  // boots offline. One missing chunk means it does not.
+  const urls = new Set(html.match(/\/_next\/static\/[^"'\\\s)<>]+/g) || []);
+  const st = await caches.open(STATIC);
+  await Promise.all(
+    [...urls].map(async (u) => {
+      if (await st.match(u)) return;
+      const r = await fetch(u, { credentials: "same-origin" });
+      if (!r.ok) throw new Error("precache " + u + ": " + r.status);
+      await st.put(u, r);
+    }),
+  );
 }
 
 self.addEventListener("install", (event) => {
