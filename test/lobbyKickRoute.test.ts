@@ -101,6 +101,13 @@ describe("POST /api/lobby/kick", () => {
     expect(setPlayerStatus).toHaveBeenCalledWith(P_ID, "left");
   });
 
+  it("M3: sveip fra en fane med utdatert liste gjør ikke et lærer-kick angrebart", async () => {
+    vi.mocked(getPlayer).mockResolvedValueOnce({ id: P_ID, tournament_id: T_ID, status: "kicked" } as never);
+    const res = await POST(req({ ...good, reason: "ghost" }));
+    expect(res.status).toBe(200);
+    expect(setPlayerStatus).not.toHaveBeenCalled();
+  });
+
   it("M3: spøkelsessveipet (reason ghost) gir `left`, som eleven selv kan angre", async () => {
     const res = await POST(req({ ...good, reason: "ghost" }));
     expect(res.status).toBe(200);

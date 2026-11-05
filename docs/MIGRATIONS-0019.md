@@ -23,3 +23,7 @@ alter table public.players drop constraint if exists players_status_check;
 alter table public.players add constraint players_status_check check (status in ('active','left'));
 ```
 Rull tilbake koden først. En åpen host-fane med gammel JS sender kick uten `reason` og gir `left`, så en låst telefon blir aldri kastet ut for godt.
+
+## Hva «endelig» betyr
+
+Kicket gjelder identiteten: eleven kan ikke angre det selv. Med PIN-en kan eleven fortsatt logge ut og bli med på nytt som en ny spiller, og læreren må da kaste ut på nytt. Mens turneringen er i lobbyen er det bevisst slik.
