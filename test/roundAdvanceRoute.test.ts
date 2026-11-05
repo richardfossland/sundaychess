@@ -10,7 +10,6 @@ const advanceRound = vi.fn();
 const currentRoundResolved = vi.fn();
 const advancePlayoff = vi.fn();
 const playoffRoundResolved = vi.fn();
-const isUniqueViolation = vi.fn();
 
 vi.mock("@/lib/server/league", () => ({
   advanceRound: (...a: unknown[]) => advanceRound(...a),
@@ -23,7 +22,6 @@ vi.mock("@/lib/server/playoff", () => ({
 vi.mock("@/lib/server/store", () => ({
   getTournament: (...a: unknown[]) => getTournament(...a),
   getPlayer: vi.fn(), // imported by lib/server/auth
-  isUniqueViolation: (...a: unknown[]) => isUniqueViolation(...a),
 }));
 
 import { POST } from "@/app/api/round/advance/route";
@@ -60,6 +58,7 @@ beforeEach(() => {
   __resetRateLimiter();
   getTournament.mockResolvedValue(tournament());
   currentRoundResolved.mockResolvedValue(true);
+  advanceRound.mockReset();
 });
 
 describe("POST /api/round/advance", () => {
@@ -76,22 +75,24 @@ describe("POST /api/round/advance", () => {
 
   it("advances normally and returns the new status", async () => {
     advanceRound.mockResolvedValue("league");
-    isUniqueViolation.mockReturnValue(false);
     const res = await POST(req(good));
     expect(res.status).toBe(200);
     expect((await res.json()).status).toBe("league");
   });
 
-  it("recovers from a double-fire (23505) with 200 + the fresh status", async () => {
-    advanceRound.mockRejectedValue({ code: "23505" });
-    isUniqueViolation.mockReturnValue(true);
-    // 1st call = the auth lookup, 2nd = the post-conflict re-read.
-    getTournament
-      .mockResolvedValueOnce(tournament())
-      .mockResolvedValueOnce(tournament({ status: "playoff" }));
+  // H1: dobbeltklikk avgjøres nå i start_round (0018); advanceRound svarer normalt
+  // når en HEL runde finnes. En halvbygd runde må gi en ærlig feil, ikke 200.
+  it("409 round_incomplete (ikke 200) når neste runde finnes men er halvbygd", async () => {
+    advanceRound.mockRejectedValue(new Error("round_incomplete"));
     const res = await POST(req(good));
-    expect(res.status).toBe(200);
-    expect((await res.json()).status).toBe("playoff");
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe("round_incomplete");
+  });
+
+  it("en rå 23505 svares IKKE lenger som suksess", async () => {
+    advanceRound.mockRejectedValue({ code: "23505" });
+    const res = await POST(req(good));
+    expect(res.status).toBe(500);
   });
 
   it("401s JSON on a malformed tournamentId, without ever querying Postgres", async () => {

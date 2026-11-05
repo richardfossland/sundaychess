@@ -9,7 +9,7 @@ const { store } = vi.hoisted(() => ({
     listGamesForRound: vi.fn(),
     setPlayerSeed: vi.fn(),
     setRoundStatus: vi.fn(),
-    createRound: vi.fn(),
+    startRoundRpc: vi.fn(),
     createGame: vi.fn(),
     updateTournament: vi.fn(),
   },
@@ -86,10 +86,13 @@ const playoffRound = (number: number): Round => ({
 beforeEach(() => {
   vi.clearAllMocks();
   gid = 0;
-  store.createRound.mockResolvedValue(playoffRound(1));
+  store.startRoundRpc.mockResolvedValue({ ok: true, roundId: "pr-new" });
   store.createGame.mockResolvedValue({});
   store.setPlayerSeed.mockResolvedValue(undefined);
 });
+
+// Runden opprettes atomisk via start_round (0018): ett kall bærer runde + ALLE partier.
+const startArg = () => store.startRoundRpc.mock.calls[0][0];
 
 describe("maybeStartPlayoff", () => {
   it("returns false when playoff is disabled", async () => {
@@ -103,19 +106,16 @@ describe("maybeStartPlayoff", () => {
     const started = await maybeStartPlayoff(tournament());
     expect(started).toBe(true);
     expect(store.setPlayerSeed).toHaveBeenCalledTimes(8);
-    expect(store.createRound).toHaveBeenCalledWith("t", 1, "playoff", "live");
-    expect(store.createGame).toHaveBeenCalledTimes(4);
-    expect(store.updateTournament).toHaveBeenCalledWith("t", {
-      status: "playoff",
-      current_round: 1,
-    });
+    expect(startArg()).toMatchObject({ tournamentId: "t", number: 1, phase: "playoff", setStatus: "playoff" });
+    expect(startArg().games).toHaveLength(4);
+    expect(store.createGame).not.toHaveBeenCalled(); // ingen enkelt-skriving utenfor RPC
   });
 
   it("shrinks the bracket to fit fewer players (6 → 4)", async () => {
     store.listPlayers.mockResolvedValue(players(6));
     store.listGames.mockResolvedValue([]);
     await maybeStartPlayoff(tournament());
-    expect(store.createGame).toHaveBeenCalledTimes(2); // 4-player bracket
+    expect(startArg().games).toHaveLength(2); // 4-player bracket
   });
 });
 
@@ -124,20 +124,17 @@ describe("startCup", () => {
     store.listPlayers.mockResolvedValue(players(8));
     await startCup(tournament({ status: "lobby", current_round: 0 }));
     expect(store.setPlayerSeed).toHaveBeenCalledTimes(8);
-    expect(store.createRound).toHaveBeenCalledWith("t", 1, "playoff", "live");
-    expect(store.createGame).toHaveBeenCalledTimes(4);
-    expect(store.updateTournament).toHaveBeenCalledWith("t", {
-      status: "playoff",
-      current_round: 1,
-    });
+    expect(startArg()).toMatchObject({ tournamentId: "t", number: 1, phase: "playoff", setStatus: "playoff" });
+    expect(startArg().games).toHaveLength(4);
+    expect(store.createGame).not.toHaveBeenCalled(); // ingen enkelt-skriving utenfor RPC
   });
 
   it("pads a non-power-of-two field with byes (6 → 8-bracket)", async () => {
     store.listPlayers.mockResolvedValue(players(6));
     await startCup(tournament({ status: "lobby", current_round: 0 }));
     expect(store.setPlayerSeed).toHaveBeenCalledTimes(6); // only real players seeded
-    expect(store.createGame).toHaveBeenCalledTimes(4); // 8-slot bracket → 4 matches
-    const byes = store.createGame.mock.calls.filter((c) => c[0].blackPlayerId === null);
+    expect(startArg().games).toHaveLength(4); // 8-slot bracket → 4 matches
+    const byes = startArg().games.filter((g: { blackPlayerId: string | null }) => g.blackPlayerId === null);
     expect(byes.length).toBe(2); // 8 − 6 = 2 first-round byes
   });
 
@@ -158,10 +155,11 @@ describe("advancePlayoff", () => {
     ]);
     const status = await advancePlayoff(tournament({ current_round: 1 }));
     expect(status).toBe("playoff");
-    expect(store.setRoundStatus).toHaveBeenCalledWith("pr1", "done");
-    expect(store.createRound).toHaveBeenCalledWith("t", 2, "playoff", "live");
-    expect(store.createGame).toHaveBeenCalledTimes(2); // 4 winners → 2 games
-    expect(store.updateTournament).toHaveBeenCalledWith("t", { current_round: 2 });
+    // forrige runde -> done, ny runde, partier og current_round: ÉN atomisk RPC
+    expect(startArg()).toMatchObject({ tournamentId: "t", number: 2, phase: "playoff", prevRoundId: "pr1" });
+    expect(startArg().games).toHaveLength(2); // 4 winners → 2 games
+    expect(store.setRoundStatus).not.toHaveBeenCalled();
+    expect(store.updateTournament).not.toHaveBeenCalled();
   });
 
   it("crowns the champion when the final is decided", async () => {
@@ -185,14 +183,14 @@ describe("advancePlayoff", () => {
       game("p4", "p5", "white_win", 1),
     ]);
     await advancePlayoff(tournament({ current_round: 1 }));
-    expect(store.createGame).toHaveBeenCalledTimes(2);
+    expect(startArg().games).toHaveLength(2);
     // semifinal 1 = winners of slots 0+1 (p1 vs p4); semifinal 2 = slots 2+3
-    expect(store.createGame.mock.calls[0][0]).toMatchObject({
+    expect(startArg().games[0]).toMatchObject({
       whitePlayerId: "p1",
       blackPlayerId: "p4",
       slot: 0,
     });
-    expect(store.createGame.mock.calls[1][0]).toMatchObject({
+    expect(startArg().games[1]).toMatchObject({
       whitePlayerId: "p2",
       blackPlayerId: "p3",
       slot: 1,
@@ -211,7 +209,7 @@ describe("advancePlayoff", () => {
     const status = await advancePlayoff(tournament({ current_round: 1 }));
     expect(status).toBe("tiebreak");
     expect(store.setRoundStatus).not.toHaveBeenCalled(); // round keeps playing
-    expect(store.createRound).not.toHaveBeenCalled(); // no next round yet
+    expect(store.startRoundRpc).not.toHaveBeenCalled(); // no next round yet
     expect(store.updateTournament).not.toHaveBeenCalled(); // didn't advance
     expect(store.createGame).toHaveBeenCalledTimes(1);
     expect(store.createGame.mock.calls[0][0]).toMatchObject({
@@ -237,10 +235,10 @@ describe("advancePlayoff", () => {
       resolveDrawsBySeed: true,
     });
     expect(status).toBe("playoff"); // advanced immediately, no tiebreak
-    expect(store.setRoundStatus).toHaveBeenCalledWith("pr1", "done");
-    expect(store.createGame).toHaveBeenCalledTimes(2); // semifinals, NOT a rematch
+    expect(startArg().prevRoundId).toBe("pr1");
+    expect(startArg().games).toHaveLength(2); // semifinals, NOT a rematch
     // slot 1's draw resolved to the higher seed p4 (seed 4 < p5 seed 5) → SF1 = p1 vs p4
-    expect(store.createGame.mock.calls[0][0]).toMatchObject({
+    expect(startArg().games[0]).toMatchObject({
       whitePlayerId: "p1",
       blackPlayerId: "p4",
     });
@@ -258,10 +256,10 @@ describe("advancePlayoff", () => {
     ]);
     const status = await advancePlayoff(tournament({ current_round: 1 }));
     expect(status).toBe("playoff");
-    expect(store.setRoundStatus).toHaveBeenCalledWith("pr1", "done");
-    expect(store.createGame).toHaveBeenCalledTimes(2); // semifinals
+    expect(startArg().prevRoundId).toBe("pr1");
+    expect(startArg().games).toHaveLength(2); // semifinals
     // slot1 resolved to the rematch winner p5 → SF1 = p1 vs p5
-    expect(store.createGame.mock.calls[0][0]).toMatchObject({
+    expect(startArg().games[0]).toMatchObject({
       whitePlayerId: "p1",
       blackPlayerId: "p5",
     });
@@ -276,11 +274,11 @@ describe("advancePlayoff", () => {
       game("p3", "p6", "black_win", 3),
     ]);
     await advancePlayoff(tournament({ current_round: 1 }));
-    expect(store.createGame.mock.calls[0][0]).toMatchObject({
+    expect(startArg().games[0]).toMatchObject({
       whitePlayerId: "p1",
       blackPlayerId: "p4",
     });
-    expect(store.createGame.mock.calls[1][0]).toMatchObject({
+    expect(startArg().games[1]).toMatchObject({
       whitePlayerId: "p2",
       blackPlayerId: "p6",
     });
@@ -301,9 +299,9 @@ describe("advancePlayoff", () => {
     ]);
     const status = await advancePlayoff(tournament({ current_round: 1 }));
     expect(status).toBe("playoff");
-    expect(store.createGame).toHaveBeenCalledTimes(2);
+    expect(startArg().games).toHaveLength(2);
     // slot1 → p4 (higher seed) advances by draw-odds: SF1 = p1 vs p4
-    expect(store.createGame.mock.calls[0][0]).toMatchObject({
+    expect(startArg().games[0]).toMatchObject({
       whitePlayerId: "p1",
       blackPlayerId: "p4",
     });

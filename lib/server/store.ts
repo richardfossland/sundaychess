@@ -604,6 +604,56 @@ export async function createGame(g: NewGame): Promise<Game> {
   return retry.data as Game;
 }
 
+/** Ett parti i en runde som opprettes atomisk (se start_round i 0018). */
+export interface RoundGameSpec {
+  whitePlayerId: string;
+  blackPlayerId: string | null;
+  startFen: string;
+  slot: number;
+  status?: Game["status"];
+  resultSource?: NonNullable<Game["result_source"]>;
+}
+
+export interface StartRoundResult {
+  ok: boolean;
+  roundId?: string;
+  /** 'exists' | 'no_games' | 'no_tournament' */
+  conflict?: string;
+  /** Ved conflict='exists': er runden hel (har partier og er turneringens aktive runde)? */
+  complete?: boolean;
+}
+
+/** Atomisk runde (migrasjon 0018): forrige runde -> done, ny runde, ALLE partier
+ * og current_round i én transaksjon. Kaster hvis RPC-en mangler (migrasjon ikke kjørt). */
+export async function startRoundRpc(a: {
+  tournamentId: string;
+  number: number;
+  phase: Round["phase"];
+  prevRoundId?: string | null;
+  games: RoundGameSpec[];
+  setStatus?: Tournament["status"] | null;
+}): Promise<StartRoundResult> {
+  const db = createServiceClient();
+  const { data, error } = await db.rpc("start_round", {
+    p_tournament_id: a.tournamentId,
+    p_number: a.number,
+    p_phase: a.phase,
+    p_prev_round_id: a.prevRoundId ?? null,
+    p_games: a.games.map((g) => ({
+      white: g.whitePlayerId,
+      black: g.blackPlayerId,
+      fen: g.startFen,
+      slot: g.slot,
+      status: g.status ?? null,
+      result_source: g.resultSource ?? null,
+    })),
+    p_set_status: a.setStatus ?? null,
+  });
+  if (error) throw error;
+  const r = data as { ok: boolean; round_id?: string; conflict?: string; complete?: boolean };
+  return { ok: r.ok, roundId: r.round_id, conflict: r.conflict, complete: r.complete };
+}
+
 // ---------------- atomic RPCs (migration 0002) ----------------
 
 export interface ApplyMoveArgs {

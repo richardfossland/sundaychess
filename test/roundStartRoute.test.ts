@@ -108,12 +108,18 @@ describe("POST /api/round/start", () => {
     expect((await res.json()).error).toBe("not_enough_players");
   });
 
-  it("409 already_started when a double-fire hits the rounds unique constraint", async () => {
-    startLeague.mockRejectedValue({ code: "23505" });
-    isUniqueViolation.mockReturnValue(true);
+  it("409 already_started when a double-fire finds a complete round 1 (start_round exists)", async () => {
+    startLeague.mockRejectedValue(new Error("already_started"));
     const res = await POST(req(good));
     expect(res.status).toBe(409);
     expect((await res.json()).error).toBe("already_started");
+  });
+
+  it("409 round_incomplete when round 1 exists but is half-built", async () => {
+    startLeague.mockRejectedValue(new Error("round_incomplete"));
+    const res = await POST(req(good));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe("round_incomplete");
   });
 
   // H1: authHost + listPlayers used to sit OUTSIDE the try, so a transient DB

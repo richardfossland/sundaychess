@@ -1,7 +1,6 @@
 import { authHost } from "@/lib/server/auth";
 import { advanceRound, currentRoundResolved } from "@/lib/server/league";
 import { advancePlayoff, playoffRoundResolved } from "@/lib/server/playoff";
-import { getTournament, isUniqueViolation } from "@/lib/server/store";
 import { fail, ok, readJson, withApi } from "@/lib/server/http";
 
 // POST /api/round/advance — teacher clicks "Neste runde". Guarded: every game
@@ -38,12 +37,11 @@ async function handlePost(req: Request): Promise<Response> {
     if (err instanceof Error && err.message === "needs_decision") {
       return fail(409, "needs_decision");
     }
-    // Double-fire (double-click / two tabs): the OTHER request already created
-    // the next round — that advance succeeded, so answer 200, not a scary 500.
-    // (createRound runs before the current_round bump, so no double-bump.)
-    if (isUniqueViolation(err)) {
-      const fresh = await getTournament(t.id).catch(() => null);
-      return ok({ status: fresh?.status ?? t.status });
+    // Dobbeltklikk er håndtert i start_round (0018): finnes en HEL neste runde
+    // allerede, svarer advanceRound/advancePlayoff normalt (200). En halvbygd
+    // runde (arv fra før 0018) er IKKE «ferdig» – si det ærlig, ikke 200.
+    if (err instanceof Error && err.message === "round_incomplete") {
+      return fail(409, "round_incomplete");
     }
     console.error("[round/advance]", err);
     return fail(500, "advance_failed");
