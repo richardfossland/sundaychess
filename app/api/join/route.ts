@@ -53,6 +53,10 @@ async function handlePost(req: Request, device: string): Promise<Response> {
       team: player.team ?? null,
     });
   } catch (err) {
+    // M5: turneringen har nådd taket (500) – klar, forutsigbar feil, ikke 500.
+    if (err instanceof Error && err.message === "tournament_full") {
+      return fail(409, "tournament_full");
+    }
     console.error("[join]", err);
     return fail(500, "join_failed");
   }

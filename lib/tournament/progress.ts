@@ -153,7 +153,7 @@ export function offerSoloWhileWaiting(state: BoardState, playerId: string): bool
   }
 
   const me = players.find((p) => p.id === playerId);
-  if (me?.status === "left") return true;
+  if (me?.status === "left" || me?.status === "kicked") return true;
 
   if (tournament.status === "playoff") {
     const round = rounds.find(

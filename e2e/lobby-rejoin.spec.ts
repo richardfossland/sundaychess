@@ -163,11 +163,14 @@ test("a removed student is told, and a reload puts them back in the lobby", asyn
     });
 
     // ---- the host removes them (what the sweep would do after 3 minutes) ----
+    // M3: the sweep sends reason "ghost" -> status `left`, which the student can
+    // undo. (A deliberate teacher kick has no reason and is final: next test.)
     const kicked = await request.post("/api/lobby/kick", {
       data: {
         tournamentId: lobby.tournamentId,
         hostCode: lobby.hostCode,
         playerId: cam.playerId,
+        reason: "ghost",
       },
     });
     expect(kicked.status(), await kicked.text()).toBe(200);
@@ -203,6 +206,53 @@ test("a removed student is told, and a reload puts them back in the lobby", asyn
       state.players.find((p) => p.id === cam.playerId)?.status,
       "the rejoined student is not active in the roster",
     ).toBe("active");
+  } finally {
+    await Promise.all(contexts.map((c) => c.close()));
+  }
+});
+
+// M3: a TEACHER's kick is final. No auto-rejoin on reload, no rejoin button, and
+// the server refuses /api/lobby/rejoin even if the client is bypassed.
+test("a student kicked by the teacher cannot undo it", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+
+  const lobby = await openLobby(request, ["Eli", "Fay"]);
+  const [eli] = lobby.players;
+
+  const contexts: BrowserContext[] = [];
+  try {
+    const studentCtx = await browser.newContext();
+    contexts.push(studentCtx);
+    await seedPlayer(studentCtx, eli);
+    const studentPage = await studentCtx.newPage();
+    const rejoins = countRequests(studentPage, "/api/lobby/rejoin");
+    await studentPage.goto("/play");
+    await expect(studentPage.getByTestId("waiting-room")).toBeVisible({ timeout: 25_000 });
+
+    // The teacher's kick: no `reason`.
+    const kicked = await request.post("/api/lobby/kick", {
+      data: { tournamentId: lobby.tournamentId, hostCode: lobby.hostCode, playerId: eli.playerId },
+    });
+    expect(kicked.status(), await kicked.text()).toBe(200);
+
+    await expect(studentPage.getByText(no.player.kickedTitle)).toBeVisible({ timeout: 20_000 });
+    await expect(studentPage.getByText(no.player.rejoinLobby)).toHaveCount(0);
+
+    // A reload must NOT put them back.
+    await studentPage.reload();
+    await expect(studentPage.getByTestId("kicked-card")).toBeVisible({ timeout: 25_000 });
+    expect(rejoins.count(), "the client tried to rejoin after a teacher kick").toBe(0);
+    rejoins.stop();
+
+    // And the server refuses a hand-rolled rejoin.
+    const direct = await request.post("/api/lobby/rejoin", {
+      data: { tournamentId: lobby.tournamentId, playerId: eli.playerId, resumeCode: eli.resumeCode },
+    });
+    expect(direct.status()).toBe(403);
+
+    const board = await request.get(`/api/tournament/${lobby.tournamentId}`);
+    const state = (await board.json()) as { players: { id: string; status: string }[] };
+    expect(state.players.find((p) => p.id === eli.playerId)?.status).toBe("kicked");
   } finally {
     await Promise.all(contexts.map((c) => c.close()));
   }

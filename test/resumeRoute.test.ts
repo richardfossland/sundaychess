@@ -84,6 +84,13 @@ describe("POST /api/resume", () => {
     });
   });
 
+  it("M3: reports 'kicked' as-is so the client does NOT auto-rejoin", async () => {
+    store.getTournament.mockResolvedValue(tournament("lobby"));
+    store.getPlayerByResume.mockResolvedValue(player({ status: "kicked" }));
+    const res = await POST(req({ resumeCode: "AAAA-AA", tournamentId: VALID_ID }));
+    expect((await res.json()).playerStatus).toBe("kicked");
+  });
+
   it("reports 'active' for a normal resume", async () => {
     store.getTournament.mockResolvedValue(tournament("league"));
     store.getPlayerByResume.mockResolvedValue(player());

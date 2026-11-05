@@ -85,3 +85,18 @@ describe("authHost", () => {
     expect(store.getTournament).not.toHaveBeenCalled();
   });
 });
+
+describe("authHost med 10-tegns vertskode (H2)", () => {
+  const t = (host_code: string) => ({ id: T_ID, host_code });
+  it("godtar ny lang kode (formatuavhengig) og gammel kort kode", async () => {
+    store.getTournament.mockResolvedValue(t("K7MQX-4RT9B"));
+    expect(await authHost(T_ID, "k7mqx 4rt9b")).toEqual(t("K7MQX-4RT9B"));
+    store.getTournament.mockResolvedValue(t("HOST-01"));
+    expect(await authHost(T_ID, "host01")).toEqual(t("HOST-01"));
+  });
+  it("avviser feil/avkortet kode", async () => {
+    store.getTournament.mockResolvedValue(t("K7MQX-4RT9B"));
+    expect(await authHost(T_ID, "K7MQX-4RT9")).toBeNull();
+    expect(await authHost(T_ID, "K7MQX")).toBeNull();
+  });
+});

@@ -226,7 +226,7 @@ export function LobbyView({
       for (const id of ids) {
         kickedRef.current.add(id);
         api
-          .kick(tournament.id, code, id)
+          .kick(tournament.id, code, id, "ghost")
           .then(onChanged)
           .catch(() => kickedRef.current.delete(id)); // allow a later retry
       }

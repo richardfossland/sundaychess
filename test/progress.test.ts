@@ -322,6 +322,17 @@ describe("offerSoloWhileWaiting", () => {
     expect(offerSoloWhileWaiting(s, ME)).toBe(false);
   });
 
+  it("M3: kicked by the teacher counts as out, like left", () => {
+    const s = state({
+      status: "league",
+      currentRound: 1,
+      players: [player(ME, { status: "kicked" }), player("opp")],
+      rounds: [{ id: "r1", number: 1, phase: "league", status: "live", startedAt: null, extendedMs: 0 }],
+      games: [game({ id: "g1", roundId: "r1", status: "live" })],
+    });
+    expect(offerSoloWhileWaiting(s, ME)).toBe(true);
+  });
+
   it("marked left (walkover / ghost-kick): offered regardless of phase", () => {
     const s = state({
       status: "league",

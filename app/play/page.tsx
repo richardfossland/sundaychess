@@ -23,7 +23,8 @@ type Screen =
   | "resume"
   | "playing"
   /** Removed from a tournament that has already started — see attemptResume. */
-  | "removed";
+  | "removed"
+  | "kicked";
 
 export default function Play() {
   const [screen, setScreen] = useState<Screen>("init");
@@ -73,6 +74,11 @@ export default function Play() {
         // do. (A failed rejoin is not fatal: the waiting room shows the same
         // offer as a button.) Once the tournament has STARTED the pairings are
         // set, so we say it out loud instead of waiting in silence forever.
+        // M3: lærerens kick er endelig. Ingen auto-rejoin, ingen knapp.
+        if (r.playerStatus === "kicked") {
+          setScreen("kicked");
+          return;
+        }
         if (r.playerStatus === "left") {
           if (r.tournamentStatus !== "lobby") {
             setScreen("removed");
@@ -177,7 +183,9 @@ export default function Play() {
           ? no.player.invalidPin
           : errCode === "already_started"
             ? no.player.alreadyStarted
-            : no.common.error,
+            : errCode === "tournament_full"
+              ? no.player.tournamentFull
+              : no.common.error,
       );
       setBusy(false);
       if (errCode === "invalid_pin") setScreen("join");
@@ -227,6 +235,31 @@ export default function Play() {
         ) : (
           <span className="spin" role="status" aria-label={no.common.loading} />
         )}
+      </main>
+    );
+  }
+
+  if (screen === "kicked") {
+    return (
+      <main className="center-screen">
+        <div className="card card-narrow stack pl-card scale-in" data-testid="kicked-card">
+          <PageHeader />
+          <div className="pl-icon"><Icon name="wave" size={40} strokeWidth={1.5} /></div>
+          <h2 className="pl-title">{no.player.kickedTitle}</h2>
+          <p className="muted">{no.player.kickedBody}</p>
+          <button
+            className="text-link"
+            onClick={() => {
+              identity.clearPlayer(me?.tournamentId);
+              setMe(null);
+              setError(null);
+              setPin("");
+              setScreen("join");
+            }}
+          >
+            {no.player.logOut}
+          </button>
+        </div>
       </main>
     );
   }

@@ -80,7 +80,7 @@ beforeAll(async () => {
     create function cron.unschedule(text) returns boolean language sql as 'select true';
   `);
   const files = readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort();
-  expect(files.at(-1)).toBe("0018_atomic_rounds_lockdown.sql");
+  expect(files.at(-1)).toBe("0019_player_kicked.sql");
   for (const f of files) await db.exec(sqlOf(f));
   // Re-applying must be a no-op (idempotent).
   await db.exec(sqlOf("0014_realtime_private.sql"));

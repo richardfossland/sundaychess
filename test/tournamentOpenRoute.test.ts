@@ -103,6 +103,20 @@ describe("POST /api/tournament/open", () => {
     expect(openTournamentByHostCode).not.toHaveBeenCalled();
   });
 
+  it("åpner med BÅDE gammel kort og ny 10-tegns vertskode (også skrevet uten bindestrek/med små bokstaver)", async () => {
+    for (const [typed, expected] of [
+      ["HOST-01", "HOST-01"],
+      ["host01", "HOST-01"],
+      ["k7mqx4rt9b", "K7MQX-4RT9B"],
+      ["K7MQX-4RT9B", "K7MQX-4RT9B"],
+    ]) {
+      openTournamentByHostCode.mockClear();
+      const res = await POST(req({ hostCode: typed }));
+      expect(res.status).toBe(200);
+      expect(openTournamentByHostCode).toHaveBeenCalledWith(expected);
+    }
+  });
+
   it("404 not_found on a well-formed code nobody owns", async () => {
     openTournamentByHostCode.mockResolvedValue(null);
     const res = await POST(req({ hostCode: "ZZZZ-99" }));

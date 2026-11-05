@@ -33,7 +33,7 @@ export interface PublicPlayer {
   displayName: string;
   score: number;
   tiebreak: number;
-  status: "active" | "left";
+  status: "active" | "left" | "kicked";
   seed: number | null;
   team: string | null;
   /** M5b: from a physical tournament (rating / club or class / start number). */

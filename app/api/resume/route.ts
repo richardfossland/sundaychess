@@ -5,6 +5,7 @@ import {
 } from "@/lib/server/store";
 import { maybeAutoFinishStale } from "@/lib/server/lifecycle";
 import { fail, ok, readJson, rateLimit, clientIp, withApi } from "@/lib/server/http";
+import { isGuessBlocked, registerGuessFailure, withDeviceCookie } from "@/lib/server/deviceGuard";
 import { normalizeResumeCode, isValidPin, isUuid } from "@/lib/codes";
 
 // POST /api/resume — restore a student session from their resume code.
@@ -13,9 +14,17 @@ import { normalizeResumeCode, isValidPin, isUuid } from "@/lib/codes";
 // A throw here used to become a platform 500, and the client's resume catch
 // WIPES the stored session. withApi answers a structured 503 so the client
 // keeps the session + retries.
-export const POST = withApi(handleResume);
+// M1: gjetting av kode/PIN telles per enhet + IP (scope `resume`). BARE feil
+// svar teller: en hel klasse bak ett NAT som gjenopptar etter et wifi-blipp
+// sender riktige koder og bruker aldri budsjettet. 429 rate_limited sletter
+// ALDRI elevens økt (shouldClearSession i lib/client/api.ts godtar bare 400/404
+// invalid_code|not_found). Cookie-stien er ruten selv, ellers kommer `sc_dev`
+// aldri tilbake.
+export const POST = withApi((req: Request) =>
+  withDeviceCookie(req, "/api/resume", (device) => handleResume(req, device)),
+);
 
-async function handleResume(req: Request): Promise<Response> {
+async function handleResume(req: Request, device: string): Promise<Response> {
   // Generous per-IP cap: after a wifi blip the whole class resumes at once
   // from one school NAT IP.
   if (!rateLimit(`resume:${clientIp(req)}`, 120, 60_000)) {
@@ -38,16 +47,28 @@ async function handleResume(req: Request): Promise<Response> {
     return fail(400, "bad_request");
   }
 
+  if (await isGuessBlocked("resume", device, req)) return fail(429, "rate_limited");
+
   const tournament = body?.tournamentId
     ? await getTournament(body.tournamentId)
     : body?.pin && isValidPin(body.pin)
       ? await getTournamentByPin(body.pin.trim())
       : null;
 
-  if (!tournament) return fail(404, "not_found");
+  if (!tournament) {
+    // Ukjent tournamentId er ikke gjetting (id-er kan ikke gjettes, og en slettet
+    // turnering må ikke straffe eleven); en ukjent PIN er det.
+    if (!body?.tournamentId && (await registerGuessFailure("resume", device, req))) {
+      return fail(429, "rate_limited");
+    }
+    return fail(404, "not_found");
+  }
 
   const player = await getPlayerByResume(tournament.id, resumeCode);
-  if (!player) return fail(404, "invalid_code");
+  if (!player) {
+    if (await registerGuessFailure("resume", device, req)) return fail(429, "rate_limited");
+    return fail(404, "invalid_code");
+  }
 
   // Close a stale (abandoned-overnight) tournament before reporting status, so a
   // student resuming the next morning sees it finished — never a zombie board.
