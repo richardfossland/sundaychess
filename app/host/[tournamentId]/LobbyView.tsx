@@ -201,7 +201,7 @@ export function LobbyView({
 
   function kick(playerId: string) {
     if (!hostCode) return;
-    api.kick(tournament.id, hostCode, playerId).then(onChanged).catch(() => {});
+    api.kick(tournament.id, hostCode, playerId, "teacher").then(onChanged).catch(() => {});
   }
 
   // Stable 30s sweep: drop ghosts who connected then left for > the grace window.

@@ -164,7 +164,7 @@ test("a removed student is told, and a reload puts them back in the lobby", asyn
 
     // ---- the host removes them (what the sweep would do after 3 minutes) ----
     // M3: the sweep sends reason "ghost" -> status `left`, which the student can
-    // undo. (A deliberate teacher kick has no reason and is final: next test.)
+    // undo. (A deliberate teacher kick sends reason "teacher" and is final: next test.)
     const kicked = await request.post("/api/lobby/kick", {
       data: {
         tournamentId: lobby.tournamentId,

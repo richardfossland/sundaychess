@@ -391,14 +391,14 @@ export const api = {
       hostCode,
     }),
 
-  /** `reason: "ghost"` = automatisk sveip (eleven kan selv komme tilbake);
-   * uten = lærerens bevisste kick (endelig, se /api/lobby/kick). */
-  kick: (tournamentId: string, hostCode: string, playerId: string, reason?: "ghost") =>
+  /** `"teacher"` = lærerens bevisste kick (endelig, se /api/lobby/kick);
+   * `"ghost"` = automatisk sveip (eleven kan selv komme tilbake). */
+  kick: (tournamentId: string, hostCode: string, playerId: string, reason: "teacher" | "ghost") =>
     post<{ ok: boolean }>("/api/lobby/kick", {
       tournamentId,
       hostCode,
       playerId,
-      ...(reason ? { reason } : {}),
+      reason,
     }),
 
   // ---- the student's own un-kick (lobby only) ----

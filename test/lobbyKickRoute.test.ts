@@ -85,14 +85,20 @@ beforeEach(() => {
 
 describe("POST /api/lobby/kick", () => {
   it("removes the player and tells the roster after responding (M1)", async () => {
-    const res = await POST(req(good));
+    const res = await POST(req({ ...good, reason: "teacher" }));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
-    // M3: lærerens kick (uten reason) er endelig -> `kicked`, ikke angrebar.
+    // M3: lærerens kick (reason teacher) er endelig -> `kicked`, ikke angrebar.
     expect(setPlayerStatus).toHaveBeenCalledWith(P_ID, "kicked");
     expect(broadcast).not.toHaveBeenCalled();
     await drainDeferred();
     expect(broadcast).toHaveBeenCalledWith(`chess:lobby:${T_ID}`, "roster", { left: P_ID });
+  });
+
+  it("M3: uten reason (åpen fane med gammel JS) gir `left`, aldri et endelig kick", async () => {
+    const res = await POST(req(good));
+    expect(res.status).toBe(200);
+    expect(setPlayerStatus).toHaveBeenCalledWith(P_ID, "left");
   });
 
   it("M3: spøkelsessveipet (reason ghost) gir `left`, som eleven selv kan angre", async () => {
@@ -103,7 +109,7 @@ describe("POST /api/lobby/kick", () => {
 
   it("M3: 0019 ikke kjørt (CHECK 23514) -> faller tilbake til `left`, ikke 500", async () => {
     setPlayerStatus.mockRejectedValueOnce({ code: "23514" });
-    const res = await POST(req(good));
+    const res = await POST(req({ ...good, reason: "teacher" }));
     expect(res.status).toBe(200);
     expect(setPlayerStatus).toHaveBeenNthCalledWith(1, P_ID, "kicked");
     expect(setPlayerStatus).toHaveBeenNthCalledWith(2, P_ID, "left");

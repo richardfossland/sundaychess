@@ -11,8 +11,9 @@ import { isUuid } from "@/lib/codes";
 // starts; once games are live the "absent" flow (a walkover) applies instead.
 //
 // M3: en lærers kick er endelig: status `kicked`, som /api/lobby/rejoin nekter.
-// Spøkelsessveipet (host-klienten, 3 min uten presence) sender `reason: "ghost"` og
-// gir status `left`, som eleven selv kan angre. Uten `reason` er det et bevisst kick.
+// Bare `reason: "teacher"` er endelig. Alt annet gir `left`, som eleven selv kan angre:
+// spøkelsessveipet (3 min uten presence), og en åpen fane med gammel JS som ikke sender
+// `reason`. Ellers kunne en låst telefon gitt en elev permanent utkast.
 export const POST = withApi(handlePost);
 
 async function handlePost(req: Request): Promise<Response> {
@@ -36,7 +37,7 @@ async function handlePost(req: Request): Promise<Response> {
   const player = await getPlayer(body.playerId);
   if (!player || player.tournament_id !== t.id) return fail(404, "no_player");
 
-  const status = body.reason === "ghost" ? "left" : "kicked";
+  const status = body.reason === "teacher" ? "kicked" : "left";
   try {
     await setPlayerStatus(player.id, status);
   } catch (err) {
