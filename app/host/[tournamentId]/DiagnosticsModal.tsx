@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import type { BoardState, DiagnosticsResult } from "@/lib/dto";
 import { api } from "@/lib/client/api";
 import { no } from "@/lib/locale/no";
+import { formatTime } from "@/lib/format";
 import { Modal } from "@/lib/client/Modal";
 import { Icon } from "@/lib/client/Icon";
 
@@ -139,7 +140,7 @@ export function DiagnosticsModal({
 function clock(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso.slice(11, 19);
-  return d.toLocaleTimeString("nb-NO", { hour12: false });
+  return formatTime(d, { hour12: false });
 }
 
 /** `detail` is a flat bag of codes by construction (both ends clamp it), so one

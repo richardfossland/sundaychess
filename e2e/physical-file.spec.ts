@@ -54,8 +54,8 @@ test("eksport → slett → import → neste runde, offline", async ({ page, con
 
   // Slett lokalt
   await page.getByRole("link", { name: no.physical.backToList }).first().click();
-  page.once("dialog", (d) => void d.accept());
   await page.getByRole("button", { name: no.physical.remove }).click();
+  await page.getByRole("dialog").getByRole("button", { name: no.physical.remove }).click();
   await expect(page.getByText(no.physical.emptyList)).toBeVisible();
 
   // Endret fil krever bekreftelse

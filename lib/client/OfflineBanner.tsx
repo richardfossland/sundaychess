@@ -2,6 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { no } from "@/lib/locale/no";
+import { formatTime } from "@/lib/format";
 import {
   getConnectivity,
   isDegraded,
@@ -31,7 +32,7 @@ export function OfflineBanner() {
 
   if (!isDegraded(c)) return null;
   const t = c.lastOkAt
-    ? new Date(c.lastOkAt).toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" })
+    ? formatTime(c.lastOkAt, { hour: "2-digit", minute: "2-digit" })
     : null;
   return (
     <div className="offline-banner" role="status" aria-live="polite">

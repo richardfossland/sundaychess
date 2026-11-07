@@ -1,4 +1,25 @@
-/* SundayChess service worker — hand-written, no dependencies.
+// Service worker source, stamped with the build id at serve time.
+//
+// WHY A ROUTE AND NOT public/sw.js: a file in public/ is copied verbatim, so its
+// VERSION had to be hand-bumped (and was not, so old /_next/static chunks piled
+// up forever and a deploy produced a byte-identical worker that never
+// re-installed). app/sw.js/route.ts serves this string with the build id baked
+// in, which works the same under `next build` and the OpenNext build because
+// NEXT_PUBLIC_BUILD_ID (next.config.ts) is inlined by both.
+
+export const SW_VERSION_PLACEHOLDER = "__BUILD_VERSION__";
+
+// Only [A-Za-z0-9._-] may end up inside the cache-name string literal.
+export function safeVersion(buildId: string | undefined): string {
+  const v = (buildId ?? "").replace(/[^A-Za-z0-9._-]/g, "").slice(0, 40);
+  return v || "dev";
+}
+
+export function swSource(buildId: string | undefined): string {
+  return SW_TEMPLATE.replace(SW_VERSION_PLACEHOLDER, safeVersion(buildId));
+}
+
+const SW_TEMPLATE = String.raw`/* SundayChess service worker — hand-written, no dependencies.
  *
  * Goals: (1) installable PWA, (2) the physical tournament mode under
  * /arranger/fysisk opens WITHOUT network after one online visit.
@@ -8,11 +29,14 @@
  *    handled here: network only, nothing cached.
  *  - A new worker WAITS. It only takes over when the page posts SKIP_WAITING
  *    (the in-app "Ny versjon – last inn på nytt" button) — never mid-round.
- *  - Bump VERSION to invalidate every cache; old ones are deleted on activate.
+ *  - VERSION is stamped from the build id when /sw.js is served (lib/sw/source.ts),
+ *    so every deploy gets a byte-different worker, re-precaches, and the old
+ *    versioned caches are deleted on activate (which only happens after the
+ *    SKIP_WAITING prompt, or once all tabs are closed — never mid-round).
  */
 "use strict";
 
-const VERSION = "v1";
+const VERSION = "__BUILD_VERSION__";
 const PREFIX = "sundaychess-";
 const SHELL = PREFIX + "shell-" + VERSION; // HTML documents we serve offline
 const STATIC = PREFIX + "static-" + VERSION; // /_next/static/* (immutable, hashed)
@@ -20,8 +44,11 @@ const ASSETS = PREFIX + "assets-" + VERSION; // icons, fonts, manifest (SWR)
 const CURRENT = [SHELL, STATIC, ASSETS];
 
 // ONE place that lists the routes whose HTML is precached at install. The M1
-// physical-mode route(s) go here. A route that does not exist (404) or
-// redirects is simply skipped — install must never fail because of it.
+// physical-mode route(s) go here. A route that does not exist (404) or redirects
+// is simply skipped. Anything else that fails (no network, 5xx, a missing chunk)
+// REJECTS the install: activate deletes the previous version's caches, so an
+// incomplete install must never replace a working offline shell. The old worker
+// stays in charge and the browser tries again on a later visit.
 const PRECACHE_ROUTES = ["/offline", "/arranger/fysisk"];
 
 // Navigations under this prefix fall back to the cached shell when offline.
@@ -38,30 +65,24 @@ function isOfflineAppPath(p) {
 }
 
 async function precacheRoute(path) {
-  try {
-    const res = await fetch(path, { credentials: "same-origin", cache: "reload" });
-    if (!res.ok || res.redirected) return;
-    const html = await res.clone().text();
-    const shell = await caches.open(SHELL);
-    await shell.put(path, res);
-    // Pull in the hashed chunks this document references so the shell actually
-    // boots offline.
-    const urls = new Set(html.match(/\/_next\/static\/[^"'\\\s)<>]+/g) || []);
-    const st = await caches.open(STATIC);
-    await Promise.all(
-      [...urls].map(async (u) => {
-        try {
-          if (await st.match(u)) return;
-          const r = await fetch(u, { credentials: "same-origin" });
-          if (r.ok) await st.put(u, r);
-        } catch (_) {
-          /* best effort */
-        }
-      }),
-    );
-  } catch (_) {
-    /* offline during install / route missing: skip */
-  }
+  const res = await fetch(path, { credentials: "same-origin", cache: "reload" });
+  if (res.status === 404 || res.redirected) return;
+  if (!res.ok) throw new Error("precache " + path + ": " + res.status);
+  const html = await res.clone().text();
+  const shell = await caches.open(SHELL);
+  await shell.put(path, res);
+  // Pull in the hashed chunks this document references so the shell actually
+  // boots offline. One missing chunk means it does not.
+  const urls = new Set(html.match(/\/_next\/static\/[^"'\\\s)<>]+/g) || []);
+  const st = await caches.open(STATIC);
+  await Promise.all(
+    [...urls].map(async (u) => {
+      if (await st.match(u)) return;
+      const r = await fetch(u, { credentials: "same-origin" });
+      if (!r.ok) throw new Error("precache " + u + ": " + r.status);
+      await st.put(u, r);
+    }),
+  );
 }
 
 self.addEventListener("install", (event) => {
@@ -178,3 +199,4 @@ self.addEventListener("fetch", (event) => {
   }
   // everything else (RSC payloads, images, ...): default network behaviour
 });
+`;
