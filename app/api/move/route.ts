@@ -129,7 +129,15 @@ async function handleMove(req: Request): Promise<Response> {
   }
 
   // A move supersedes any pending draw offer.
-  if (game.draw_offered_by) await setDrawOffer(game.id, null);
+  // The move is already committed: failing here must not answer 503 (the client's
+  // retry can never succeed) or skip the broadcast and result side-effects below.
+  if (game.draw_offered_by) {
+    try {
+      await setDrawOffer(game.id, null);
+    } catch (e) {
+      console.error("[move] clearing draw offer failed", e);
+    }
+  }
 
   // The pre-move snapshot already charged the mover up to "now", which equals
   // the post-move clock state; only the side to move flips.

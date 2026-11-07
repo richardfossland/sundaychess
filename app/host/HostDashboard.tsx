@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { ConfirmDialog } from "@/lib/client/ConfirmDialog";
 import { no } from "@/lib/locale/no";
+import { formatDate } from "@/lib/format";
 import { createAuthBrowserClient } from "@/lib/supabase/auth-browser";
 import type { TournamentStatus } from "@/lib/types";
 
@@ -92,7 +93,7 @@ export function HostDashboard({ initial }: { initial: Item[] }) {
                 <b style={{ fontSize: 16 }}>{t.title || no.hostAuth.untitled}</b>
                 <span className="faint" style={{ fontSize: "var(--fs-xs)" }}>
                   {STATUS_LABEL[t.status]} · PIN {t.joinPin} ·{" "}
-                  {no.hostAuth.created} {new Date(t.createdAt).toLocaleDateString("no")}
+                  {no.hostAuth.created} {formatDate(t.createdAt)}
                 </span>
                 {t.notes && (
                   <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>

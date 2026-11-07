@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { no } from "@/lib/locale/no";
 import { Icon } from "@/lib/client/Icon";
 import { PageHeader } from "@/lib/client/PageHeader";
+import { useConfirm } from "@/lib/client/useConfirm";
 import { deleteTournament, listTournaments, type StorageKind } from "@/lib/physical/storage";
 import type { StoredTournament } from "@/lib/physical/schema";
 import { ImportFile } from "./ImportFile";
@@ -14,6 +15,7 @@ import { getStore } from "./usePhysical";
 export function PhysicalList() {
   const [items, setItems] = useState<StoredTournament[] | null>(null);
   const [kind, setKind] = useState<StorageKind | null>(null);
+  const [confirm, confirmDialog] = useConfirm();
   const t = no.physical;
 
   async function refresh() {
@@ -36,7 +38,7 @@ export function PhysicalList() {
   }, []);
 
   async function remove(it: StoredTournament) {
-    if (!window.confirm(t.removeConfirm(it.title))) return;
+    if (!(await confirm(t.removeConfirm(it.title), { confirmLabel: t.remove, danger: true }))) return;
     await deleteTournament(await getStore(), it.id);
     await refresh();
   }
@@ -80,6 +82,7 @@ export function PhysicalList() {
           </ul>
         </section>
       </div>
+      {confirmDialog}
     </main>
   );
 }

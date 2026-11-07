@@ -6,8 +6,8 @@ import { no } from "@/lib/locale/no";
 
 /** Small ⓘ button that reveals a short explanation on tap/click — so help text
  * that is genuinely useful (tiebreaks, pairing systems, shortcuts) stays out of
- * the layout until someone asks for it. Closes on Esc, outside click or a second
- * tap; works the same with touch, mouse and keyboard. */
+ * the layout until someone asks for it. Closes on Esc, outside click, focus moving
+ * elsewhere (Tab away) or a second tap; works the same with touch, mouse and keyboard. */
 export function InfoTip({
   children,
   label = no.common.moreInfo,
@@ -48,10 +48,17 @@ export function InfoTip({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
+    // Tabbing away (focus moves outside the tip) closes it too — otherwise a
+    // keyboard user leaves a popover hanging over the next control.
+    const onFocusIn = (e: FocusEvent) => {
+      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
+    };
     document.addEventListener("pointerdown", onDown);
     document.addEventListener("keydown", onKey);
+    document.addEventListener("focusin", onFocusIn);
     return () => {
       document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);

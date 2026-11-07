@@ -50,6 +50,12 @@ export function ServiceWorker() {
         className="btn btn-primary"
         title={no.pwa.updateHint}
         onClick={() => {
+          // En annen fane kan allerede ha tatt oppdateringen i bruk. Da kommer det
+          // ingen controllerchange her, så last inn på nytt direkte.
+          if (waiting.state === "activating" || waiting.state === "activated") {
+            location.reload();
+            return;
+          }
           wantsUpdate.current = true;
           waiting.postMessage({ type: "SKIP_WAITING" });
         }}

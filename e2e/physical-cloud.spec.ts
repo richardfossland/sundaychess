@@ -193,8 +193,8 @@ test("andre fane er skrivebeskyttet og kan ta over", async ({ page, context }) =
   // Første fane arbeider videre; andre fane tar over og ser det som ble gjort.
   await page.getByRole("button", { name: no.physical.pairRound(1) }).click();
   await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "saved");
-  second.once("dialog", (d) => void d.accept());
   await second.getByRole("button", { name: L.lockTakeOver }).click();
+  await second.getByRole("dialog").getByRole("button", { name: L.lockTakeOver }).click();
   await expect(second.getByTestId("readonly-banner")).toBeHidden();
   await expect(second.getByRole("button", { name: no.physical.publishRound })).toBeVisible();
   await expect(page.getByTestId("readonly-banner")).toBeVisible();

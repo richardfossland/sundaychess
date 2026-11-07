@@ -2,6 +2,7 @@
 // All visning leses fra selectors (standings, crosstable) – ingen nye hendelser.
 
 import { reportUrl } from "@/lib/physical/cloudMeta";
+import { formatDate } from "@/lib/format";
 import type { PhysicalPairing, PhysicalPlayer, PhysicalRound, PhysicalTournament } from "@/lib/physical/schema";
 import { crosstable, standings, type StandingWithPlayer } from "@/lib/physical/selectors";
 
@@ -215,9 +216,7 @@ export function certificatesFor(t: PhysicalTournament, opts: { participants?: bo
 
 /** Norsk datotekst, f.eks. «28. oktober 2026». */
 export function dateText(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("nb-NO", { day: "numeric", month: "long", year: "numeric" });
+  return formatDate(iso, { day: "numeric", month: "long", year: "numeric" });
 }
 
 /**

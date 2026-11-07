@@ -10,6 +10,7 @@ import type { PhysicalEvent } from "@/lib/physical/schema";
 import { loadTournament, saveTournament } from "@/lib/physical/storage";
 import { navigate } from "../nav";
 import { getStore } from "../usePhysical";
+import { useConfirm } from "@/lib/client/useConfirm";
 import { cloudErrorText } from "./CloudMenu";
 
 const L = no.physicalCloud;
@@ -22,6 +23,7 @@ export function OpenPublished() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [confirm, confirmDialog] = useConfirm();
 
   async function go(e: React.FormEvent) {
     e.preventDefault();
@@ -38,7 +40,7 @@ export function OpenPublished() {
       const d = res.data as { events: PhysicalEvent[]; version: number; hostCode: string; pairToken: string | null };
       const t = replay(d.events);
       const store = await getStore();
-      if ((await loadTournament(store, t.id).catch(() => null)) && !window.confirm(L.openReplaceConfirm)) return;
+      if ((await loadTournament(store, t.id).catch(() => null)) && !(await confirm(L.openReplaceConfirm, { confirmLabel: L.openGo, danger: true }))) return;
       await saveTournament(store, t);
       saveMeta(t.id, { hostCode: d.hostCode, pairToken: d.pairToken ?? null, syncedVersion: d.version, syncedSig: `${t.events.length}:${t.events[t.events.length - 1]?.id ?? ""}`, keys: {}, ...(tid !== t.id ? { cloudId: tid } : {}) });
       navigate(`/arranger/fysisk/${t.id}`);
@@ -68,6 +70,7 @@ export function OpenPublished() {
           <button type="submit" className="btn btn-primary" disabled={busy || !id.trim() || !code.trim()}>{L.openGo}</button>
         </form>
       )}
+      {confirmDialog}
     </div>
   );
 }
