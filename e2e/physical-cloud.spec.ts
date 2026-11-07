@@ -32,7 +32,7 @@ test("publiser → spiller melder via QR-side → arrangør godkjenner → offen
   await page.getByRole("button", { name: L.publish, exact: true }).click();
   await expect(page.getByTestId("cloud-status")).toHaveText(L.status.synced);
   await page.getByRole("button", { name: L.showCode }).click();
-  await expect(page.getByTestId("cloud-host-code")).toHaveText(/^[A-Z]{4}-[A-Z0-9]{2}$/);
+  await expect(page.getByTestId("cloud-host-code")).toHaveText(/^(?:[A-Z]{4}-[A-Z0-9]{2}|[A-Z0-9]{5}-[A-Z0-9]{5})$/);
 
   // Den offentlige siden er oppe og viser parringene (runden er publisert og pushet).
   const pub = await browser.newContext();

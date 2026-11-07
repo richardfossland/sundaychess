@@ -182,6 +182,7 @@ export interface ResumeResult {
   displayName: string;
   tournamentStatus: string;
   /** "left" = this player has been removed (lobby ghost-sweep, or a walkover).
+   * "kicked" = the teacher removed them on purpose; no way back on their own.
    * The client acts on it instead of waiting forever — see app/play/page.tsx.
    * Optional so an older/edge-cached response still parses. */
   playerStatus?: PlayerStatus;
@@ -390,8 +391,15 @@ export const api = {
       hostCode,
     }),
 
-  kick: (tournamentId: string, hostCode: string, playerId: string) =>
-    post<{ ok: boolean }>("/api/lobby/kick", { tournamentId, hostCode, playerId }),
+  /** `"teacher"` = lærerens bevisste kick (endelig, se /api/lobby/kick);
+   * `"ghost"` = automatisk sveip (eleven kan selv komme tilbake). */
+  kick: (tournamentId: string, hostCode: string, playerId: string, reason: "teacher" | "ghost") =>
+    post<{ ok: boolean }>("/api/lobby/kick", {
+      tournamentId,
+      hostCode,
+      playerId,
+      reason,
+    }),
 
   // ---- the student's own un-kick (lobby only) ----
   rejoin: (tournamentId: string, playerId: string, resumeCode: string) =>

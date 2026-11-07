@@ -24,7 +24,7 @@ import type { GameStatus, ResultSource, TournamentConfig, TournamentStatus } fro
 
 export interface DigitalExportInput {
   tournament: { id: string; title: string | null; status: TournamentStatus; config: TournamentConfig };
-  players: { id: string; displayName: string; status: "active" | "left"; rating?: number | null; club?: string | null; startNo?: number | null }[];
+  players: { id: string; displayName: string; status: "active" | "left" | "kicked"; rating?: number | null; club?: string | null; startNo?: number | null }[];
   rounds: { id: string; number: number; phase: string }[];
   games: { roundId: string; whitePlayerId: string; blackPlayerId: string | null; status: GameStatus; slot?: number; resultSource?: ResultSource }[];
 }
@@ -131,7 +131,7 @@ export function buildPhysicalFromDigital(input: DigitalExportInput, now = new Da
   });
 
   for (const p of players) {
-    if (p.status === "left" && !withdrawn.has(p.id)) {
+    if (p.status !== "active" && !withdrawn.has(p.id)) {
       push({ type: "withdrawPlayer", playerId: p.id });
       withdrawn.add(p.id);
     }

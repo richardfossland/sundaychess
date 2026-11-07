@@ -20,7 +20,9 @@ export type ResultSource =
   | "opponent_absent"
   /** Over-the-board result carried over from a physical tournament (M5b, migr. 0017). */
   | "physical";
-export type PlayerStatus = "active" | "left";
+/** "left" = borte (ghost-sveip, walkover): kan komme tilbake. "kicked" = læreren
+ * fjernet eleven med vilje: eleven kan IKKE angre det selv (/api/lobby/rejoin nekter). */
+export type PlayerStatus = "active" | "left" | "kicked";
 export type Turn = "w" | "b";
 
 /** playoffSize 0 = no playoff. */

@@ -2,7 +2,7 @@ import { openTournamentByHostCode } from "@/lib/server/store";
 import { fail, ok, readJson, rateLimit, ipKey, withApi } from "@/lib/server/http";
 import { DEVICE_COOKIE, IP_MAX_FAILURES, isGuessBlocked, registerGuessFailure, withDeviceCookie } from "@/lib/server/deviceGuard";
 import { signPairToken } from "@/lib/server/pair";
-import { isResumeCodeShape, normalizeResumeCode } from "@/lib/codes";
+import { isHostCodeShape, normalizeResumeCode } from "@/lib/codes";
 
 // POST /api/tournament/open — reopen a tournament board with the host code.
 export const POST = withApi(handlePost);
@@ -22,7 +22,7 @@ async function handleOpen(req: Request, device: string): Promise<Response> {
   // H5: the shape check is the FIRST substantive line, ahead of EITHER rate
   // limiter below: a code that cannot exist is a 400, decided before the
   // database and before any limiter is touched.
-  if (!isResumeCodeShape(code)) return fail(400, "invalid_code");
+  if (!isHostCodeShape(code)) return fail(400, "invalid_code");
 
   if (
     !rateLimit(`open:dev:${device}`, 20, 60_000) ||

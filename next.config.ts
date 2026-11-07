@@ -16,15 +16,47 @@ function buildId(): string {
   }
 }
 
-// Hardening for every route (same set as SundayTurnering). Deliberately NOT a
-// full CSP: the layout loads next/font and the app opens Supabase Realtime
-// websockets, so only frame-ancestors is set (clickjacking) — a stricter policy
-// would need nonces and a connect-src allowlist.
+// Supabase (Realtime-websocket + REST/auth) fra byggets egen URL; faller tilbake
+// til hele supabase.co hvis variabelen ikke finnes ved bygging.
+function supabaseOrigins(): string {
+  try {
+    const u = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "");
+    return `https://${u.host} wss://${u.host}`;
+  } catch {
+    return "https://*.supabase.co wss://*.supabase.co";
+  }
+}
+
+// M10: CSP i Report-Only, IKKE håndhevet. Layouten bruker inline-skript fra Next
+// (ingen nonces ennå), så 'unsafe-inline' er med, og vi vil se brudd i konsollen
+// før noe håndheves. Egne fonter (lokale), QR som data:-URL, sjakkmotor i en
+// Web Worker (worker-src blob:), WASM-fallback. frame-ancestors står i den
+// HÅNDHEVEDE headeren under, ikke her (Report-Only ignorerer det direktivet).
+const cspReportOnly = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  `connect-src 'self' ${supabaseOrigins()}`,
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+
+// Hardening for every route (same set as SundayTurnering). The ENFORCED CSP is
+// still only frame-ancestors (clickjacking); the full policy runs Report-Only.
 const securityHeaders = [
   // Join PINs / codes can travel in URLs — never leak them via Referer.
   { key: "Referrer-Policy", value: "no-referrer" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+  { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
+  // M10: HSTS ett år. BEVISST uten includeSubDomains: andre *.sundaysuite.app
+  // -apper deler domenet og skal ikke tvinges av denne appen.
+  { key: "Strict-Transport-Security", value: "max-age=31536000" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
 ];
 

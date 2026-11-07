@@ -40,6 +40,9 @@ async function handlePost(req: Request): Promise<Response> {
   if (!player) return fail(401, "unauthorized");
   if (player.tournament_id !== body.tournamentId) return fail(403, "forbidden");
 
+  // M3: læreren fjernet eleven med vilje. Den som er sparket kan ikke selv angre det.
+  if (player.status === "kicked") return fail(403, "kicked");
+
   const t = await getTournament(player.tournament_id);
   if (!t) return fail(404, "not_found");
   if (t.status !== "lobby") return fail(409, "not_lobby");

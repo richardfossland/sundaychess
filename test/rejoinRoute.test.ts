@@ -103,6 +103,17 @@ describe("POST /api/lobby/rejoin", () => {
     expect(store.setPlayerStatus).not.toHaveBeenCalled();
   });
 
+  it("M3: en elev lærerens kick fjernet (kicked) kan IKKE angre det selv", async () => {
+    authPlayer.mockResolvedValue(player({ status: "kicked" }));
+    store.getTournament.mockResolvedValue(tournament("lobby"));
+    const res = await POST(req(good));
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe("kicked");
+    expect(store.setPlayerStatus).not.toHaveBeenCalled();
+    await drainDeferred();
+    expect(broadcast).not.toHaveBeenCalled();
+  });
+
   it("409 not_lobby once the tournament has started", async () => {
     // Re-adding a player mid-tournament would change pairings — the client
     // shows "Du ble fjernet fra turneringen" instead.

@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { afterEach, vi } from "vitest";
 import {
+  generateHostCode,
   generatePin,
   generateResumeCode,
   generateUnique,
+  isHostCodeShape,
+  isResumeCodeShape,
   isUuid,
   isValidPin,
   maskCode,
@@ -122,5 +126,77 @@ describe("generateUnique", () => {
     let n = 0;
     const gen = () => codes[n++];
     expect(generateUnique(gen, taken, rng)).toBe("CCCC-CC");
+  });
+});
+
+// H2: ny vertskode = 10 tegn, kryptografisk tilfeldig; elevkoden forblir kort og streng.
+describe("generateHostCode (10 tegn)", () => {
+  it("er XXXXX-XXXXX uten tvetydige tegn", () => {
+    for (let i = 0; i < 300; i++) {
+      const c = generateHostCode();
+      expect(c).toMatch(/^[A-Z0-9]{5}-[A-Z0-9]{5}$/);
+      expect(c).not.toMatch(/[IO01]/);
+      expect(isHostCodeShape(c)).toBe(true);
+      expect(normalizeResumeCode(c.toLowerCase().replace("-", " "))).toBe(c);
+    }
+  });
+
+  it("er deterministisk med injisert Rng (testsømmen er beholdt)", () => {
+    expect(generateHostCode(seq([0]))).toBe("AAAAA-AAAAA");
+  });
+
+  it("elevens gjenopptakskode er fortsatt kort", () => {
+    expect(generateResumeCode()).toMatch(/^[A-Z]{4}-[A-Z0-9]{2}$/);
+  });
+});
+
+describe("standard-RNG er crypto.getRandomValues, uten modulo-skjevhet", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("bruker crypto for PIN, elevkode og vertskode", () => {
+    const spy = vi.spyOn(crypto, "getRandomValues");
+    generatePin();
+    generateResumeCode();
+    generateHostCode();
+    expect(spy).toHaveBeenCalled();
+    // 6 + 6 + 10 tegn, hver minst ett kall
+    expect(spy.mock.calls.length).toBeGreaterThanOrEqual(22);
+  });
+
+  it("forkaster verdier i den skjeve halen (rejection sampling)", () => {
+    // 2^32 % 10 = 6 -> verdier >= 4294967290 må forkastes. Første trekk er i halen.
+    const draws = [0xffff_ffff, 4_294_967_290, 7];
+    let i = 0;
+    vi.spyOn(crypto, "getRandomValues").mockImplementation(((buf: Uint32Array) => {
+      buf[0] = draws[Math.min(i++, draws.length - 1)];
+      return buf;
+    }) as never);
+    expect(generatePin()[0]).toBe("7"); // 0xffffffff og 4294967290 forkastet
+  });
+
+  it("alle sifre/tegn forekommer omtrent jevnt", () => {
+    const counts = new Map<string, number>();
+    for (let i = 0; i < 6000; i++) for (const ch of generatePin()) counts.set(ch, (counts.get(ch) ?? 0) + 1);
+    expect(counts.size).toBe(10);
+    for (const n of counts.values()) expect(n).toBeGreaterThan(3200); // forventet 3600
+  });
+});
+
+describe("kodeformer: begge vertskode-former, elevkode uendret", () => {
+  it("normaliserer 6 -> 4+2 og 10 -> 5+5, alt annet urørt", () => {
+    expect(normalizeResumeCode("kole7f")).toBe("KOLE-7F");
+    expect(normalizeResumeCode("k7mqx4rt9b")).toBe("K7MQX-4RT9B");
+    expect(normalizeResumeCode(" k7mqx-4rt9b ")).toBe("K7MQX-4RT9B");
+    expect(normalizeResumeCode("kole7f2")).toBe("KOLE7F2");
+  });
+
+  it("isHostCodeShape godtar gammel og ny; isResumeCodeShape (elev) er IKKE løsnet", () => {
+    expect(isHostCodeShape("KOLE-7F")).toBe(true);
+    expect(isHostCodeShape("K7MQX-4RT9B")).toBe(true);
+    expect(isHostCodeShape("K7MQX4RT9B")).toBe(false); // ikke normalisert
+    expect(isHostCodeShape("ABCDE-12")).toBe(false);
+    expect(isResumeCodeShape("KOLE-7F")).toBe(true);
+    expect(isResumeCodeShape("K7MQX-4RT9B")).toBe(false);
+    expect(isResumeCodeShape("1234-56")).toBe(false);
   });
 });

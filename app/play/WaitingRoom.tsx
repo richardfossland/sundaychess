@@ -96,7 +96,7 @@ function myGame(state: BoardState, playerId: string): PublicGame | null {
  *    their decided game in it (see `eliminatedFromCurrentPlayoff`). */
 function isOut(state: BoardState, playerId: string): boolean {
   const meP = state.players.find((p) => p.id === playerId);
-  if (meP?.status === "left") return true;
+  if (meP?.status === "left" || meP?.status === "kicked") return true;
   return eliminatedFromCurrentPlayoff(state, playerId);
 }
 
@@ -263,6 +263,28 @@ export function WaitingRoom({
   // arrangøren starter …" to a student who was no longer in the tournament at
   // all. Say what happened, and offer the one button that undoes it.
   const meRow = state?.players.find((p) => p.id === me.playerId) ?? null;
+  // M3: lærerens kick er endelig. Si det kort, og ingen vei tilbake på egen hånd.
+  if (meRow?.status === "kicked") {
+    return (
+      <main className="center-screen">
+        <div className="card card-narrow stack pl-card scale-in" data-testid="kicked-card">
+          <Brand />
+          <div className="pl-icon"><Icon name="wave" size={40} strokeWidth={1.5} /></div>
+          <h2 className="pl-title">{no.player.kickedTitle}</h2>
+          <p className="muted">{no.player.kickedBody}</p>
+          <button
+            className="text-link"
+            onClick={() => {
+              onLeave();
+              identity.clearPlayer(me.tournamentId);
+            }}
+          >
+            {no.player.logOut}
+          </button>
+        </div>
+      </main>
+    );
+  }
   if (status === "lobby" && meRow?.status === "left") {
     const rejoin = async () => {
       setRejoining(true);

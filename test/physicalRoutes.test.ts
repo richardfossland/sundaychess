@@ -66,7 +66,7 @@ beforeEach(() => {
 describe("POST /api/physical/publish", () => {
   it("creates the row, returns host code + pair token, stores a hash", async () => {
     const out = await seed();
-    expect(out.hostCode).toMatch(/^[A-Z]{4}-[A-Z0-9]{2}$/);
+    expect(out.hostCode).toMatch(/^[A-Z0-9]{5}-[A-Z0-9]{5}$/);
     expect(out.pairToken).toBe(await signPhysicalToken(ID, out.hostCode));
     expect(db.tables.physical_tournaments).toHaveLength(1);
     expect(db.tables.physical_tournaments[0]).toMatchObject({ id: ID, log_version: 1, title: "Skolemesterskap" });

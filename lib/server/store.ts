@@ -243,6 +243,12 @@ function smallestTeam(existing: Player[], teams: string[]): string {
   );
 }
 
+/** M5: tak per digital turnering, som fysisk modus (MAX_PLAYERS i
+ * lib/physical/cloudTypes.ts). Teller alle rader (også «left»/«kicked»), så
+ * heller ikke ghost-sveip eller gjentatte joins kan blåse opp listen forbi
+ * LIST_CAP. Mykt tak: to nøyaktig samtidige joins på rad 499 kan gi 501. */
+export const MAX_TOURNAMENT_PLAYERS = 500;
+
 export async function addPlayer(
   tournamentId: string,
   displayName: string,
@@ -250,6 +256,7 @@ export async function addPlayer(
 ): Promise<Player> {
   const db = createServiceClient();
   const existing = await listPlayers(tournamentId);
+  if (existing.length >= MAX_TOURNAMENT_PLAYERS) throw new Error("tournament_full");
   const taken = new Set(existing.map((p) => p.resume_code));
   const name = displayName.slice(0, 40);
   const useTeams = teams.length >= 2;

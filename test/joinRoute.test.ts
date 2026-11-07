@@ -117,6 +117,13 @@ describe("POST /api/join", () => {
     expect((await res.json()).error).toBe("invalid_pin");
   });
 
+  it("M5: 409 tournament_full når taket er nådd (ikke 500)", async () => {
+    addPlayer.mockRejectedValue(new Error("tournament_full"));
+    const res = await POST(req(good));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe("tournament_full");
+  });
+
   it("409 once the tournament has started", async () => {
     getTournamentByPin.mockResolvedValue(tournament({ status: "league" }));
     const res = await POST(req(good));

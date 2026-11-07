@@ -586,6 +586,9 @@ export const no = {
     // slip-back-in isn't possible. Say the truth instead of pointing at a PIN
     // screen that just dead-ends in `alreadyStarted` below: the teacher is the
     // one who can actually undo this (app/api/game/reinstate/route.ts).
+    // M3: læreren fjernet deg med vilje. Kort, ingen «bli med igjen».
+    kickedTitle: "Du er fjernet av læreren",
+    kickedBody: "Spør læreren hvis det var en feil.",
     removedTitle: "Du ble fjernet fra turneringen",
     removedBody: "Si fra til arrangøren.",
     // The button stays: it's the right move for joining a DIFFERENT, still-open
@@ -596,6 +599,8 @@ export const no = {
     // ("Turneringen har allerede startet.") was a dead end with no next step.
     alreadyStarted:
       "Turneringen er i gang — si fra til arrangøren, så kan arrangøren ta deg inn.",
+    // M5: turneringen har nådd 500 deltakere.
+    tournamentFull: "Turneringen er full. Si fra til arrangøren.",
     oppOutOfTime: "Motstanderens tid er ute!",
     claimWin: "Krev seier på tid",
     myTimeOut: "Tiden din er ute",

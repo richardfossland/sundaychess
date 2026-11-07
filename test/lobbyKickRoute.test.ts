@@ -85,13 +85,41 @@ beforeEach(() => {
 
 describe("POST /api/lobby/kick", () => {
   it("removes the player and tells the roster after responding (M1)", async () => {
-    const res = await POST(req(good));
+    const res = await POST(req({ ...good, reason: "teacher" }));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
-    expect(setPlayerStatus).toHaveBeenCalledWith(P_ID, "left");
+    // M3: lærerens kick (reason teacher) er endelig -> `kicked`, ikke angrebar.
+    expect(setPlayerStatus).toHaveBeenCalledWith(P_ID, "kicked");
     expect(broadcast).not.toHaveBeenCalled();
     await drainDeferred();
     expect(broadcast).toHaveBeenCalledWith(`chess:lobby:${T_ID}`, "roster", { left: P_ID });
+  });
+
+  it("M3: uten reason (åpen fane med gammel JS) gir `left`, aldri et endelig kick", async () => {
+    const res = await POST(req(good));
+    expect(res.status).toBe(200);
+    expect(setPlayerStatus).toHaveBeenCalledWith(P_ID, "left");
+  });
+
+  it("M3: sveip fra en fane med utdatert liste gjør ikke et lærer-kick angrebart", async () => {
+    vi.mocked(getPlayer).mockResolvedValueOnce({ id: P_ID, tournament_id: T_ID, status: "kicked" } as never);
+    const res = await POST(req({ ...good, reason: "ghost" }));
+    expect(res.status).toBe(200);
+    expect(setPlayerStatus).not.toHaveBeenCalled();
+  });
+
+  it("M3: spøkelsessveipet (reason ghost) gir `left`, som eleven selv kan angre", async () => {
+    const res = await POST(req({ ...good, reason: "ghost" }));
+    expect(res.status).toBe(200);
+    expect(setPlayerStatus).toHaveBeenCalledWith(P_ID, "left");
+  });
+
+  it("M3: 0019 ikke kjørt (CHECK 23514) -> faller tilbake til `left`, ikke 500", async () => {
+    setPlayerStatus.mockRejectedValueOnce({ code: "23514" });
+    const res = await POST(req({ ...good, reason: "teacher" }));
+    expect(res.status).toBe(200);
+    expect(setPlayerStatus).toHaveBeenNthCalledWith(1, P_ID, "kicked");
+    expect(setPlayerStatus).toHaveBeenNthCalledWith(2, P_ID, "left");
   });
 
   // H2: getPlayer hands the id straight to Postgres. Before the guard this was

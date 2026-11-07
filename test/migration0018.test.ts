@@ -124,3 +124,13 @@ describe("M6: RPC-ene er service_role-only", () => {
     });
   }
 });
+
+// 0019 (M3): players.status kjenner 'kicked', men fortsatt ikke vilkårlige verdier.
+describe("0019: players.status = 'kicked'", () => {
+  it("godtar kicked, avviser søppel, er idempotent", async () => {
+    await db.exec(sqlOf("0019_player_kicked.sql"));
+    await db.query("update public.players set status = 'kicked' where id = $1", [P[0]]);
+    await expect(db.query("update public.players set status = 'bogus' where id = $1", [P[0]])).rejects.toThrow();
+    await db.query("update public.players set status = 'left' where id = $1", [P[0]]);
+  });
+});

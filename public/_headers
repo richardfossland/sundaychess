@@ -1,6 +1,12 @@
 # Cloudflare Workers static-assets headers (copied to .open-next/assets).
 # The service worker script must always revalidate — a stale sw.js pins users
 # to an old app. Next's own headers() entry covers `next start` (e2e).
+# Statiske filer (/_next/static, ikon, manifest) går forbi Worker-koden og får
+# derfor IKKE next.config.ts sine headers. HSTS gjelder hele opprinnelsen, så den
+# må følge med her også. Ingen includeSubDomains (andre *.sundaysuite.app-apper).
+/*
+  Strict-Transport-Security: max-age=31536000
+  X-Content-Type-Options: nosniff
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
   Service-Worker-Allowed: /
